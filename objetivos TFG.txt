@@ -1,0 +1,17 @@
+objetivo principal: Desarrollar una herramienta multiplataforma para el seguimiento de Actividades de la vida diaria a partir de información de dispositivos conectados en el hogar
+
+objetivos parciales:
+1.modelo general: 
+	actores
+	componentes
+	casos de uso
+	escenarios
+2.desarrollar API para el tratamiento de la BBDD
+3.creación de la web
+	mockups
+	diagramas
+	producto final
+4.evaluar UX
+	escala SUS: encuesta para medir UX (form)
+5.garantizar/medir seguridad (protec datos)???
+6.(depende de como sea el 3): creación de rutinas/evaluación de estas

@@ -1,0 +1,7 @@
+{
+  "welcome": "Welcome to TAICareApp!",
+  "toggle_theme": {
+    "dark": "🌞 Light",
+    "light": "🌙 Dark"
+  }
+}
