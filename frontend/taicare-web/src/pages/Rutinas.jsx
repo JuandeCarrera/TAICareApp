@@ -1,4 +1,3 @@
-// src/pages/Rutinas.jsx
 import React, { useContext, useState, useEffect } from 'react'
 import styled from 'styled-components'
 import { useNavigate } from 'react-router-dom'
@@ -26,8 +25,6 @@ const Main = styled.main`
   padding: 2rem;
   overflow-y: auto;
 `
-
-// Lista de rutinas
 const List = styled.ul`
   list-style: none;
   padding: 0;

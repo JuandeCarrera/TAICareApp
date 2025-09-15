@@ -48,7 +48,7 @@ export default function Sidebar({ open }) {
           <Item><MenuLink to="/data">Datos</MenuLink></Item>
           <Item><MenuLink to="/alerts">Alertas</MenuLink></Item>
           <Item><MenuLink to="/households">Hogares</MenuLink></Item>
-          <Item><MenuLink to="/users">Usuarios</MenuLink></Item>
+          <Item><MenuLink to="/pacientes">Pacientes</MenuLink></Item>
           <Item><MenuLink to="/configuration">Configuración</MenuLink></Item>
         </List>
       </Inner>

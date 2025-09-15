@@ -1,4 +1,3 @@
-// src/pages/Dispositivos.jsx
 import React, { useContext, useState, useEffect } from 'react'
 import styled from 'styled-components'
 import { useNavigate } from 'react-router-dom'
@@ -29,7 +28,6 @@ const Main = styled.main`
   overflow-y: auto;
 `
 
-// Nuevo styled component para cada dispositivo
 const DeviceItem = styled.li`
   display: flex;
   justify-content: space-between;
@@ -37,7 +35,6 @@ const DeviceItem = styled.li`
   margin-bottom: 0.5rem;
 `
 
-// Contenedor para los botones
 const Actions = styled.div`
   display: flex;
   gap: 0.5rem;

@@ -56,7 +56,6 @@ app.post('/auth/login', async (req, res) => {
     const valid = await user.comparePassword(password)
     if (!valid) return res.status(401).json({ error: 'Email o contraseña incorrectos' })
 
-    // firmamos un JWT y lo mandamos por cookie HTTP-only
     const token = jwt.sign(
       { sub: user._id, role: user.role },
       process.env.JWT_SECRET,
@@ -163,13 +162,11 @@ app.get('/households/:id', async (req, res) => {
 // 4) Actualizar casa (incluye aquí también renombre de rooms)
 app.put('/households/:id', async (req, res) => {
   try {
-    // 1) leemos el estado previo para comparar rooms
     const prev = await Household.findById(req.params.id);
     if (!prev || prev.owner.toString() !== req.user.sub) {
       return res.sendStatus(404);
     }
 
-    // 2) actualizamos el household
     const h = await Household.findOneAndUpdate(
       { _id: req.params.id, owner: req.user.sub },
       req.body,
@@ -178,18 +175,15 @@ app.put('/households/:id', async (req, res) => {
 
     if (!h) return res.sendStatus(404);
 
-    // 3) si nos llegó un array rooms en el body, propagamos renombres
     if (Array.isArray(req.body.rooms)) {
       const oldRooms = Array.isArray(prev.rooms) ? prev.rooms : [];
       const newRooms = req.body.rooms;
 
-      // comparamos hasta la longitud mínima para detectar renombres
       const len = Math.min(oldRooms.length, newRooms.length);
       for (let i = 0; i < len; i++) {
         const oldName = oldRooms[i];
         const newName = newRooms[i];
         if (oldName && newName && oldName !== newName) {
-          // por cada device que estuviera en la habitación oldName, lo renombramos
           await Device.updateMany(
             { household_id: h._id, room: oldName },
             { $set: { room: newName } }

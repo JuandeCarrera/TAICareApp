@@ -1,7 +1,6 @@
 import jwt from 'jsonwebtoken';
 
 export function authRequired(req, res, next) {
-  //log cookies que llegan
   console.log('→ authRequired: cookies:', req.cookies);
 
   const token = req.cookies.token;
@@ -12,7 +11,6 @@ export function authRequired(req, res, next) {
 
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET);
-    //log payload decodificado
     console.log('→ authRequired: payload:', payload);
     req.user = { sub: payload.sub, role: payload.role };
     next();

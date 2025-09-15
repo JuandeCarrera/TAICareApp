@@ -1,4 +1,3 @@
-// src/pages/Alertas.jsx
 import React, { useContext, useState, useEffect } from 'react'
 import styled from 'styled-components'
 import { useNavigate } from 'react-router-dom'
@@ -26,8 +25,6 @@ const Main = styled.main`
   padding: 2rem;
   overflow-y: auto;
 `
-
-// Lista
 const List = styled.ul`
   padding: 0;
   list-style: none;

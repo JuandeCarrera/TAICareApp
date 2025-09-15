@@ -136,7 +136,6 @@ export default function Configuracion() {
     }
 
     try {
-      // Actualizo nombre/email
       const res1 = await fetch(`${API}/users/${user._id}`, {
         method: 'PUT',
         credentials: 'include',
@@ -148,7 +147,6 @@ export default function Configuracion() {
         throw new Error(error || 'Error actualizando perfil')
       }
 
-      // Cambio contraseña si procede
       if (form.newPassword) {
         const res2 = await fetch(`${API}/auth/change-password`, {
           method: 'POST',
@@ -166,7 +164,6 @@ export default function Configuracion() {
         }
       }
 
-      // Refresco contexto
       setUser({ ...user, name: form.name, email: form.email })
       setEditing(false)
       setForm(f => ({

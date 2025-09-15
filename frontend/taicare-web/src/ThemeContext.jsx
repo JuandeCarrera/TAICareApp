@@ -1,4 +1,3 @@
-// src/ThemeContext.jsx
 import React, { createContext, useState, useEffect } from 'react';
 import { ThemeProvider as StyledProvider } from 'styled-components';
 import { lightTheme, darkTheme } from './theme';
