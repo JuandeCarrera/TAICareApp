@@ -157,19 +157,19 @@ export default function UsersPage() {
 
   async function loadUnreadCount(userId) {
     try {
-      let res = await fetch(`${API}/alerts/count?user_id=${userId}&unread=1`, { credentials: 'include' })
-      if (res.ok) {
-        const d = await res.json()
-        setUnread(u => ({ ...u, [userId]: d?.count ?? 0 }))
+      const res = await fetch(`${API}/alerts?user_id=${encodeURIComponent(userId)}&unread=1`, {
+        credentials: 'include'
+      })
+      if (!res.ok) {
+        setUnread(u => ({ ...u, [userId]: 0 }))
         return
       }
-      res = await fetch(`${API}/alerts?user_id=${userId}&unread=1`, { credentials: 'include' })
-      if (res.ok) {
-        const arr = await res.json()
-        setUnread(u => ({ ...u, [userId]: Array.isArray(arr) ? arr.length : 0 }))
-      }
+      const arr = await res.json()
+      const count = Array.isArray(arr) ? arr.length : 0
+      setUnread(u => ({ ...u, [userId]: count }))
     } catch (e) {
       console.warn('No pude obtener no leídas', e)
+      setUnread(u => ({ ...u, [userId]: 0 }))
     }
   }
   async function loadRoutines(userId) {
