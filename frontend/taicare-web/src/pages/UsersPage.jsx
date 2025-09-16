@@ -8,6 +8,7 @@ import Modal, { FormGroup } from '../components/Modal.jsx'
 import { AuthContext } from '../contexts/AuthContext.jsx'
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+const getUserId = (u) => u?._id || u?.id
 
 const AppContainer = styled.div`
   display: flex;
@@ -110,7 +111,8 @@ const SectionHeader = styled.div`
 `
 
 export default function UsersPage() {
-  const { logout } = useContext(AuthContext)
+  const { user, logout } = useContext(AuthContext)
+  const caregiverId = user?._id || user?.id || null
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(window.innerWidth >= 768)
 
@@ -129,18 +131,26 @@ export default function UsersPage() {
 
   useEffect(() => {
     loadPatients()
-  }, [])
+  }, [caregiverId])
 
   async function loadPatients() {
     try {
       setLoading(true)
-      const res = await fetch(`${API}/users`, { credentials: 'include' })
+      const qs = new URLSearchParams()
+      qs.set('role', 'paciente')
+      if (caregiverId) qs.set('caregiver_id', caregiverId)
+      let res = await fetch(`${API}/users?${qs.toString()}`, { credentials: 'include' })
       if (!res.ok) throw new Error('No se pudieron cargar los pacientes')
-      const data = await res.json()
-      setPatients(data)
-      if (data?.length && !selectedId) {
-        setSelectedId(data[0]._id)
+      let data = await res.json()
+      if (caregiverId) {
+        data = Array.isArray(data)
+          ? data.filter(p => (p.role === 'paciente') && (getUserId(p.caregiver_id) === caregiverId || p.caregiver_id === caregiverId))
+          : []
+      } else {
+        data = Array.isArray(data) ? data.filter(p => p.role === 'paciente') : []
       }
+      setPatients(data)
+      refreshUnreadForList(data).catch(()=>{})
     } catch (e) {
       console.error(e)
     } finally {
@@ -149,10 +159,16 @@ export default function UsersPage() {
   }
 
   useEffect(() => {
-    if (!selectedId) return
-    loadUnreadCount(selectedId)
-    loadRoutines(selectedId)
-    loadAlerts(selectedId)
+    if (!selectedId) {
+      setRoutines([]);
+      setAlerts([]);
+      return;
+    }
+    setRoutines([]);
+    setAlerts([]);
+    loadUnreadCount(selectedId);
+    loadRoutines(selectedId);
+    loadAlerts(selectedId);
   }, [selectedId])
 
   async function loadUnreadCount(userId) {
@@ -164,27 +180,67 @@ export default function UsersPage() {
         setUnread(u => ({ ...u, [userId]: 0 }))
         return
       }
-      const arr = await res.json()
-      const count = Array.isArray(arr) ? arr.length : 0
+      let arr = await res.json();
+      arr = Array.isArray(arr)
+        ? arr.filter(a => sameId(a.user_id, userId) && (a.read === false || a.read === 0 || a.read === 'false'))
+        : [];
+      const count = arr.length;
       setUnread(u => ({ ...u, [userId]: count }))
     } catch (e) {
       console.warn('No pude obtener no leídas', e)
       setUnread(u => ({ ...u, [userId]: 0 }))
     }
   }
+
   async function loadRoutines(userId) {
     try {
-      const res = await fetch(`${API}/routines?user_id=${userId}`, { credentials:'include' })
-      if (!res.ok) { setRoutines([]); return }
-      setRoutines(await res.json())
+      const res = await fetch(`${API}/routines?user_id=${encodeURIComponent(userId)}`, { credentials:'include' });
+      if (!res.ok) { setRoutines([]); return; }
+      let arr = await res.json();
+      arr = Array.isArray(arr)
+        ? arr.filter(r => (r.user_id?._id || r.user_id) === userId)
+        : [];
+      setRoutines(arr);
     } catch { setRoutines([]) }
   }
+
   async function loadAlerts(userId) {
     try {
-      const res = await fetch(`${API}/alerts?user_id=${userId}`, { credentials:'include' })
-      if (!res.ok) { setAlerts([]); return }
-      setAlerts(await res.json())
+      const res = await fetch(`${API}/alerts?user_id=${encodeURIComponent(userId)}`, { credentials:'include' });
+      if (!res.ok) { setAlerts([]); return; }
+      let arr = await res.json();
+      arr = Array.isArray(arr)
+        ? arr.filter(a => (a.user_id?._id || a.user_id) === userId)
+        : [];
+      setAlerts(arr);
     } catch { setAlerts([]) }
+  }
+
+  async function refreshUnreadForList(list) {
+    if (!Array.isArray(list) || !list.length) return;
+    const entries = await Promise.all(
+      list.map(async (p) => {
+        try {
+          const res = await fetch(`${API}/alerts?user_id=${encodeURIComponent(p._id)}&unread=1`, { credentials: 'include' });
+          if (!res.ok) return [p._id, 0];
+          let arr = await res.json();
+          arr = Array.isArray(arr)
+            ? arr.filter(a => sameId(a.user_id, p._id) && (a.read === false || a.read === 0 || a.read === 'false'))
+            : [];
+          return [p._id, arr.length];
+        } catch {
+          return [p._id, 0];
+        }
+      })
+    );
+    setUnread(prev => ({ ...prev, ...Object.fromEntries(entries) }));
+  }
+
+  function formatDateSafe(v) {
+    if (!v) return '';
+    const d = new Date(v);
+    if (Number.isNaN(d.getTime())) return String(v);
+    return d.toLocaleString();
   }
 
   const handleLogout = () => {
@@ -193,9 +249,14 @@ export default function UsersPage() {
 
   const openNew = () => {
     setEditId(null)
-    setForm({ name:'', email:'', role:'paciente', household_id:'', history:'' })
+    setForm({
+      name:'', email:'', role:'paciente',
+      household_id:'', history:'',
+      caregiver_id: caregiverId || ''
+    })
     setShowEditModal(true)
   }
+
   const openEditPatient = (p) => {
     setEditId(p._id)
     setForm({
@@ -203,10 +264,12 @@ export default function UsersPage() {
       email: p.email || '',
       role: p.role || 'paciente',
       household_id: p.household_id || '',
-      history: p.history || ''
+      history: p.history || '',
+      caregiver_id: getUserId(p.caregiver_id) || caregiverId || ''
     })
     setShowEditModal(true)
   }
+
   const openEditHistory = (p) => {
     setEditId(p._id)
     setForm(f => ({ ...f, history: p.history || '' }))
@@ -220,7 +283,14 @@ export default function UsersPage() {
 
   const savePatient = async () => {
     try {
-      const payload = { name: form.name, email: form.email, role: form.role, household_id: form.household_id, history: form.history }
+      const payload = {
+        name: form.name,
+        email: form.email,
+        role: 'paciente',
+        household_id: form.household_id || null,
+        history: form.history || '',
+        caregiver_id: form.caregiver_id || caregiverId || null
+      }
       let res
       if (editId) {
         res = await fetch(`${API}/users/${editId}`, {
@@ -271,6 +341,12 @@ export default function UsersPage() {
     }
   }
 
+  const sameId = (a, b) => {
+    const A = (a && (a._id || a.id || a))?.toString?.() ?? String(a);
+    const B = (b && (b._id || b.id || b))?.toString?.() ?? String(b);
+    return A === B;
+  };
+
   return (
     <AppContainer>
       <Header onToggleMenu={() => setMenuOpen(o => !o)} onLogout={handleLogout} />
@@ -293,7 +369,7 @@ export default function UsersPage() {
                     >
                       <Left>
                         <strong>{p.name || '(Sin nombre)'}</strong>
-                        <span style={{ opacity:.8, fontSize:'.9rem' }}>{p.email}</span>
+                        {/* <span style={{ opacity:.8, fontSize:'.9rem' }}>{p.email}</span> */}
                         { (unread[p._id] ?? 0) > 0 && <Dot title={`${unread[p._id]} notificaciones sin leer`} /> }
                       </Left>
                       <Right>
