@@ -116,6 +116,11 @@ export default function UsersPage() {
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(window.innerWidth >= 768)
 
+  // Hogares
+  const [households, setHouseholds] = useState([]);
+  const [hhQuery, setHhQuery] = useState('');
+  const [hhOpen, setHhOpen] = useState(false);
+
   const [patients, setPatients] = useState([])
   const [loading, setLoading]   = useState(true)
   const [selectedId, setSelectedId] = useState(null)
@@ -132,6 +137,13 @@ export default function UsersPage() {
   useEffect(() => {
     loadPatients()
   }, [caregiverId])
+
+  useEffect(() => {
+    fetch(`${API}/households`, { credentials: 'include' })
+      .then(r => r.ok ? r.json() : [])
+      .then(setHouseholds)
+      .catch(() => setHouseholds([]));
+  }, []);
 
   async function loadPatients() {
     try {
@@ -254,6 +266,7 @@ export default function UsersPage() {
       household_id:'', history:'',
       caregiver_id: caregiverId || ''
     })
+    setHhQuery('');
     setShowEditModal(true)
   }
 
@@ -267,6 +280,7 @@ export default function UsersPage() {
       history: p.history || '',
       caregiver_id: getUserId(p.caregiver_id) || caregiverId || ''
     })
+    setHhQuery(getHouseholdName(p.household_id) || '');
     setShowEditModal(true)
   }
 
@@ -346,6 +360,31 @@ export default function UsersPage() {
     const B = (b && (b._id || b.id || b))?.toString?.() ?? String(b);
     return A === B;
   };
+
+  const getHouseholdName = (id) => {
+    const h = households.find(x => (x._id === id));
+    return h?.name || '';
+  };
+
+  async function addNewHousehold(name) {
+    if (!name?.trim()) return;
+    try {
+      const res = await fetch(`${API}/households`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name.trim(), rooms: [] })
+      });
+      if (!res.ok) throw new Error('No se pudo crear el hogar');
+      const created = await res.json();
+      setHouseholds(prev => [...prev, created]);
+      setForm(f => ({ ...f, household_id: created._id }));
+      setHhQuery(created.name);
+      setHhOpen(false);
+    } catch (e) {
+      alert(e.message);
+    }
+  }
 
   return (
     <AppContainer>
@@ -440,23 +479,75 @@ export default function UsersPage() {
       <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)}>
         <h2>{editId ? 'Editar paciente' : 'Nuevo paciente'}</h2>
         <FormGroup>
-          <label>Nombre</label>
+          <label>Nombre y apellidos</label>
           <input name="name" value={form.name} onChange={onChange} />
         </FormGroup>
         <FormGroup>
           <label>Email</label>
           <input name="email" value={form.email} onChange={onChange} />
         </FormGroup>
-        <FormGroup>
-          <label>Rol</label>
-          <select name="role" value={form.role} onChange={onChange}>
-            <option value="paciente">Paciente</option>
-            <option value="cuidador">Cuidador</option>
-          </select>
-        </FormGroup>
-        <FormGroup>
+        {/* Hogar con búsqueda + crear nuevo */}
+        <FormGroup style={{ position: 'relative' }}>
           <label>Hogar (opcional)</label>
-          <input name="household_id" value={form.household_id} onChange={onChange} placeholder="ObjectId del hogar" />
+          <input
+            placeholder="Escribe para buscar…"
+            value={hhQuery}
+            onFocus={() => setHhOpen(true)}
+            onChange={(e) => {
+              setHhQuery(e.target.value);
+              setHhOpen(true);
+            }}
+            onBlur={() => setTimeout(() => setHhOpen(false), 150)}  // cierra tras hacer click en opción
+          />
+          {hhOpen && (
+            <div
+              style={{
+                position: 'absolute',
+                zIndex: 20,
+                top: '100%',
+                left: 0,
+                right: 0,
+                background: 'white',
+                color: 'black',
+                border: '1px solid #ccc',
+                borderRadius: 6,
+                marginTop: 4,
+                maxHeight: 200,
+                overflowY: 'auto',
+              }}
+            >
+              {households
+                .filter(h => h.name?.toLowerCase().includes(hhQuery.toLowerCase()))
+                .map(h => (
+                  <div
+                    key={h._id}
+                    onMouseDown={() => {
+                      setForm(f => ({ ...f, household_id: h._id }));
+                      setHhQuery(h.name);
+                      setHhOpen(false);
+                    }}
+                    style={{ padding: '8px 10px', cursor: 'pointer' }}
+                  >
+                    {h.name}
+                  </div>
+                ))
+              }
+              <div style={{ borderTop: '1px solid #eee' }} />
+              <div
+                onMouseDown={() => addNewHousehold(hhQuery || 'Nuevo hogar')}
+                style={{ padding: '8px 10px', cursor: 'pointer', fontWeight: 600 }}
+              >
+                ➕ Añadir “{hhQuery || 'Nuevo hogar'}”
+              </div>
+            </div>
+          )}
+          {/* Mantén el id real en el form */}
+          <input type="hidden" name="household_id" value={form.household_id || ''} />
+          {form.household_id && (
+            <small style={{ opacity: .8 }}>
+              Seleccionado: {getHouseholdName(form.household_id) || form.household_id}
+            </small>
+          )}
         </FormGroup>
         <FormGroup>
           <label>Historia clínica (opcional)</label>

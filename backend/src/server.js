@@ -215,13 +215,18 @@ app.delete('/users/:id', async (req, res) => {
 // 1) Crear casa bajo este usuario
 app.post('/households', async (req, res) => {
   try {
+    const name = (req.body?.name || '').trim();
+    if (!name) return res.status(400).json({ error: 'El nombre del hogar es obligatorio' });
     const h = await Household.create({
-      ...req.body,
+      name,
+      address: (req.body?.address || '').trim(),
+      rooms: [],
+      users: [],
       owner: req.user.sub
-    })
+    });
     res.status(201).json(h)
   } catch (e) {
-    res.status(400).json({ error: e.message })
+    if (e?.code === 11000) return res.status(400).json({ error: 'Ya existe un hogar con ese nombre' });
   }
 })
 

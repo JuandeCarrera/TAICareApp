@@ -3,8 +3,8 @@ const { Schema, model } = mongoose;
 
 const householdSchema = new Schema({
   name:    { type: String, required: true },
-  address: { type: String, required: true },
-  rooms:   [String],
+  address: { type: String, default: '', trim: true },
+  rooms:   { type: [String], default: [] },
   users:   [{ type: Schema.Types.ObjectId, ref: 'User' }],
   owner:   { type: Schema.Types.ObjectId, ref: 'User', required: true }
 }, {
