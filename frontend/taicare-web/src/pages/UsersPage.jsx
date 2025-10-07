@@ -109,6 +109,23 @@ const Section = styled.section`
 const SectionHeader = styled.div`
   display: flex; align-items: center; justify-content: space-between; margin-bottom: .5rem;
 `
+const DeviceRow = styled.li`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+`;
+
+const RoomsList = styled.ul`
+  margin-top: 0.5rem;
+  padding-left: 1.25rem;
+  list-style: disc;
+`;
+
+const RoomItem = styled.li`
+  margin-bottom: 0.25rem;
+`;
+
 
 export default function UsersPage() {
   const { user, logout } = useContext(AuthContext)
@@ -120,6 +137,26 @@ export default function UsersPage() {
   const [households, setHouseholds] = useState([]);
   const [hhQuery, setHhQuery] = useState('');
   const [hhOpen, setHhOpen] = useState(false);
+
+  // Dispositivos (del cuidador; luego filtramos por hogar del paciente)
+  const [allDevices, setAllDevices] = useState([]);
+  const [patientDevices, setPatientDevices] = useState([]);
+  const [patientHouse, setPatientHouse] = useState(null);
+
+  // ---- Modal de hogar dentro de Pacientes ----
+  const [houseModalOpen, setHouseModalOpen] = useState(false);
+  const [houseMode, setHouseMode] = useState('view');
+  const [houseForm, setHouseForm] = useState({
+    targetHouseId: '',
+    name: '',
+    address: '',
+    roomName: '',
+    // para dispositivo
+    plugmodel: '',
+    room: '',
+    appliance: ''
+  });
+  const [editRoomOld, setEditRoomOld] = useState('');
 
   const [patients, setPatients] = useState([])
   const [loading, setLoading]   = useState(true)
@@ -143,6 +180,13 @@ export default function UsersPage() {
       .then(r => r.ok ? r.json() : [])
       .then(setHouseholds)
       .catch(() => setHouseholds([]));
+  }, []);
+
+  useEffect(() => {
+    fetch(`${API}/devices`, { credentials: 'include' })
+      .then(r => r.ok ? r.json() : [])
+      .then(setAllDevices)
+      .catch(() => setAllDevices([]));
   }, []);
 
   async function loadPatients() {
@@ -174,6 +218,8 @@ export default function UsersPage() {
     if (!selectedId) {
       setRoutines([]);
       setAlerts([]);
+      setPatientHouse(null);
+      setPatientDevices([]);
       return;
     }
     setRoutines([]);
@@ -181,7 +227,21 @@ export default function UsersPage() {
     loadUnreadCount(selectedId);
     loadRoutines(selectedId);
     loadAlerts(selectedId);
-  }, [selectedId])
+
+    const p = patients.find(x => x._id === selectedId);
+    const house = households.find(h => h._id === (p?.household_id || ''));
+    setPatientHouse(house || null);
+
+    if (house?._id) {
+      const list = allDevices.filter(d => d.household_id === house._id);
+      setPatientDevices(list);
+    } else {
+      setPatientDevices([]);
+    }
+  }, [selectedId
+     , households
+     , allDevices
+  ])
 
   async function loadUnreadCount(userId) {
     try {
@@ -386,6 +446,132 @@ export default function UsersPage() {
     }
   }
 
+  function openHouseModal(h) {
+    if (!h) return;
+    setHouseMode('view');
+    setHouseForm({
+      targetHouseId: h._id,
+      name: h.name || '',
+      address: h.address || '',
+      roomName: '',
+      plugmodel: '',
+      room: '',
+      appliance: ''
+    });
+    setHouseModalOpen(true);
+  }
+
+  function openEditHouseInModal() {
+    setHouseMode('editHouse');
+  }
+
+  function openNewRoomInModal() {
+    setHouseMode('room');
+    setHouseForm(f => ({ ...f, roomName: '' }));
+  }
+
+  function openNewDeviceInModal() {
+    setHouseMode('device');
+    const h = households.find(x => x._id === houseForm.targetHouseId);
+    const firstRoom = h?.rooms?.[0] || '';
+    setHouseForm(f => ({ ...f, plugmodel: '', room: firstRoom, appliance: '' }));
+  }
+
+  async function refreshHouseAndPanel() {
+    try {
+      const res = await fetch(`${API}/households`, { credentials: 'include' });
+      const list = res.ok ? await res.json() : [];
+      setHouseholds(list);
+
+      const p = patients.find(x => x._id === selectedId);
+      const house = list.find(h => h._id === (p?.household_id || ''));
+      setPatientHouse(house || null);
+
+      if (house?._id) {
+        const listDevices = allDevices.filter(d => d.household_id === house._id);
+        setPatientDevices(listDevices);
+      } else {
+        setPatientDevices([]);
+      }
+    } catch {}
+  }
+
+  async function saveHouseModal() {
+    try {
+      let res;
+      const hid = houseForm.targetHouseId;
+
+      if (houseMode === 'editHouse') {
+        res = await fetch(`${API}/households/${hid}`, {
+          method: 'PUT',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: houseForm.name,
+            address: houseForm.address
+          })
+        });
+      }
+
+      if (houseMode === 'room') {
+        res = await fetch(`${API}/households/${hid}/rooms`, {
+          method: 'PUT',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ room: houseForm.roomName })
+        });
+      }
+
+      if (houseMode === 'device') {
+        res = await fetch(`${API}/devices`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            plugmodel: houseForm.plugmodel,
+            household_id: hid,
+            room: houseForm.room,
+            appliance: houseForm.appliance
+          })
+        });
+        if (res.ok) {
+          // añade a allDevices para que aparezca sin recargar
+          const saved = await res.json();
+          setAllDevices(prev => [...prev, saved]);
+        }
+      }
+
+      if (!res || !res.ok) {
+        const err = res ? await res.json().catch(() => ({})) : {};
+        throw new Error(err.error || 'Error al guardar');
+      }
+
+      await refreshHouseAndPanel();
+      setHouseMode('view');
+    } catch (e) {
+      alert(e.message);
+    }
+  }
+
+  async function deleteRoomInModal(room) {
+    if (!confirm('¿Borrar habitación?')) return;
+    const hid = houseForm.targetHouseId;
+    const h = households.find(x => x._id === hid);
+    const updated = (h?.rooms || []).filter(r => r !== room);
+    const res = await fetch(`${API}/households/${hid}`, {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rooms: updated })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      alert(err.error || 'No se pudo borrar la habitación');
+      return;
+    }
+    await refreshHouseAndPanel();
+  }
+
   return (
     <AppContainer>
       <Header onToggleMenu={() => setMenuOpen(o => !o)} onLogout={handleLogout} />
@@ -463,6 +649,60 @@ export default function UsersPage() {
                             {a.read ? null : <Dot title="Sin leer" style={{ marginLeft: 6 }} />}
                             {a.message ? <div style={{opacity:.9}}>{a.message}</div> : null}
                           </li>
+                        ))}
+                      </ul>
+                    )}
+                  </Section>
+                  {/* HOGAR del paciente */}
+                  <Section>
+                    <SectionHeader>
+                      <h3 style={{ margin: 0, cursor:'pointer' }}
+                          onClick={() => patientHouse && openHouseModal(patientHouse)}>
+                        Hogar
+                      </h3>
+                    </SectionHeader>
+                    {!patientHouse ? (
+                      <p style={{opacity:.7}}>Este paciente no tiene hogar asignado.</p>
+                    ) : (
+                      <div>
+                        <strong style={{ cursor:'pointer', textDecoration:'underline' }}
+                                onClick={() => openHouseModal(patientHouse)}>
+                          {patientHouse.name}
+                        </strong>
+                        {patientHouse.address ? (
+                          <div style={{opacity:.85}}>{patientHouse.address}</div>
+                        ) : null}
+                        {Array.isArray(patientHouse.rooms) && patientHouse.rooms.length ? (
+                          <RoomsList>
+                            {patientHouse.rooms.map(r => (
+                              <RoomItem key={r}>{r}</RoomItem>
+                            ))}
+                          </RoomsList>
+                        ) : (
+                          <p style={{opacity:.7, marginTop:'.35rem'}}>Sin habitaciones.</p>
+                        )}
+                      </div>
+                    )}
+                  </Section>
+
+                  {/* DISPOSITIVOS del hogar del paciente */}
+                  <Section>
+                    <SectionHeader>
+                      <h3 style={{ margin: 0 }}>Dispositivos</h3>
+                    </SectionHeader>
+                    {!patientHouse ? (
+                      <p style={{opacity:.7}}>Asigna un hogar al paciente para ver sus dispositivos.</p>
+                    ) : !patientDevices.length ? (
+                      <p style={{opacity:.7}}>Sin dispositivos en este hogar.</p>
+                    ) : (
+                      <ul>
+                        {patientDevices.map(d => (
+                          <DeviceRow key={d._id}>
+                            <span>
+                              {d.plugmodel} — {d.room} / {d.appliance}
+                            </span>
+                            {/* Si quisieras acciones aquí, puedes traer tus <Btn> como en la page de Dispositivos */}
+                          </DeviceRow>
                         ))}
                       </ul>
                     )}
@@ -567,6 +807,123 @@ export default function UsersPage() {
         <FormGroup style={{ textAlign: 'right' }}>
           <Btn variant="primary" onClick={saveHistoryOnly}>Guardar</Btn>
         </FormGroup>
+      </Modal>
+
+      <Modal isOpen={houseModalOpen} onClose={() => setHouseModalOpen(false)}>
+        {/* Vista / Acciones */}
+        {houseMode === 'view' && (
+          <>
+            <h2>Hogar</h2>
+            <p style={{marginTop:'.5rem'}}>
+              <strong>{patientHouse?.name}</strong><br/>
+              {patientHouse?.address ? <span>{patientHouse.address}</span> : <span style={{opacity:.7}}>Sin dirección</span>}
+            </p>
+
+            <div style={{marginTop:'1rem'}}>
+              <strong>Habitaciones</strong>
+              {Array.isArray(patientHouse?.rooms) && patientHouse.rooms.length ? (
+                <ul style={{marginTop:'.35rem', paddingLeft:'1.25rem', listStyle:'disc'}}>
+                  {patientHouse.rooms.map(r => (
+                    <li key={r} style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'.35rem'}}>
+                      <span>{r}</span>
+                      <Btn onClick={() => deleteRoomInModal(r)}>🗑</Btn>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p style={{opacity:.7, marginTop:'.35rem'}}>Sin habitaciones.</p>
+              )}
+            </div>
+
+            <div style={{marginTop:'1rem', display:'flex', gap:'.5rem', justifyContent:'flex-end'}}>
+              <Btn onClick={openNewRoomInModal}>+ Habitación</Btn>
+              <Btn onClick={openNewDeviceInModal}>+ Dispositivo</Btn>
+              <Btn variant="primary" onClick={openEditHouseInModal}>✎ Editar</Btn>
+            </div>
+          </>
+        )}
+
+        {houseMode === 'editHouse' && (
+          <>
+            <h2>Editar casa</h2>
+            <label style={{display:'block', marginTop:'.5rem'}}>
+              Nombre
+              <input
+                value={houseForm.name}
+                onChange={e => setHouseForm(f => ({ ...f, name: e.target.value }))}
+                style={{ width:'100%', marginTop:'.35rem' }}
+              />
+            </label>
+            <label style={{display:'block', marginTop:'1rem'}}>
+              Dirección
+              <input
+                value={houseForm.address}
+                onChange={e => setHouseForm(f => ({ ...f, address: e.target.value }))}
+                style={{ width:'100%', marginTop:'.35rem' }}
+              />
+            </label>
+            <div style={{marginTop:'1.25rem', textAlign:'right'}}>
+              <Btn variant="primary" onClick={saveHouseModal}>Guardar</Btn>
+            </div>
+          </>
+        )}
+
+        {houseMode === 'room' && (
+          <>
+            <h2>Añadir habitación</h2>
+            <label style={{display:'block', marginTop:'.5rem'}}>
+              Nombre habitación
+              <input
+                value={houseForm.roomName}
+                onChange={e => setHouseForm(f => ({ ...f, roomName: e.target.value }))}
+                style={{ width:'100%', marginTop:'.35rem' }}
+              />
+            </label>
+            <div style={{marginTop:'1.25rem', textAlign:'right'}}>
+              <Btn variant="primary" onClick={saveHouseModal}>Guardar</Btn>
+            </div>
+          </>
+        )}
+
+        {houseMode === 'device' && (
+          <>
+            <h2>Nuevo dispositivo</h2>
+            <label style={{display:'block', marginTop:'.5rem'}}>
+              Modelo
+              <input
+                value={houseForm.plugmodel}
+                onChange={e => setHouseForm(f => ({ ...f, plugmodel: e.target.value }))}
+                style={{ width:'100%', marginTop:'.35rem' }}
+              />
+            </label>
+
+            <label style={{display:'block', marginTop:'1rem'}}>
+              Habitación
+              <select
+                value={houseForm.room}
+                onChange={e => setHouseForm(f => ({ ...f, room: e.target.value }))}
+                style={{ width:'100%', marginTop:'.35rem' }}
+              >
+                {(patientHouse?.rooms || []).length
+                  ? patientHouse.rooms.map(r => <option key={r} value={r}>{r}</option>)
+                  : <option value="">— Añade primero una habitación —</option>}
+              </select>
+            </label>
+
+            <label style={{display:'block', marginTop:'1rem'}}>
+              Electrodoméstico
+              <input
+                value={houseForm.appliance}
+                onChange={e => setHouseForm(f => ({ ...f, appliance: e.target.value }))}
+                style={{ width:'100%', marginTop:'.35rem' }}
+              />
+            </label>
+
+            <div style={{marginTop:'1.25rem', textAlign:'right'}}>
+              <Btn variant="primary" onClick={saveHouseModal}>Guardar</Btn>
+            </div>
+          </>
+        )}
       </Modal>
     </AppContainer>
   )
