@@ -115,17 +115,45 @@ const DeviceRow = styled.li`
   align-items: center;
   margin-bottom: 0.5rem;
 `;
-
 const RoomsList = styled.ul`
   margin-top: 0.5rem;
   padding-left: 1.25rem;
   list-style: disc;
 `;
-
 const RoomItem = styled.li`
   margin-bottom: 0.25rem;
 `;
-
+const SuggestBox = styled.div`
+  position: absolute;
+  z-index: 20;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: ${({ theme }) => theme.colors.cardBg};
+  color: ${({ theme }) => theme.colors.text};
+  border: 1px solid ${({ theme }) => theme.colors.border};
+  border-radius: 6px;
+  margin-top: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+  box-shadow: 0 6px 18px rgba(0,0,0,.25);
+`;
+const SuggestItem = styled.div`
+  padding: 8px 10px;
+  cursor: pointer;
+  &:hover {
+    background: ${({ theme }) => theme.colors.hoverBg};
+  }
+`;
+const SuggestDivider = styled.div`
+  border-top: 1px solid ${({ theme }) => theme.colors.border};
+`;
+const DangerBtn = styled(Btn)`
+  border-color: #ef4444;
+  color: #ef4444;
+  background: transparent;
+  &:hover { background: rgba(239, 68, 68, .12); }
+`;
 
 export default function UsersPage() {
   const { user, logout } = useContext(AuthContext)
@@ -170,6 +198,9 @@ export default function UsersPage() {
   const [showHistoryModal, setShowHistoryModal] = useState(false)
   const [editId, setEditId] = useState(null)
   const [form, setForm] = useState({ name:'', email:'', role:'paciente', household_id:'', history:'' })
+
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmData, setConfirmData] = useState({ id: null, name: '' });
 
   useEffect(() => {
     loadPatients()
@@ -572,6 +603,71 @@ export default function UsersPage() {
     await refreshHouseAndPanel();
   }
 
+  async function deletePatient(id) {
+    if (!id) return;
+    const who = patients.find(x => x._id === id);
+    const ok = confirm(`¿Borrar al paciente "${who?.name || 'Sin nombre'}"? Esta acción no se puede deshacer.`);
+    if (!ok) return;
+
+    try {
+      const res = await fetch(`${API}/users/${id}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'No se pudo borrar el paciente');
+      }
+
+      setPatients(list => list.filter(p => p._id !== id));
+      setUnread(prev => { const { [id]: _, ...rest } = prev; return rest; });
+      if (selectedId === id) {
+        setSelectedId(null);
+        setRoutines([]);
+        setAlerts([]);
+        setPatientHouse(null);
+        setPatientDevices([]);
+      }
+    } catch (e) {
+      alert(e.message);
+    }
+  }
+
+  function askDeletePatient(p) {
+    setConfirmData({ id: p._id, name: p.name || 'Sin nombre' });
+    setConfirmOpen(true);
+  }
+
+  async function deletePatient(id) {
+    if (!id) return;
+    try {
+      const res = await fetch(`${API}/users/${id}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'No se pudo borrar el paciente');
+      }
+      setPatients(list => list.filter(p => p._id !== id));
+      setUnread(prev => { const { [id]: _, ...rest } = prev; return rest; });
+      if (selectedId === id) {
+        setSelectedId(null);
+        setRoutines([]);
+        setAlerts([]);
+        setPatientHouse(null);
+        setPatientDevices([]);
+      }
+    } catch (e) {
+      alert(e.message);
+    }
+  }
+
+  async function confirmDeletePatient() {
+    await deletePatient(confirmData.id);
+    setConfirmOpen(false);
+  }
+
   return (
     <AppContainer>
       <Header onToggleMenu={() => setMenuOpen(o => !o)} onLogout={handleLogout} />
@@ -598,8 +694,9 @@ export default function UsersPage() {
                         { (unread[p._id] ?? 0) > 0 && <Dot title={`${unread[p._id]} notificaciones sin leer`} /> }
                       </Left>
                       <Right>
-                        <Btn onClick={(e) => { e.stopPropagation(); openEditPatient(p) }}>✎ Editar</Btn>
-                        <Btn onClick={(e) => { e.stopPropagation(); openEditHistory(p) }}>📝 Historia</Btn>
+                        <Btn variant="primary" onClick={(e)=>{ e.stopPropagation(); openEditHistory(p) }}>🧾 Hist</Btn>
+                        <Btn variant="primary" onClick={(e)=>{ e.stopPropagation(); openEditPatient(p) }}>✎ </Btn>
+                        <Btn variant="primary" onClick={(e) => { e.stopPropagation(); askDeletePatient(p); }}>🗑</Btn>
                       </Right>
                     </PatientItem>
                   ))}
@@ -740,46 +837,29 @@ export default function UsersPage() {
             onBlur={() => setTimeout(() => setHhOpen(false), 150)}  // cierra tras hacer click en opción
           />
           {hhOpen && (
-            <div
-              style={{
-                position: 'absolute',
-                zIndex: 20,
-                top: '100%',
-                left: 0,
-                right: 0,
-                background: 'white',
-                color: 'black',
-                border: '1px solid #ccc',
-                borderRadius: 6,
-                marginTop: 4,
-                maxHeight: 200,
-                overflowY: 'auto',
-              }}
-            >
+            <SuggestBox>
               {households
                 .filter(h => h.name?.toLowerCase().includes(hhQuery.toLowerCase()))
                 .map(h => (
-                  <div
+                  <SuggestItem
                     key={h._id}
                     onMouseDown={() => {
                       setForm(f => ({ ...f, household_id: h._id }));
                       setHhQuery(h.name);
                       setHhOpen(false);
                     }}
-                    style={{ padding: '8px 10px', cursor: 'pointer' }}
                   >
                     {h.name}
-                  </div>
-                ))
-              }
-              <div style={{ borderTop: '1px solid #eee' }} />
-              <div
+                  </SuggestItem>
+                ))}
+              <SuggestDivider />
+              <SuggestItem
                 onMouseDown={() => addNewHousehold(hhQuery || 'Nuevo hogar')}
-                style={{ padding: '8px 10px', cursor: 'pointer', fontWeight: 600 }}
+                style={{ fontWeight: 600 }}
               >
                 ➕ Añadir “{hhQuery || 'Nuevo hogar'}”
-              </div>
-            </div>
+              </SuggestItem>
+            </SuggestBox>
           )}
           {/* Mantén el id real en el form */}
           <input type="hidden" name="household_id" value={form.household_id || ''} />
@@ -826,7 +906,7 @@ export default function UsersPage() {
                   {patientHouse.rooms.map(r => (
                     <li key={r} style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'.35rem'}}>
                       <span>{r}</span>
-                      <Btn onClick={() => deleteRoomInModal(r)}>🗑</Btn>
+                      <Btn variant="primary" onClick={() => deleteRoomInModal(r)}>🗑</Btn>
                     </li>
                   ))}
                 </ul>
@@ -836,8 +916,8 @@ export default function UsersPage() {
             </div>
 
             <div style={{marginTop:'1rem', display:'flex', gap:'.5rem', justifyContent:'flex-end'}}>
-              <Btn onClick={openNewRoomInModal}>+ Habitación</Btn>
-              <Btn onClick={openNewDeviceInModal}>+ Dispositivo</Btn>
+              <Btn variant="primary" onClick={openNewRoomInModal}>+ Habitación</Btn>
+              <Btn variant="primary" onClick={openNewDeviceInModal}>+ Dispositivo</Btn>
               <Btn variant="primary" onClick={openEditHouseInModal}>✎ Editar</Btn>
             </div>
           </>
@@ -924,6 +1004,18 @@ export default function UsersPage() {
             </div>
           </>
         )}
+      </Modal>
+
+      <Modal isOpen={confirmOpen} onClose={() => setConfirmOpen(false)}>
+        <h2>Eliminar paciente</h2>
+        <p style={{ marginTop: '.5rem' }}>
+          ¿Seguro que quieres borrar a <strong>{confirmData.name}</strong>?<br />
+          <span style={{ opacity: .8 }}>Esta acción no se puede deshacer.</span>
+        </p>
+        <div style={{ marginTop:'1rem', display:'flex', justifyContent:'flex-end', gap:'.5rem' }}>
+          <Btn variant="primary" onClick={() => setConfirmOpen(false)}>Cancelar</Btn>
+          <Btn variant="primary" onClick={confirmDeletePatient}>🗑 Borrar</Btn>
+        </div>
       </Modal>
     </AppContainer>
   )
