@@ -185,6 +185,38 @@ const slots48 = Array.from({ length: 48 }, (_, i) => {
 });
 const rangeLabel = (startIdx, endIdx) => `${slots48[startIdx]}–${slots48[endIdx]}`
 
+const CardActions = styled.div`
+  display:flex; gap:.5rem; align-items:center;
+`;
+
+const ActionBtn = styled(Btn)`
+  padding: .25rem .55rem;
+`;
+
+const DangerBtn = styled(ActionBtn)`
+  border-color: #e04848;
+  color: #fff;
+  background: #e04848;
+  &:hover { background: #c53f3f; }
+`;
+
+const DaysWrap = styled.div`
+  display:flex; flex-wrap:wrap; gap:.4rem; margin-top:.35rem;
+`;
+
+const DayChip = styled.button`
+  border: 1px solid ${({theme})=>theme.colors.border};
+  background: ${({active, theme}) => active ? theme.colors.primary : theme.colors.cardBg};
+  color: ${({active}) => active ? '#fff' : 'inherit'};
+  border-radius:999px; padding:.25rem .6rem; font-size:.85rem; cursor:pointer;
+  &:hover { background: ${({active,theme})=> active ? theme.colors.primaryDark : theme.colors.hoverBg}; }
+`;
+
+const RowInline = styled.div`
+  display:flex; gap:.5rem; align-items:center;
+`;
+
+
 function compressDayToRanges(slotsSet) {
   const arr = Array.from(slotsSet).sort((a,b)=>a-b);
   const out = [];
@@ -232,6 +264,16 @@ export default function Rutinas() {
   const [editTarget, setEditTarget] = useState('ALL') // 'ALL' o deviceId
   const isMouseDown = useRef(false)
   const paintMode = useRef(null) // 'on'|'off'
+
+  // ---- edición / borrado
+  const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [editId, setEditId] = useState(null);
+  const [editForm, setEditForm] = useState({
+    name:'', user_id:'', device_id:'', expected_start:'14:00', expected_end:'15:00', days:[]
+  });
+  const [deleteId, setDeleteId] = useState(null);
+
 
   useEffect(() => {
     setMenuOpen(window.innerWidth >= 768)
@@ -485,6 +527,99 @@ export default function Rutinas() {
     });
   }, [routines, patients, devices, households]);
 
+  const HALF_HOURS = slots48; // ya lo tienes
+
+  function openEditModal(r) {
+    setEditId(r._id);
+    setEditForm({
+      name: r.name || '',
+      user_id: (typeof r.user_id === 'object' ? r.user_id?._id : r.user_id) || '',
+      device_id: (typeof r.device_id === 'object' ? r.device_id?._id : r.device_id) || '',
+      expected_start: r.expected_start || '14:00',
+      expected_end:   r.expected_end   || '15:00',
+      days: Array.isArray(r.days) ? [...r.days] : []
+    });
+    setEditOpen(true);
+  }
+
+  function toggleEditDay(backendDayName) {
+    setEditForm(f => {
+      const s = new Set(f.days);
+      if (s.has(backendDayName)) s.delete(backendDayName);
+      else s.add(backendDayName);
+      return { ...f, days: Array.from(s) };
+    });
+  }
+
+  // dispositivos filtrados por casa del paciente (si existe)
+  const editPatientHouse = useMemo(() => {
+    const p = patients.find(u => u._id === editForm.user_id);
+    if (!p?.household_id) return null;
+    return households.find(h => h._id === p.household_id) || null;
+  }, [editForm.user_id, patients, households]);
+
+  const devicesForEdit = useMemo(() => {
+    if (!editPatientHouse) return devices; // fallback: todos
+    return devices.filter(d => d.household_id === editPatientHouse._id);
+  }, [devices, editPatientHouse]);
+
+  async function saveEdit() {
+    try {
+      if (!editId) return;
+      const payload = {
+        name: (editForm.name || '').trim(),
+        user_id: editForm.user_id,
+        device_id: editForm.device_id,
+        expected_start: editForm.expected_start,
+        expected_end: editForm.expected_end,
+        days: editForm.days
+      };
+      const res = await fetch(`${API}/routines/${editId}`, {
+        method:'PUT',
+        credentials:'include',
+        headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(()=>({}));
+        throw new Error(err.error || 'No se pudo editar la rutina');
+      }
+      // refresca
+      const r = await fetch(`${API}/routines`, { credentials:'include' });
+      setRoutines(r.ok ? await r.json() : []);
+      setEditOpen(false);
+      setEditId(null);
+    } catch (e) {
+      alert(e.message);
+    }
+  }
+
+  function openDeleteModal(id) {
+    setDeleteId(id);
+    setDeleteOpen(true);
+  }
+
+  async function confirmDelete() {
+    try {
+      if (!deleteId) return;
+      const res = await fetch(`${API}/routines/${deleteId}`, {
+        method:'DELETE',
+        credentials:'include'
+      });
+      if (!res.ok && res.status !== 204) {
+        const err = await res.json().catch(()=>({}));
+        throw new Error(err.error || 'No se pudo borrar la rutina');
+      }
+      // refresca
+      const r = await fetch(`${API}/routines`, { credentials:'include' });
+      setRoutines(r.ok ? await r.json() : []);
+      setDeleteOpen(false);
+      setDeleteId(null);
+    } catch (e) {
+      alert(e.message);
+    }
+  }
+
   return (
     <AppContainer>
       <Header onToggleMenu={() => setMenuOpen(o => !o)} onLogout={() => { logout(); navigate('/login') }} />
@@ -506,7 +641,13 @@ export default function Rutinas() {
                   <RoutineCard key={r._id}>
                     <CardTop>
                       <CardTitle>{r.name || `Rutina ${String(r._id).slice(-6)}`}</CardTitle>
-                      <TimePill>{(r.expected_start||'').replace(':', '\:')}–{(r.expected_end||'').replace(':','\:')}</TimePill>
+                      <RowInline>
+                        <ActionBtn onClick={() => openEditModal(r)}>✎ Editar</ActionBtn>
+                        <DangerBtn onClick={() => openDeleteModal(r._id)}>🗑 Borrar</DangerBtn>
+                        <TimePill>
+                          {(r.expected_start||'').replace(':','\:')}–{(r.expected_end||'').replace(':','\:')}
+                        </TimePill>
+                      </RowInline>
                     </CardTop>
 
                     <Meta>
@@ -736,6 +877,96 @@ export default function Rutinas() {
             </div>
           </>
         )}
+      </Modal>
+
+      <Modal isOpen={editOpen} onClose={() => setEditOpen(false)}>
+        <h2>Editar rutina</h2>
+
+        <FormGroup>
+          <label>Nombre (opcional)</label>
+          <input
+            value={editForm.name}
+            onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
+          />
+        </FormGroup>
+
+        <FormGroup>
+          <label>Paciente</label>
+          <select
+            value={editForm.user_id}
+            onChange={e => setEditForm(f => ({ ...f, user_id: e.target.value, device_id:'' }))}
+          >
+            <option value="">— Selecciona —</option>
+            {patients.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
+          </select>
+          {editPatientHouse && <Small>Casa: {editPatientHouse.name}</Small>}
+        </FormGroup>
+
+        <FormGroup>
+          <label>Dispositivo</label>
+          <select
+            value={editForm.device_id}
+            onChange={e => setEditForm(f => ({ ...f, device_id: e.target.value }))}
+            disabled={!editForm.user_id}
+          >
+            <option value="">— Selecciona —</option>
+            {devicesForEdit.map(d => (
+              <option key={d._id} value={d._id}>
+                {d.appliance || d.plugmodel} {d.room ? `— ${d.room}` : ''}
+              </option>
+            ))}
+          </select>
+        </FormGroup>
+
+        <FormGroup>
+          <label>Horario</label>
+          <RowInline>
+            <select
+              value={editForm.expected_start}
+              onChange={e => setEditForm(f => ({ ...f, expected_start: e.target.value }))}
+            >
+              {HALF_HOURS.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+            <span>—</span>
+            <select
+              value={editForm.expected_end}
+              onChange={e => setEditForm(f => ({ ...f, expected_end: e.target.value }))}
+            >
+              {HALF_HOURS.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </RowInline>
+        </FormGroup>
+
+        <FormGroup>
+          <label>Días</label>
+          <DaysWrap>
+            {DAY_NAMES.map((d, idx) => (
+              <DayChip
+                key={d}
+                active={editForm.days.includes(d)}
+                onClick={() => toggleEditDay(d)}
+                title={ES_DAYS[d]}
+              >
+                {DAY_SHORT[idx]}
+              </DayChip>
+            ))}
+          </DaysWrap>
+        </FormGroup>
+
+        <FormGroup style={{ display:'flex', justifyContent:'flex-end', gap:'.5rem' }}>
+          <Btn onClick={() => setEditOpen(false)}>Cancelar</Btn>
+          <Btn variant="primary" onClick={saveEdit} disabled={
+            !editForm.user_id || !editForm.device_id || !editForm.expected_start || !editForm.expected_end || !editForm.days.length
+          }>Guardar cambios</Btn>
+        </FormGroup>
+      </Modal>
+      <Modal isOpen={deleteOpen} onClose={() => setDeleteOpen(false)}>
+        <h2>Eliminar rutina</h2>
+        <p>¿Seguro que quieres borrar esta rutina? Esta acción no se puede deshacer.</p>
+        <div style={{ display:'flex', justifyContent:'flex-end', gap:'.5rem', marginTop:'.75rem' }}>
+          <Btn onClick={() => setDeleteOpen(false)}>Cancelar</Btn>
+          <DangerBtn onClick={confirmDelete}>Borrar</DangerBtn>
+        </div>
       </Modal>
     </AppContainer>
   )

@@ -462,6 +462,16 @@ app.put('/routines/:id', async (req, res) => {
   }
 });
 
+// BORRAR
+app.delete('/routines/:id', async (req, res) => {
+  try {
+    await Routine.findByIdAndDelete(req.params.id);
+    res.sendStatus(204);
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
 // ————— Iniciar servidor —————
 const PORT = process.env.PORT || 3000
 app.listen(PORT, () => {
