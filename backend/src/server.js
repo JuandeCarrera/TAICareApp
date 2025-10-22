@@ -418,38 +418,49 @@ app.delete('/alerts/:id', async (req, res) => {
 })
 
 // ————— RUTAS ROUTINES —————
+// utils para no repetir
+const routinePopulate = [
+  { path: 'user_id', select: 'name' },
+  { path: 'device_id', select: 'appliance plugmodel room household_id' }
+];
+
+// Crear
 app.post('/routines', async (req, res) => {
   try {
-    const r = await Routine.create(req.body)
-    res.status(201).json(r)
+    const r = await Routine.create(req.body);
+    await r.populate(routinePopulate);
+    res.status(201).json(r);
   } catch (e) {
-    res.status(400).json({ error: e.message })
+    res.status(400).json({ error: e.message });
   }
-})
+});
+
+// Listar
 app.get('/routines', async (req, res) => {
-  res.json(await Routine.find())
-})
+  const data = await Routine.find().populate(routinePopulate);
+  res.json(data);
+});
+
+// Obtener una
 app.get('/routines/:id', async (req, res) => {
-  const r = await Routine.findById(req.params.id)
-  if (!r) return res.sendStatus(404)
-  res.json(r)
-})
+  const r = await Routine.findById(req.params.id).populate(routinePopulate);
+  if (!r) return res.sendStatus(404);
+  res.json(r);
+});
+
+// Actualizar
 app.put('/routines/:id', async (req, res) => {
   try {
     const r = await Routine.findByIdAndUpdate(
       req.params.id,
       req.body,
       { new: true, runValidators: true }
-    )
-    res.json(r)
+    ).populate(routinePopulate);
+    res.json(r);
   } catch (e) {
-    res.status(400).json({ error: e.message })
+    res.status(400).json({ error: e.message });
   }
-})
-app.delete('/routines/:id', async (req, res) => {
-  await Routine.findByIdAndDelete(req.params.id)
-  res.sendStatus(204)
-})
+});
 
 // ————— Iniciar servidor —————
 const PORT = process.env.PORT || 3000

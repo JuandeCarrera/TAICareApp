@@ -9,6 +9,7 @@ import Modal, { FormGroup } from '../components/Modal.jsx'
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3000'
 
+/* ---------- Layout base ---------- */
 const AppContainer = styled.div`
   display: flex; flex-direction: column; height: 100vh; width: 100vw;
 `
@@ -41,16 +42,45 @@ const Btn = styled.button`
 `
 const NewButton = styled(Btn).attrs({ variant: 'primary' })``
 
+/* ---------- Listado ---------- */
 const List = styled.ul`
   list-style: none; padding: 0; margin: 0;
 `
-const RoutineItem = styled.li`
+
+/* Tarjeta bonita para cada rutina */
+const RoutineCard = styled.li`
   background: ${({ theme }) => theme.colors.cardBg};
   border: 1px solid ${({ theme }) => theme.colors.border};
-  border-radius: 8px;
-  padding: 1rem;
-  & + & { margin-top: .75rem; }
+  border-radius: 10px;
+  padding: 14px 16px;
+  & + & { margin-top: 12px; }
 `
+const CardTop = styled.div`
+  display:flex; align-items:center; justify-content:space-between; gap:.75rem;
+`
+const CardTitle = styled.div`
+  font-weight:700; font-size:1.05rem; color:${({theme})=>theme.colors.text};
+`
+const TimePill = styled.span`
+  padding: .2rem .55rem;
+  border:1px solid ${({theme})=>theme.colors.primary};
+  color:#fff; background:${({theme})=>theme.colors.primary};
+  border-radius:999px; font-size:.85rem; white-space:nowrap;
+`
+const Meta = styled.div`
+  margin-top:.4rem; opacity:.9; color:${({theme})=>theme.colors.text}; font-size:.9rem;
+`
+const TagRow = styled.div`
+  display:flex; flex-wrap:wrap; gap:.4rem; margin-top:.6rem;
+`
+const Tag = styled.span`
+  padding:.15rem .5rem; border-radius:999px;
+  border:1px solid ${({theme})=>theme.colors.border};
+  background:${({theme})=>theme.colors.hoverBg};
+  font-size:.8rem; opacity:.9;
+`
+
+/* ---------- Tipografías secundarias ---------- */
 const Title = styled.strong`
   font-size: 1rem; color: ${({ theme }) => theme.colors.text};
 `
@@ -59,10 +89,11 @@ const Muted = styled.div`
   margin-top: .25rem;
 `
 
-/* —— Modal: layout pasos —— */
+/* ---------- Paso a paso del modal ---------- */
 const Stepper = styled.div`
   display: grid; grid-template-columns: repeat(4, 1fr); gap: .5rem; margin-bottom: .75rem;
 `
+
 const Step = styled.div`
   padding: .4rem .5rem;
   border-radius: 6px;
@@ -73,7 +104,7 @@ const Step = styled.div`
   font-weight: 600; font-size: .85rem;
 `
 
-/* —— Selector de dispositivos por habitaciones —— */
+/* ---------- Selector de habitaciones/dispositivos ---------- */
 const Grid = styled.div`
   display: grid; grid-template-columns: 220px 1fr; gap: .75rem;
   @media (max-width: 900px) { grid-template-columns: 1fr; }
@@ -97,7 +128,7 @@ const DeviceRow = styled.label`
   &:hover { background: ${({ theme }) => theme.colors.hoverBg}; }
 `
 
-/* —— Grid de horarios 7 × 48 —— */
+/* ---------- Grid de horarios 7×48 ---------- */
 const ScheduleToolbar = styled.div`
   display: flex; gap: .5rem; align-items: center; justify-content: space-between; margin-bottom: .5rem;
   > div { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
@@ -139,19 +170,22 @@ const TD = styled.div`
   &:last-child { border-right: none; }
 `
 
-// helpers
-const DAY_NAMES = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']; // backend enum
-const DAY_SHORT = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+/* ---------- Helpers ---------- */
+const DAY_NAMES = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'] // backend enum
+const DAY_SHORT = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom']
+const ES_DAYS = {
+  Monday:'Lunes', Tuesday:'Martes', Wednesday:'Miércoles',
+  Thursday:'Jueves', Friday:'Viernes', Saturday:'Sábado', Sunday:'Domingo'
+}
 
 const slots48 = Array.from({ length: 48 }, (_, i) => {
   const hh = String(Math.floor(i / 2)).padStart(2,'0');
   const mm = i % 2 === 0 ? '00' : '30';
   return `${hh}:${mm}`;
 });
-const rangeLabel = (startIdx, endIdx) => `${slots48[startIdx]}–${slots48[endIdx]}`;
+const rangeLabel = (startIdx, endIdx) => `${slots48[startIdx]}–${slots48[endIdx]}`
 
 function compressDayToRanges(slotsSet) {
-  // input: Set<number> de índices activos. Salida: [[startIdx, endIdxExcl], ...]
   const arr = Array.from(slotsSet).sort((a,b)=>a-b);
   const out = [];
   let i = 0;
@@ -165,6 +199,8 @@ function compressDayToRanges(slotsSet) {
 }
 function idxToTime(idx) { return slots48[idx]; }
 
+/* ========================================================= */
+
 export default function Rutinas() {
   const { logout } = useContext(AuthContext)
   const navigate = useNavigate()
@@ -172,7 +208,7 @@ export default function Rutinas() {
 
   const [routines, setRoutines] = useState([])
 
-  // datos para crear rutina
+  // datos para crear/rotular
   const [patients, setPatients] = useState([])
   const [households, setHouseholds] = useState([])
   const [devices, setDevices] = useState([])
@@ -215,13 +251,13 @@ export default function Rutinas() {
       .then(setPatients)
       .catch(()=>{})
 
-    // hogares del cuidador
+    // hogares
     fetch(`${API}/households`, { credentials: 'include' })
       .then(r => r.ok ? r.json() : [])
       .then(setHouseholds)
       .catch(()=>{})
 
-    // dispositivos del cuidador (luego filtramos por household)
+    // dispositivos
     fetch(`${API}/devices`, { credentials: 'include' })
       .then(r => r.ok ? r.json() : [])
       .then(setDevices)
@@ -235,7 +271,6 @@ export default function Rutinas() {
   }, [form.user_id, patients, households])
 
   const devicesByRoom = useMemo(() => {
-    // filtra por home seleccionado (o por el del paciente si no has cambiado manualmente)
     const hhId = form.household_id || patientHousehold?._id || ''
     const list = devices.filter(d => d.household_id === hhId)
     const map = {}
@@ -253,16 +288,11 @@ export default function Rutinas() {
     setSchedule({})
     setEditTarget('ALL')
   }
-
-  function openCreator() {
-    resetCreator()
-    setOpen(true)
-  }
+  function openCreator() { resetCreator(); setOpen(true) }
 
   function toggleRoom(room) {
     setRoomOpen(prev => ({ ...prev, [room]: !prev[room] }))
   }
-
   function selectWholeRoom(room) {
     const list = devicesByRoom[room] || []
     const next = new Set(selectedDevices)
@@ -270,7 +300,6 @@ export default function Rutinas() {
     setSelectedDevices(next)
     ensureScheduleFor([...next])
   }
-
   function ensureScheduleFor(deviceIds) {
     setSchedule(prev => {
       const out = { ...prev }
@@ -280,7 +309,6 @@ export default function Rutinas() {
       return out
     })
   }
-
   function toggleDevice(d) {
     const next = new Set(selectedDevices)
     if (next.has(d._id)) next.delete(d._id)
@@ -289,7 +317,7 @@ export default function Rutinas() {
     ensureScheduleFor([...next])
   }
 
-  // ——— Horarios (grid) ———
+  // Horarios (grid)
   const targetIds = useMemo(() => {
     if (editTarget === 'ALL') return [...selectedDevices]
     return [editTarget].filter(Boolean)
@@ -351,18 +379,16 @@ export default function Rutinas() {
     })
   }
 
-  // ——— Guardar → crea múltiples documentos Routine en backend ———
+  // Guardar → crea múltiples documentos Routine
   async function saveRoutine() {
     if (!form.user_id) return alert('Selecciona un paciente')
     const householdId = form.household_id || patientHousehold?._id || ''
     if (!householdId) return alert('Selecciona una casa')
     if (selectedDevices.size === 0) return alert('Selecciona al menos un dispositivo')
 
-    // Para cada dispositivo, agrupa días por (start,end) para minimizar documentos
     const payloads = []
     for (const devId of selectedDevices) {
       const perDay = schedule[devId] || {}
-      // mapa key "start-end" => array dayNames
       const byRange = {}
       for (let d = 0; d < 7; d++) {
         const set = perDay[d] || new Set()
@@ -373,23 +399,23 @@ export default function Rutinas() {
           byRange[key].push(DAY_NAMES[d])
         }
       }
-      // crea payload por rango
       for (const key of Object.keys(byRange)) {
-        const [start, end] = key.split('|')
+        const [start, end] = key.split('|');
         payloads.push({
+          // 👇 añade el nombre de la rutina (opcional)
+          name: (form.name || '').trim(),
           user_id: form.user_id,
           device_id: devId,
           expected_start: start,
           expected_end: end,
           days: byRange[key]
-        })
+        });
       }
     }
 
     if (!payloads.length) return alert('No hay franjas horarias seleccionadas')
 
     try {
-      // POST en serie (o Promise.all si prefieres)
       for (const r of payloads) {
         const res = await fetch(`${API}/routines`, {
           method: 'POST',
@@ -402,7 +428,6 @@ export default function Rutinas() {
           throw new Error(err.error || 'No se pudo guardar una rutina')
         }
       }
-      // recargar listado
       const res = await fetch(`${API}/routines`, { credentials:'include' })
       const data = res.ok ? await res.json() : []
       setRoutines(data)
@@ -415,35 +440,96 @@ export default function Rutinas() {
   const selectedCount = selectedDevices.size
   const currentEditLabel = editTarget === 'ALL' ? `Todos (${selectedCount})` : `1 dispositivo`
 
+  // ---------- Helpers de presentación del listado ----------
+  function normalizeRef(ref, { type }) {
+    if (!ref) return { id: '', name: '' };
+    if (typeof ref === 'string') return { id: ref, name: '' };
+    // si ya viene populado:
+    if (ref.name && typeof ref.name === 'string') return { id: ref._id || ref.id || '', name: ref.name };
+    if (type === 'device' && (ref.appliance || ref.plugmodel)) {
+      return { id: ref._id || ref.id || '', name: ref.appliance || ref.plugmodel };
+    }
+    return { id: ref._id || ref.id || '', name: '' };
+  }
+
+  function getPatientName(userRef) {
+    const { id, name } = normalizeRef(userRef, { type: 'user' });
+    if (name) return name;
+    const p = patients.find(u => (u._id?.toString?.() ?? u._id) === id);
+    return p?.name || id || '—';
+  }
+
+  function getDeviceMeta(deviceRef, devices = [], households = []) {
+    const norm = normalizeRef(deviceRef, { type: 'device' });
+    const d = devices.find(x => (x?._id?.toString?.() ?? x?._id) === norm.id);
+
+    // ojo: null también es "object" en JS -> comprueba explícitamente
+    const isObj = deviceRef !== null && typeof deviceRef === 'object';
+
+    const dispName = norm.name || d?.appliance || d?.plugmodel || norm.id || 'Dispositivo';
+    const room     = d?.room || (isObj ? deviceRef.room : '') || '';
+    const hhIdRaw  = d?.household_id || (isObj ? deviceRef.household_id : '') || '';
+    const hhId     = hhIdRaw?.toString?.() ?? hhIdRaw;
+    const home     = households.find(h => (h?._id?.toString?.() ?? h?._id) === hhId)?.name || '';
+
+    return { name: dispName, room, home };
+  }
+
+  const sortedRoutines = useMemo(() => {
+    return [...routines].sort((a,b) => {
+      const au = getPatientName(a.user_id).localeCompare(getPatientName(b.user_id));
+      if (au !== 0) return au;
+      const ad = getDeviceMeta(a.device_id).name.localeCompare(getDeviceMeta(b.device_id).name);
+      if (ad !== 0) return ad;
+      return (a.expected_start||'').localeCompare(b.expected_start||'');
+    });
+  }, [routines, patients, devices, households]);
+
   return (
     <AppContainer>
       <Header onToggleMenu={() => setMenuOpen(o => !o)} onLogout={() => { logout(); navigate('/login') }} />
       <Body>
         <Sidebar open={menuOpen} />
         <Main>
-          <Toolbar>
-            <h1>Rutinas</h1>
-            <NewButton onClick={openCreator}>+ Añadir rutina</NewButton>
-          </Toolbar>
+            <Toolbar>
+              <h1>Rutinas</h1>
+              <NewButton onClick={openCreator}>+ Añadir rutina</NewButton>
+            </Toolbar>
 
-          <List>
-            {routines.map(r => (
-              <RoutineItem key={r._id}>
-                <Title>{r.name || `Rutina ${r._id}`}</Title>
-                <Muted>
-                  Paciente: {r.user_id?.name || r.user_id || '—'} · Dispositivo: {r.device_id?.appliance || r.device_id || '—'}
-                  <br/>
-                  {r.days?.join(', ')} · {r.expected_start}–{r.expected_end}
-                </Muted>
-              </RoutineItem>
-            ))}
-            {!routines.length && <Muted>No hay rutinas todavía.</Muted>}
-          </List>
+            {/* ----- LISTADO BONITO ----- */}
+            <List>
+              {sortedRoutines.map(r => {
+                const patient = getPatientName(r.user_id)
+                const meta = getDeviceMeta(r.device_id)
+                const daysPretty = (r.days || []).map(d => ES_DAYS[d] || d)
+                return (
+                  <RoutineCard key={r._id}>
+                    <CardTop>
+                      <CardTitle>{r.name || `Rutina ${String(r._id).slice(-6)}`}</CardTitle>
+                      <TimePill>{(r.expected_start||'').replace(':', '\:')}–{(r.expected_end||'').replace(':','\:')}</TimePill>
+                    </CardTop>
+
+                    <Meta>
+                      Paciente: <strong>{patient}</strong>{' · '}
+                      Dispositivo: <strong>{meta.name}</strong>
+                      {meta.room ? ` — ${meta.room}` : ''}{meta.home ? ` / ${meta.home}` : ''}
+                    </Meta>
+
+                    {!!daysPretty.length && (
+                      <TagRow>
+                        {daysPretty.map(d => (<Tag key={d}>{d}</Tag>))}
+                      </TagRow>
+                    )}
+                  </RoutineCard>
+                )
+              })}
+              {!sortedRoutines.length && <Muted>No hay rutinas todavía.</Muted>}
+            </List>
         </Main>
       </Body>
       <Footer />
 
-      {/* Modal crear rutina */}
+      {/* ---------------- MODAL CREAR RUTINA ---------------- */}
       <Modal isOpen={open} onClose={() => setOpen(false)}>
         <h2>Crear rutina</h2>
         <Stepper>
@@ -586,7 +672,6 @@ export default function Rutinas() {
                 <TR key={dIdx}>
                   <DayCell>{label}</DayCell>
                   {slots48.map((_, sIdx) => {
-                    // un slot está "on" si TODOS los objetivos lo tienen on (para ver el estado masivo)
                     let on = false
                     if (targetIds.length > 0) {
                       on = targetIds.every(id => (schedule[id]?.[dIdx] || new Set()).has(sIdx))
@@ -624,7 +709,6 @@ export default function Rutinas() {
                   <ul style={{ margin: '.35rem 0 0 .85rem' }}>
                     {[...selectedDevices].map(id => {
                       const d = devices.find(x => x._id === id)
-                      // muestra un ejemplo de rango si existe
                       const perDay = schedule[id] || {}
                       const example = (() => {
                         for (let d = 0; d < 7; d++) {
