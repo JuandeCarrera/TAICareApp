@@ -272,6 +272,7 @@ export default function Rutinas() {
   const [editForm, setEditForm] = useState({
     name:'', user_id:'', device_id:'', expected_start:'14:00', expected_end:'15:00', days:[]
   });
+  const [editStep, setEditStep] = useState(1);
   const [deleteId, setDeleteId] = useState(null);
 
 
@@ -527,7 +528,7 @@ export default function Rutinas() {
     });
   }, [routines, patients, devices, households]);
 
-  const HALF_HOURS = slots48; // ya lo tienes
+  const HALF_HOURS = slots48; 
 
   function openEditModal(r) {
     setEditId(r._id);
@@ -539,6 +540,7 @@ export default function Rutinas() {
       expected_end:   r.expected_end   || '15:00',
       days: Array.isArray(r.days) ? [...r.days] : []
     });
+    setEditStep(1);
     setEditOpen(true);
   }
 
@@ -618,6 +620,24 @@ export default function Rutinas() {
     } catch (e) {
       alert(e.message);
     }
+  }
+
+  // devuelve el índice en la rejilla de medias horas
+  const idxOf = (hhmm) => slots48.indexOf(hhmm);
+
+  // opciones para la hora de fin: desde start+1 hasta start+48 (mismo tiempo del día siguiente)
+  function endOptionsFor(startHHMM) {
+    const s = idxOf(startHHMM);
+    if (s < 0) return [];
+    const opts = [];
+    for (let k = s + 1; k <= s + 48; k++) {
+      const idx = k % 48;           // 0..47
+      const next = k >= 48;         // cruza a día siguiente
+      const label = next ? `${slots48[idx]} (+1)` : slots48[idx];
+      // value: mantenemos solo HH:MM (backend actual)
+      opts.push({ value: slots48[idx], label });
+    }
+    return opts;
   }
 
   return (
@@ -882,84 +902,161 @@ export default function Rutinas() {
       <Modal isOpen={editOpen} onClose={() => setEditOpen(false)}>
         <h2>Editar rutina</h2>
 
-        <FormGroup>
-          <label>Nombre (opcional)</label>
-          <input
-            value={editForm.name}
-            onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
-          />
-        </FormGroup>
+        <Stepper>
+          <Step active={editStep===1}>1 · Selección</Step>
+          <Step active={editStep===2}>2 · Dispositivo</Step>
+          <Step active={editStep===3}>3 · Horario</Step>
+          <Step active={editStep===4}>4 · Resumen</Step>
+        </Stepper>
 
-        <FormGroup>
-          <label>Paciente</label>
-          <select
-            value={editForm.user_id}
-            onChange={e => setEditForm(f => ({ ...f, user_id: e.target.value, device_id:'' }))}
-          >
-            <option value="">— Selecciona —</option>
-            {patients.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
-          </select>
-          {editPatientHouse && <Small>Casa: {editPatientHouse.name}</Small>}
-        </FormGroup>
+        {/* Paso 1: nombre + paciente */}
+        {editStep === 1 && (
+          <>
+            <FormGroup>
+              <label>Nombre (opcional)</label>
+              <input
+                value={editForm.name}
+                onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
+                placeholder="p.ej. Comida"
+              />
+            </FormGroup>
 
-        <FormGroup>
-          <label>Dispositivo</label>
-          <select
-            value={editForm.device_id}
-            onChange={e => setEditForm(f => ({ ...f, device_id: e.target.value }))}
-            disabled={!editForm.user_id}
-          >
-            <option value="">— Selecciona —</option>
-            {devicesForEdit.map(d => (
-              <option key={d._id} value={d._id}>
-                {d.appliance || d.plugmodel} {d.room ? `— ${d.room}` : ''}
-              </option>
-            ))}
-          </select>
-        </FormGroup>
-
-        <FormGroup>
-          <label>Horario</label>
-          <RowInline>
-            <select
-              value={editForm.expected_start}
-              onChange={e => setEditForm(f => ({ ...f, expected_start: e.target.value }))}
-            >
-              {HALF_HOURS.map(t => <option key={t} value={t}>{t}</option>)}
-            </select>
-            <span>—</span>
-            <select
-              value={editForm.expected_end}
-              onChange={e => setEditForm(f => ({ ...f, expected_end: e.target.value }))}
-            >
-              {HALF_HOURS.map(t => <option key={t} value={t}>{t}</option>)}
-            </select>
-          </RowInline>
-        </FormGroup>
-
-        <FormGroup>
-          <label>Días</label>
-          <DaysWrap>
-            {DAY_NAMES.map((d, idx) => (
-              <DayChip
-                key={d}
-                active={editForm.days.includes(d)}
-                onClick={() => toggleEditDay(d)}
-                title={ES_DAYS[d]}
+            <FormGroup>
+              <label>Paciente</label>
+              <select
+                value={editForm.user_id}
+                onChange={e => setEditForm(f => ({ ...f, user_id: e.target.value, device_id:'' }))}
               >
-                {DAY_SHORT[idx]}
-              </DayChip>
-            ))}
-          </DaysWrap>
-        </FormGroup>
+                <option value="">— Selecciona —</option>
+                {patients.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
+              </select>
+              {editPatientHouse && <Small>Casa: {editPatientHouse.name}</Small>}
+            </FormGroup>
 
-        <FormGroup style={{ display:'flex', justifyContent:'flex-end', gap:'.5rem' }}>
-          <Btn onClick={() => setEditOpen(false)}>Cancelar</Btn>
-          <Btn variant="primary" onClick={saveEdit} disabled={
-            !editForm.user_id || !editForm.device_id || !editForm.expected_start || !editForm.expected_end || !editForm.days.length
-          }>Guardar cambios</Btn>
-        </FormGroup>
+            <div style={{display:'flex', justifyContent:'flex-end', gap:'.5rem'}}>
+              <Btn onClick={() => setEditOpen(false)}>Cancelar</Btn>
+              <Btn variant="primary" onClick={() => setEditStep(2)} disabled={!editForm.user_id}>Siguiente</Btn>
+            </div>
+          </>
+        )}
+
+        {/* Paso 2: dispositivo */}
+        {editStep === 2 && (
+          <>
+            <FormGroup>
+              <label>Dispositivo</label>
+              <select
+                value={editForm.device_id}
+                onChange={e => setEditForm(f => ({ ...f, device_id: e.target.value }))}
+              >
+                <option value="">— Selecciona —</option>
+                {devicesForEdit.map(d => (
+                  <option key={d._id} value={d._id}>
+                    {d.appliance || d.plugmodel} {d.room ? `— ${d.room}` : ''}
+                  </option>
+                ))}
+              </select>
+            </FormGroup>
+
+            <div style={{display:'flex', justifyContent:'space-between', gap:'.5rem'}}>
+              <Btn onClick={() => setEditStep(1)}>Atrás</Btn>
+              <Btn variant="primary" onClick={() => setEditStep(3)} disabled={!editForm.device_id}>Siguiente</Btn>
+            </div>
+          </>
+        )}
+
+        {/* Paso 3: horario (con restricción dinámica) + días */}
+        {editStep === 3 && (
+          <>
+            <FormGroup>
+              <label>Horario</label>
+              <RowInline>
+                <select
+                  value={editForm.expected_start}
+                  onChange={e => {
+                    const start = e.target.value;
+                    // si el fin actual ya no es válido con el nuevo inicio, muévelo al mínimo permitido
+                    const ends = endOptionsFor(start);
+                    const valid = ends.some(o => o.value === editForm.expected_end);
+                    setEditForm(f => ({ ...f, expected_start: start, expected_end: valid ? f.expected_end : (ends[0]?.value || f.expected_end) }));
+                  }}
+                >
+                  {slots48.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+                <span>—</span>
+                <select
+                  value={editForm.expected_end}
+                  onChange={e => setEditForm(f => ({ ...f, expected_end: e.target.value }))}
+                >
+                  {endOptionsFor(editForm.expected_start).map(opt => (
+                    <option key={`${opt.value}-${opt.label}`} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </RowInline>
+              <Small>El fin debe ser al menos +30 min y como máximo hasta el mismo horario del día siguiente.</Small>
+            </FormGroup>
+
+            <FormGroup>
+              <label>Días</label>
+              <DaysWrap>
+                {DAY_NAMES.map((d, idx) => (
+                  <DayChip
+                    key={d}
+                    active={editForm.days.includes(d)}
+                    onClick={() => {
+                      const s = new Set(editForm.days);
+                      s.has(d) ? s.delete(d) : s.add(d);
+                      setEditForm(f => ({ ...f, days: Array.from(s) }));
+                    }}
+                    title={ES_DAYS[d]}
+                  >
+                    {DAY_SHORT[idx]}
+                  </DayChip>
+                ))}
+              </DaysWrap>
+            </FormGroup>
+
+            <div style={{display:'flex', justifyContent:'space-between', gap:'.5rem'}}>
+              <Btn onClick={() => setEditStep(2)}>Atrás</Btn>
+              <Btn variant="primary" onClick={() => setEditStep(4)} disabled={!editForm.days.length}>Siguiente</Btn>
+            </div>
+          </>
+        )}
+
+        {/* Paso 4: resumen + guardar */}
+        {editStep === 4 && (
+          <>
+            <div style={{ marginBottom: '.75rem' }}>
+              <strong>Resumen</strong>
+              <div style={{ marginTop: '.5rem' }}>
+                <div><Small>Nombre:</Small> {editForm.name || <em>(sin nombre)</em>}</div>
+                <div><Small>Paciente:</Small> {getPatientName(editForm.user_id)}</div>
+                <div><Small>Dispositivo:</Small> {getDeviceMeta(editForm.device_id, devices, households).name}</div>
+                <div><Small>Horario:</Small> {editForm.expected_start} — {editForm.expected_end}{idxOf(editForm.expected_end) <= idxOf(editForm.expected_start) ? ' (+1)' : ''}</div>
+                <div style={{ marginTop: '.35rem' }}>
+                  <Small>Días:</Small>{' '}
+                  {editForm.days.map(d => ES_DAYS[d]).join(', ')}
+                </div>
+              </div>
+            </div>
+
+            <div style={{display:'flex', justifyContent:'space-between', gap:'.5rem'}}>
+              <Btn onClick={() => setEditStep(3)}>Atrás</Btn>
+              <div style={{display:'flex', gap:'.5rem'}}>
+                <Btn onClick={() => setEditOpen(false)}>Cancelar</Btn>
+                <Btn
+                  variant="primary"
+                  onClick={saveEdit}
+                  disabled={!editForm.user_id || !editForm.device_id || !editForm.expected_start || !editForm.expected_end || !editForm.days.length}
+                >
+                  Guardar cambios
+                </Btn>
+              </div>
+            </div>
+          </>
+        )}
       </Modal>
+
       <Modal isOpen={deleteOpen} onClose={() => setDeleteOpen(false)}>
         <h2>Eliminar rutina</h2>
         <p>¿Seguro que quieres borrar esta rutina? Esta acción no se puede deshacer.</p>
