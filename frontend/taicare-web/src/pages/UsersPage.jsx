@@ -150,8 +150,8 @@ const SuggestDivider = styled.div`
 `;
 const DangerBtn = styled(Btn)`
   border-color: #ef4444;
-  color: #ef4444;
-  background: transparent;
+  color: #fff;
+  background: #e04848;
   &:hover { background: rgba(239, 68, 68, .12); }
 `;
 
@@ -696,7 +696,7 @@ export default function UsersPage() {
                       <Right>
                         <Btn variant="primary" onClick={(e)=>{ e.stopPropagation(); openEditHistory(p) }}>🧾 Hist</Btn>
                         <Btn variant="primary" onClick={(e)=>{ e.stopPropagation(); openEditPatient(p) }}>✎ </Btn>
-                        <Btn variant="primary" onClick={(e) => { e.stopPropagation(); askDeletePatient(p); }}>🗑</Btn>
+                        <DangerBtn variant="primary" onClick={(e) => { e.stopPropagation(); askDeletePatient(p); }}>🗑</DangerBtn>
                       </Right>
                     </PatientItem>
                   ))}
@@ -1014,7 +1014,7 @@ export default function UsersPage() {
         </p>
         <div style={{ marginTop:'1rem', display:'flex', justifyContent:'flex-end', gap:'.5rem' }}>
           <Btn variant="primary" onClick={() => setConfirmOpen(false)}>Cancelar</Btn>
-          <Btn variant="primary" onClick={confirmDeletePatient}>🗑 Borrar</Btn>
+          <DangerBtn variant="primary" onClick={confirmDeletePatient}>🗑 Borrar</DangerBtn>
         </div>
       </Modal>
     </AppContainer>

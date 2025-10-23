@@ -43,6 +43,7 @@ const Btn = styled.button`
 const NewButton = styled(Btn).attrs({ variant: 'primary' })``
 
 /* ---------- Listado ---------- */
+
 const List = styled.ul`
   list-style: none; padding: 0; margin: 0;
 `
@@ -662,7 +663,7 @@ export default function Rutinas() {
                     <CardTop>
                       <CardTitle>{r.name || `Rutina ${String(r._id).slice(-6)}`}</CardTitle>
                       <RowInline>
-                        <ActionBtn onClick={() => openEditModal(r)}>✎ Editar</ActionBtn>
+                        <ActionBtn variant="primary" onClick={() => openEditModal(r)}>✎ Editar</ActionBtn>
                         <DangerBtn onClick={() => openDeleteModal(r._id)}>🗑 Borrar</DangerBtn>
                         <TimePill>
                           {(r.expected_start||'').replace(':','\:')}–{(r.expected_end||'').replace(':','\:')}
@@ -1061,7 +1062,7 @@ export default function Rutinas() {
         <h2>Eliminar rutina</h2>
         <p>¿Seguro que quieres borrar esta rutina? Esta acción no se puede deshacer.</p>
         <div style={{ display:'flex', justifyContent:'flex-end', gap:'.5rem', marginTop:'.75rem' }}>
-          <Btn onClick={() => setDeleteOpen(false)}>Cancelar</Btn>
+          <Btn variant="primary" onClick={() => setDeleteOpen(false)}>Cancelar</Btn>
           <DangerBtn onClick={confirmDelete}>Borrar</DangerBtn>
         </div>
       </Modal>
