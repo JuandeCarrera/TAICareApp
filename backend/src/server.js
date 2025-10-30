@@ -7,12 +7,13 @@ import jwt           from 'jsonwebtoken'
 
 import { authRequired } from './middleware/auth.js'
 
-import User      from './models/User.js'
-import Household from './models/Household.js'
-import Device    from './models/Device.js'
-import Data      from './models/Data.js'
-import Alert     from './models/Alert.js'
-import Routine   from './models/Routine.js'
+import User           from './models/User.js'
+import Household      from './models/Household.js'
+import Device         from './models/Device.js'
+import Data           from './models/Data.js'
+import Alert          from './models/Alert.js'
+import Routine        from './models/Routine.js'
+import RoutinePreset  from './models/RoutinePreset.js';
 
 dotenv.config()
 const app = express()
@@ -471,6 +472,63 @@ app.delete('/routines/:id', async (req, res) => {
     res.status(400).json({ error: e.message });
   }
 });
+
+// ----- ROUTINE PRESETS -----
+// Crear
+app.post('/routine-presets', async (req, res) => {
+  try {
+    const { name, expected_start, expected_end, days, description } = req.body || {};
+    if (!name || !expected_start || !expected_end || !Array.isArray(days) || days.length === 0) {
+      return res.status(400).json({ error: 'Faltan campos obligatorios' });
+    }
+    const p = await RoutinePreset.create({
+      owner: req.user.sub,
+      name: name.trim(),
+      expected_start,
+      expected_end,
+      days
+    , description: (description || '').trim() });
+    res.status(201).json(p);
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// Listar (solo del usuario actual)
+app.get('/routine-presets', async (req, res) => {
+  const list = await RoutinePreset.find({ owner: req.user.sub }).sort({ createdAt: -1 });
+  res.json(list);
+});
+
+// Obtener una
+app.get('/routine-presets/:id', async (req, res) => {
+  const p = await RoutinePreset.findOne({ _id: req.params.id, owner: req.user.sub });
+  if (!p) return res.sendStatus(404);
+  res.json(p);
+});
+
+// Actualizar
+app.put('/routine-presets/:id', async (req, res) => {
+  try {
+    const upd = await RoutinePreset.findOneAndUpdate(
+      { _id: req.params.id, owner: req.user.sub },
+      req.body,
+      { new: true, runValidators: true }
+    );
+    if (!upd) return res.sendStatus(404);
+    res.json(upd);
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// Borrar
+app.delete('/routine-presets/:id', async (req, res) => {
+  const del = await RoutinePreset.findOneAndDelete({ _id: req.params.id, owner: req.user.sub });
+  if (!del) return res.sendStatus(404);
+  res.sendStatus(204);
+});
+
 
 // ————— Iniciar servidor —————
 const PORT = process.env.PORT || 3000

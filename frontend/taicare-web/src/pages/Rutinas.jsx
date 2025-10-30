@@ -21,6 +21,7 @@ const Main = styled.main`
 `
 const Toolbar = styled.div`
   display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;
+  > div { display:flex; gap:.5rem; align-items:center; }
 `
 const Btn = styled.button`
   font-size: 0.85rem;
@@ -41,14 +42,12 @@ const Btn = styled.button`
   }
 `
 const NewButton = styled(Btn).attrs({ variant: 'primary' })``
+const OutlineBtn = styled(Btn)``
 
 /* ---------- Listado ---------- */
-
 const List = styled.ul`
   list-style: none; padding: 0; margin: 0;
 `
-
-/* Tarjeta bonita para cada rutina */
 const RoutineCard = styled.li`
   background: ${({ theme }) => theme.colors.cardBg};
   border: 1px solid ${({ theme }) => theme.colors.border};
@@ -80,21 +79,15 @@ const Tag = styled.span`
   background:${({theme})=>theme.colors.hoverBg};
   font-size:.8rem; opacity:.9;
 `
-
-/* ---------- Tipografías secundarias ---------- */
-const Title = styled.strong`
-  font-size: 1rem; color: ${({ theme }) => theme.colors.text};
-`
 const Muted = styled.div`
   color: ${({ theme }) => theme.colors.text}; opacity: .8; font-size: .9rem;
   margin-top: .25rem;
 `
 
-/* ---------- Paso a paso del modal ---------- */
+/* ---------- Paso a paso + grid ---------- */
 const Stepper = styled.div`
   display: grid; grid-template-columns: repeat(4, 1fr); gap: .5rem; margin-bottom: .75rem;
 `
-
 const Step = styled.div`
   padding: .4rem .5rem;
   border-radius: 6px;
@@ -104,8 +97,6 @@ const Step = styled.div`
   color: ${({ active }) => active ? 'white' : 'inherit'};
   font-weight: 600; font-size: .85rem;
 `
-
-/* ---------- Selector de habitaciones/dispositivos ---------- */
 const Grid = styled.div`
   display: grid; grid-template-columns: 220px 1fr; gap: .75rem;
   @media (max-width: 900px) { grid-template-columns: 1fr; }
@@ -120,16 +111,12 @@ const Room = styled.div`
   padding: .35rem .45rem; border-radius: 6px; cursor: pointer;
   &:hover { background: ${({ theme }) => theme.colors.hoverBg}; }
 `
-const Small = styled.small`
-  opacity: .75;
-`
+const Small = styled.small` opacity:.75; `
 const DeviceRow = styled.label`
   display: flex; align-items: center; gap: .5rem;
   padding: .35rem .45rem; border-radius: 6px; cursor: pointer;
   &:hover { background: ${({ theme }) => theme.colors.hoverBg}; }
 `
-
-/* ---------- Grid de horarios 7×48 ---------- */
 const ScheduleToolbar = styled.div`
   display: flex; gap: .5rem; align-items: center; justify-content: space-between; margin-bottom: .5rem;
   > div { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
@@ -170,67 +157,93 @@ const TD = styled.div`
   &:hover { opacity: ${({ on }) => on ? 0.9 : 0.35}; }
   &:last-child { border-right: none; }
 `
+const DayBtn = styled.button`
+  border: 1.5px solid
+    ${({ theme, active }) => (active ? theme.colors.primary : theme.colors.border)};
+  background: ${({ theme, active }) =>
+    active ? theme.colors.primary : theme.colors.cardBg};
+  color: ${({ theme, active }) => (active ? '#fff' : theme.colors.text)};
+  border-radius: 999px;
+  padding: .22rem .60rem;
+  font-size: .82rem;
+  line-height: 1;
+  font-weight: ${({ active }) => (active ? 700 : 600)};
+  letter-spacing: .02em;
+  cursor: pointer;
+  position: relative;
+  transition: background .15s, border-color .15s, color .15s, box-shadow .15s, transform .02s;
 
-/* ---------- Helpers ---------- */
+  /* Halo suave cuando está activo para que “cante” mejor */
+  box-shadow: ${({ theme, active }) =>
+    active ? `0 0 0 3px ${theme.colors.primary}33` : 'none'};
+
+  &:hover {
+    background: ${({ theme, active }) =>
+      active ? theme.colors.primaryDark : theme.colors.hoverBg};
+  }
+
+  /* Accesible: foco bien visible con teclado */
+  &:focus-visible {
+    outline: 2px solid ${({ theme }) => theme.colors.primary};
+    outline-offset: 2px;
+  }
+
+  /* Pequeño relieve cuando está activo */
+  ${({ active, theme }) =>
+    active ? `inset 0 -2px 0 ${theme.colors.primaryDark}` : ''};
+`;
+const ModalScroll = styled.div`
+  max-height: 70vh;
+  overflow-y: auto;
+  padding-right: .25rem;
+`;
+const PresetHeaderActions = styled.div`
+  display:flex; gap:.5rem; align-items:center; margin-bottom:.5rem;
+`;
+
+
+/* ---------- Botones tarjeta ---------- */
+const RowInline = styled.div` display:flex; gap:.5rem; align-items:center; `
+const ActionBtn = styled(Btn)` padding:.25rem .55rem; `
+const DangerBtn = styled(ActionBtn)`
+  border-color: #e04848; color:#fff; background:#e04848;
+  &:hover { background:#c53f3f; }
+`
+
+/* ---------- Constantes / helpers ---------- */
 const DAY_NAMES = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'] // backend enum
 const DAY_SHORT = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom']
+
 const ES_DAYS = {
   Monday:'Lunes', Tuesday:'Martes', Wednesday:'Miércoles',
   Thursday:'Jueves', Friday:'Viernes', Saturday:'Sábado', Sunday:'Domingo'
 }
-
 const slots48 = Array.from({ length: 48 }, (_, i) => {
-  const hh = String(Math.floor(i / 2)).padStart(2,'0');
+const hh = String(Math.floor(i / 2)).padStart(2,'0');
   const mm = i % 2 === 0 ? '00' : '30';
   return `${hh}:${mm}`;
 });
 const rangeLabel = (startIdx, endIdx) => `${slots48[startIdx]}–${slots48[endIdx]}`
 
-const CardActions = styled.div`
-  display:flex; gap:.5rem; align-items:center;
-`;
-
-const ActionBtn = styled(Btn)`
-  padding: .25rem .55rem;
-`;
-
-const DangerBtn = styled(ActionBtn)`
-  border-color: #e04848;
-  color: #fff;
-  background: #e04848;
-  &:hover { background: #c53f3f; }
-`;
-
-const DaysWrap = styled.div`
-  display:flex; flex-wrap:wrap; gap:.4rem; margin-top:.35rem;
-`;
-
-const DayChip = styled.button`
-  border: 1px solid ${({theme})=>theme.colors.border};
-  background: ${({active, theme}) => active ? theme.colors.primary : theme.colors.cardBg};
-  color: ${({active}) => active ? '#fff' : 'inherit'};
-  border-radius:999px; padding:.25rem .6rem; font-size:.85rem; cursor:pointer;
-  &:hover { background: ${({active,theme})=> active ? theme.colors.primaryDark : theme.colors.hoverBg}; }
-`;
-
-const RowInline = styled.div`
-  display:flex; gap:.5rem; align-items:center;
-`;
-
+/* ---- presets (localStorage) ---- */
+const PRESETS_KEY = 'routine_presets_v1'
+const loadPresets = () => {
+  try { return JSON.parse(localStorage.getItem(PRESETS_KEY) || '[]') } catch { return [] }
+}
+const savePresets = (list) => localStorage.setItem(PRESETS_KEY, JSON.stringify(list))
 
 function compressDayToRanges(slotsSet) {
   const arr = Array.from(slotsSet).sort((a,b)=>a-b);
-  const out = [];
-  let i = 0;
+  const out = []; let i = 0;
   while (i < arr.length) {
-    let s = arr[i], e = s + 1; // e exclusivo
+    let s = arr[i], e = s + 1;
     while (i + 1 < arr.length && arr[i+1] === e) { i++; e++; }
-    out.push([s, e]);
-    i++;
+    out.push([s, e]); i++;
   }
   return out;
 }
 function idxToTime(idx) { return slots48[idx]; }
+const idxOf = (t) => slots48.indexOf(t)
 
 /* ========================================================= */
 
@@ -241,72 +254,68 @@ export default function Rutinas() {
 
   const [routines, setRoutines] = useState([])
 
-  // datos para crear/rotular
+  // datos para crear
   const [patients, setPatients] = useState([])
   const [households, setHouseholds] = useState([])
   const [devices, setDevices] = useState([])
 
+  // presets
+  const [presets, setPresets] = useState(loadPresets())
+  useEffect(() => { savePresets(presets) }, [presets])
+
   // modal creación
   const [open, setOpen] = useState(false)
   const [step, setStep] = useState(1)
+  const [applyPresetId, setApplyPresetId] = useState('')
 
-  const [form, setForm] = useState({
-    name: '',
-    user_id: '',
-    household_id: '',
-  })
+  const [form, setForm] = useState({ name: '', user_id: '', household_id: '' })
 
   // selección de dispositivos
   const [selectedDevices, setSelectedDevices] = useState(new Set())  // device._id
   const [roomOpen, setRoomOpen] = useState({}) // expand/collapse rooms
 
   // horarios: por dispositivo, dayIndex -> Set(slotIdx)
-  const [schedule, setSchedule] = useState({ /* deviceId: { 0:Set,1:Set,...6:Set } */ })
+  const [schedule, setSchedule] = useState({ /* deviceId: { 0:Set,...6:Set } */ })
   const [editTarget, setEditTarget] = useState('ALL') // 'ALL' o deviceId
   const isMouseDown = useRef(false)
   const paintMode = useRef(null) // 'on'|'off'
 
-  // ---- edición / borrado
+  // edición / borrado
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [editId, setEditId] = useState(null);
+  const [editStep, setEditStep] = useState(1)
   const [editForm, setEditForm] = useState({
     name:'', user_id:'', device_id:'', expected_start:'14:00', expected_end:'15:00', days:[]
   });
-  const [editStep, setEditStep] = useState(1);
   const [deleteId, setDeleteId] = useState(null);
 
+  // gestor de presets (modal)
+  const [presetOpen, setPresetOpen] = useState(false)
+  const [presetForm, setPresetForm] = useState({ name:'', start:'18:00', end:'19:00', days:[] })
+  const [presetTab, setPresetTab] = useState('create')
 
+  /* ---------- data fetch ---------- */
   useEffect(() => {
     setMenuOpen(window.innerWidth >= 768)
     loadInitial()
   }, [])
 
   async function loadInitial() {
-    // rutinas existentes
     fetch(`${API}/routines`, { credentials: 'include' })
-      .then(r => r.ok ? r.json() : [])
-      .then(setRoutines)
-      .catch(()=>{})
+      .then(r => r.ok ? r.json() : []).then(setRoutines).catch(()=>{})
 
-    // pacientes
     fetch(`${API}/users?role=paciente`, { credentials: 'include' })
-      .then(r => r.ok ? r.json() : [])
-      .then(setPatients)
-      .catch(()=>{})
+      .then(r => r.ok ? r.json() : []).then(setPatients).catch(()=>{})
 
-    // hogares
     fetch(`${API}/households`, { credentials: 'include' })
-      .then(r => r.ok ? r.json() : [])
-      .then(setHouseholds)
-      .catch(()=>{})
+      .then(r => r.ok ? r.json() : []).then(setHouseholds).catch(()=>{})
 
-    // dispositivos
     fetch(`${API}/devices`, { credentials: 'include' })
-      .then(r => r.ok ? r.json() : [])
-      .then(setDevices)
-      .catch(()=>{})
+      .then(r => r.ok ? r.json() : []).then(setDevices).catch(()=>{})
   }
+
+  /* ---------- memos ---------- */
 
   const patientHousehold = useMemo(() => {
     const p = patients.find(x => x._id === form.user_id)
@@ -325,12 +334,14 @@ export default function Rutinas() {
     return map
   }, [devices, form.household_id, patientHousehold])
 
+  /* ---------- creator helpers ---------- */
   function resetCreator() {
     setStep(1)
     setForm({ name:'', user_id:'', household_id:'' })
     setSelectedDevices(new Set())
     setSchedule({})
     setEditTarget('ALL')
+    setApplyPresetId('')
   }
   function openCreator() { resetCreator(); setOpen(true) }
 
@@ -361,7 +372,7 @@ export default function Rutinas() {
     ensureScheduleFor([...next])
   }
 
-  // Horarios (grid)
+  // grid painting
   const targetIds = useMemo(() => {
     if (editTarget === 'ALL') return [...selectedDevices]
     return [editTarget].filter(Boolean)
@@ -423,7 +434,39 @@ export default function Rutinas() {
     })
   }
 
-  // Guardar → crea múltiples documentos Routine
+  /* ---------- aplicar preset al grid ---------- */
+  function applyPresetToGrid(preset) {
+    if (!preset) return
+    const s = idxOf(preset.start), e = idxOf(preset.end)
+    if (s < 0 || e < 0) return
+    const wrap = e <= s // cruza medianoche
+    setSchedule(prev => {
+      const copy = { ...prev }
+      for (const devId of targetIds) {
+        const dev = copy[devId] || { 0:new Set(),1:new Set(),2:new Set(),3:new Set(),4:new Set(),5:new Set(),6:new Set() }
+        for (const dayName of preset.days) {
+          const dIdx = DAY_NAMES.indexOf(dayName)
+          if (dIdx < 0) continue
+          // mismo día
+          const setToday = new Set(dev[dIdx] || [])
+          const endToday = wrap ? 48 : e
+          for (let i = s; i < endToday; i++) setToday.add(i)
+          dev[dIdx] = setToday
+          // día siguiente si cruza
+          if (wrap) {
+            const next = (dIdx + 1) % 7
+            const setNext = new Set(dev[next] || [])
+            for (let i = 0; i < e; i++) setNext.add(i)
+            dev[next] = setNext
+          }
+        }
+        copy[devId] = dev
+      }
+      return copy
+    })
+  }
+
+  /* ---------- guardar creadas ---------- */
   async function saveRoutine() {
     if (!form.user_id) return alert('Selecciona un paciente')
     const householdId = form.household_id || patientHousehold?._id || ''
@@ -446,7 +489,6 @@ export default function Rutinas() {
       for (const key of Object.keys(byRange)) {
         const [start, end] = key.split('|');
         payloads.push({
-          // 👇 añade el nombre de la rutina (opcional)
           name: (form.name || '').trim(),
           user_id: form.user_id,
           device_id: devId,
@@ -481,41 +523,31 @@ export default function Rutinas() {
     }
   }
 
-  const selectedCount = selectedDevices.size
-  const currentEditLabel = editTarget === 'ALL' ? `Todos (${selectedCount})` : `1 dispositivo`
-
-  // ---------- Helpers de presentación del listado ----------
+  /* ---------- listado helpers ---------- */
   function normalizeRef(ref, { type }) {
     if (!ref) return { id: '', name: '' };
     if (typeof ref === 'string') return { id: ref, name: '' };
-    // si ya viene populado:
     if (ref.name && typeof ref.name === 'string') return { id: ref._id || ref.id || '', name: ref.name };
     if (type === 'device' && (ref.appliance || ref.plugmodel)) {
       return { id: ref._id || ref.id || '', name: ref.appliance || ref.plugmodel };
     }
     return { id: ref._id || ref.id || '', name: '' };
   }
-
   function getPatientName(userRef) {
     const { id, name } = normalizeRef(userRef, { type: 'user' });
     if (name) return name;
     const p = patients.find(u => (u._id?.toString?.() ?? u._id) === id);
     return p?.name || id || '—';
   }
-
-  function getDeviceMeta(deviceRef, devices = [], households = []) {
+  function getDeviceMeta(deviceRef, devs = devices, hhs = households) {
     const norm = normalizeRef(deviceRef, { type: 'device' });
-    const d = devices.find(x => (x?._id?.toString?.() ?? x?._id) === norm.id);
-
-    // ojo: null también es "object" en JS -> comprueba explícitamente
+    const d = devs.find(x => (x?._id?.toString?.() ?? x?._id) === norm.id);
     const isObj = deviceRef !== null && typeof deviceRef === 'object';
-
     const dispName = norm.name || d?.appliance || d?.plugmodel || norm.id || 'Dispositivo';
     const room     = d?.room || (isObj ? deviceRef.room : '') || '';
     const hhIdRaw  = d?.household_id || (isObj ? deviceRef.household_id : '') || '';
     const hhId     = hhIdRaw?.toString?.() ?? hhIdRaw;
-    const home     = households.find(h => (h?._id?.toString?.() ?? h?._id) === hhId)?.name || '';
-
+    const home     = hhs.find(h => (h?._id?.toString?.() ?? h?._id) === hhId)?.name || '';
     return { name: dispName, room, home };
   }
 
@@ -529,7 +561,8 @@ export default function Rutinas() {
     });
   }, [routines, patients, devices, households]);
 
-  const HALF_HOURS = slots48; 
+  /* ---------- edición ---------- */
+  const HALF_HOURS = slots48
 
   function openEditModal(r) {
     setEditId(r._id);
@@ -541,10 +574,9 @@ export default function Rutinas() {
       expected_end:   r.expected_end   || '15:00',
       days: Array.isArray(r.days) ? [...r.days] : []
     });
-    setEditStep(1);
+    setEditStep(1)
     setEditOpen(true);
   }
-
   function toggleEditDay(backendDayName) {
     setEditForm(f => {
       const s = new Set(f.days);
@@ -553,18 +585,29 @@ export default function Rutinas() {
       return { ...f, days: Array.from(s) };
     });
   }
-
-  // dispositivos filtrados por casa del paciente (si existe)
   const editPatientHouse = useMemo(() => {
     const p = patients.find(u => u._id === editForm.user_id);
     if (!p?.household_id) return null;
     return households.find(h => h._id === p.household_id) || null;
   }, [editForm.user_id, patients, households]);
-
   const devicesForEdit = useMemo(() => {
-    if (!editPatientHouse) return devices; // fallback: todos
+    if (!editPatientHouse) return devices;
     return devices.filter(d => d.household_id === editPatientHouse._id);
   }, [devices, editPatientHouse]);
+
+  const minutesBetween = (a,b) => (idxOf(b) - idxOf(a) + (idxOf(b) <= idxOf(a) ? 48 : 0)) * 30
+  const endOptionsFor = (start) => {
+    const startIdx = idxOf(start)
+    if (startIdx < 0) return []
+    const opts = []
+    for (let i = 1; i <= 48; i++) { // +30min hasta 24h
+      const idx = (startIdx + i) % 48
+      const label = `${slots48[idx]}${i<=48 && idx<=startIdx ? ' (+1 día)' : ''}`
+      opts.push({ value: slots48[idx], label })
+      if (i === 48) break
+    }
+    return opts
+  }
 
   async function saveEdit() {
     try {
@@ -587,7 +630,6 @@ export default function Rutinas() {
         const err = await res.json().catch(()=>({}));
         throw new Error(err.error || 'No se pudo editar la rutina');
       }
-      // refresca
       const r = await fetch(`${API}/routines`, { credentials:'include' });
       setRoutines(r.ok ? await r.json() : []);
       setEditOpen(false);
@@ -597,11 +639,7 @@ export default function Rutinas() {
     }
   }
 
-  function openDeleteModal(id) {
-    setDeleteId(id);
-    setDeleteOpen(true);
-  }
-
+  function openDeleteModal(id) { setDeleteId(id); setDeleteOpen(true); }
   async function confirmDelete() {
     try {
       if (!deleteId) return;
@@ -613,7 +651,6 @@ export default function Rutinas() {
         const err = await res.json().catch(()=>({}));
         throw new Error(err.error || 'No se pudo borrar la rutina');
       }
-      // refresca
       const r = await fetch(`${API}/routines`, { credentials:'include' });
       setRoutines(r.ok ? await r.json() : []);
       setDeleteOpen(false);
@@ -623,23 +660,22 @@ export default function Rutinas() {
     }
   }
 
-  // devuelve el índice en la rejilla de medias horas
-  const idxOf = (hhmm) => slots48.indexOf(hhmm);
-
-  // opciones para la hora de fin: desde start+1 hasta start+48 (mismo tiempo del día siguiente)
-  function endOptionsFor(startHHMM) {
-    const s = idxOf(startHHMM);
-    if (s < 0) return [];
-    const opts = [];
-    for (let k = s + 1; k <= s + 48; k++) {
-      const idx = k % 48;           // 0..47
-      const next = k >= 48;         // cruza a día siguiente
-      const label = next ? `${slots48[idx]} (+1)` : slots48[idx];
-      // value: mantenemos solo HH:MM (backend actual)
-      opts.push({ value: slots48[idx], label });
-    }
-    return opts;
+  /* ---------- gestor de presets (modal aparte) ---------- */
+  const togglePresetDay = (d) =>
+    setPresetForm(f => {
+      const s = new Set(f.days); s.has(d) ? s.delete(d) : s.add(d);
+      return { ...f, days: Array.from(s) }
+    })
+  const addPreset = () => {
+    const { name, start, end, days } = presetForm
+    if (!name.trim() || !days.length || idxOf(start) < 0 || idxOf(end) < 0)
+      return alert('Completa nombre, días e inicio/fin')
+    if (minutesBetween(start, end) < 30) return alert('El fin debe ser al menos +30 min')
+    const id = crypto.randomUUID ? crypto.randomUUID() : String(Date.now())
+    setPresets(p => [...p, { id, name: name.trim(), start, end, days }])
+    setPresetForm({ name:'', start:'18:00', end:'19:00', days:[] })
   }
+  const deletePreset = (id) => setPresets(p => p.filter(x => x.id !== id))
 
   return (
     <AppContainer>
@@ -647,46 +683,50 @@ export default function Rutinas() {
       <Body>
         <Sidebar open={menuOpen} />
         <Main>
-            <Toolbar>
-              <h1>Rutinas</h1>
+          <Toolbar>
+            <h1>Rutinas</h1>
+            <div>
+              <OutlineBtn variant="primary" onClick={()=>{ setPresetTab('list'); setPresetOpen(true); }}>
+                Ver presets
+              </OutlineBtn>
               <NewButton onClick={openCreator}>+ Añadir rutina</NewButton>
-            </Toolbar>
+            </div>
+          </Toolbar>
+          {/* ----- LISTADO ----- */}
+          <List>
+            {sortedRoutines.map(r => {
+              const patient = getPatientName(r.user_id)
+              const meta = getDeviceMeta(r.device_id)
+              const daysPretty = (r.days || []).map(d => ES_DAYS[d] || d)
+              return (
+                <RoutineCard key={r._id}>
+                  <CardTop>
+                    <CardTitle>{r.name || `Rutina ${String(r._id).slice(-6)}`}</CardTitle>
+                    <RowInline>
+                      <ActionBtn variant="primary" onClick={() => openEditModal(r)}>✎ Editar</ActionBtn>
+                      <DangerBtn onClick={() => openDeleteModal(r._id)}>🗑 Borrar</DangerBtn>
+                      <TimePill>
+                        {(r.expected_start||'').replace(':','\:')}–{(r.expected_end||'').replace(':','\:')}
+                      </TimePill>
+                    </RowInline>
+                  </CardTop>
 
-            {/* ----- LISTADO BONITO ----- */}
-            <List>
-              {sortedRoutines.map(r => {
-                const patient = getPatientName(r.user_id)
-                const meta = getDeviceMeta(r.device_id)
-                const daysPretty = (r.days || []).map(d => ES_DAYS[d] || d)
-                return (
-                  <RoutineCard key={r._id}>
-                    <CardTop>
-                      <CardTitle>{r.name || `Rutina ${String(r._id).slice(-6)}`}</CardTitle>
-                      <RowInline>
-                        <ActionBtn variant="primary" onClick={() => openEditModal(r)}>✎ Editar</ActionBtn>
-                        <DangerBtn onClick={() => openDeleteModal(r._id)}>🗑 Borrar</DangerBtn>
-                        <TimePill>
-                          {(r.expected_start||'').replace(':','\:')}–{(r.expected_end||'').replace(':','\:')}
-                        </TimePill>
-                      </RowInline>
-                    </CardTop>
+                  <Meta>
+                    Paciente: <strong>{patient}</strong>{' · '}
+                    Dispositivo: <strong>{meta.name}</strong>
+                    {meta.room ? ` — ${meta.room}` : ''}{meta.home ? ` / ${meta.home}` : ''}
+                  </Meta>
 
-                    <Meta>
-                      Paciente: <strong>{patient}</strong>{' · '}
-                      Dispositivo: <strong>{meta.name}</strong>
-                      {meta.room ? ` — ${meta.room}` : ''}{meta.home ? ` / ${meta.home}` : ''}
-                    </Meta>
-
-                    {!!daysPretty.length && (
-                      <TagRow>
-                        {daysPretty.map(d => (<Tag key={d}>{d}</Tag>))}
-                      </TagRow>
-                    )}
-                  </RoutineCard>
-                )
-              })}
-              {!sortedRoutines.length && <Muted>No hay rutinas todavía.</Muted>}
-            </List>
+                  {!!daysPretty.length && (
+                    <TagRow>
+                      {daysPretty.map(d => (<Tag key={d}>{d}</Tag>))}
+                    </TagRow>
+                  )}
+                </RoutineCard>
+              )
+            })}
+            {!sortedRoutines.length && <Muted>No hay rutinas todavía.</Muted>}
+          </List>
         </Main>
       </Body>
       <Footer />
@@ -807,10 +847,7 @@ export default function Rutinas() {
             <ScheduleToolbar>
               <div>
                 <strong>Editar</strong>
-                <select
-                  value={editTarget}
-                  onChange={e => setEditTarget(e.target.value)}
-                >
+                <select value={editTarget} onChange={e => setEditTarget(e.target.value)}>
                   <option value="ALL">Todos los seleccionados</option>
                   {[...selectedDevices].map(id => {
                     const d = devices.find(x => x._id === id)
@@ -818,25 +855,41 @@ export default function Rutinas() {
                   })}
                 </select>
                 <Chip onClick={clearAll}>Limpiar</Chip>
-                <Chip onClick={() => fillRangeAllDays('14:00','15:00')}>Rango rápido 14:00–15:00</Chip>
+                <Chip onClick={() => fillRangeAllDays('14:00','15:00')}>Rápido 14:00–15:00</Chip>
               </div>
-              <Small>Objetivo actual: {currentEditLabel}</Small>
+              <Small>actual: {editTarget === 'ALL' ? `Todos (${selectedDevices.size})` : '1'}</Small>
             </ScheduleToolbar>
+
+            {/* Presets: aplicar rápido */}
+            <Card style={{ marginBottom: '.75rem' }}>
+              <strong>Usar preset</strong>
+              <div style={{ display:'flex', gap:'.5rem', alignItems:'center', marginTop:'.5rem', flexWrap:'wrap' }}>
+                <select style={{ minWidth: 260 }} value={applyPresetId} onChange={e=>setApplyPresetId(e.target.value)}>
+                  <option value="">— Selecciona un preset —</option>
+                  {presets.map(p => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} ({p.start}–{p.end}, {p.days.map(d=>ES_DAYS[d]).join(', ')})
+                    </option>
+                  ))}
+                </select>
+                <Btn variant="primary" onClick={() => applyPresetToGrid(presets.find(p=>p.id===applyPresetId))} disabled={!applyPresetId}>Aplicar al grid</Btn>
+                <Small>¿No ves el tuyo? Usa “+ Añadir preset” arriba.</Small>
+              </div>
+            </Card>
 
             <Table>
               <TH>
                 <THCell> </THCell>
-                {slots48.map((t, i) => (
-                  <THCell key={i}>{t}</THCell>
-                ))}
+                {slots48.map((t, i) => (<THCell key={i}>{t}</THCell>))}
               </TH>
               {DAY_SHORT.map((label, dIdx) => (
                 <TR key={dIdx}>
                   <DayCell>{label}</DayCell>
                   {slots48.map((_, sIdx) => {
                     let on = false
-                    if (targetIds.length > 0) {
-                      on = targetIds.every(id => (schedule[id]?.[dIdx] || new Set()).has(sIdx))
+                    const targets = editTarget === 'ALL' ? [...selectedDevices] : [editTarget]
+                    if (targets.length > 0) {
+                      on = targets.every(id => (schedule[id]?.[dIdx] || new Set()).has(sIdx))
                     }
                     return (
                       <TD
@@ -900,9 +953,9 @@ export default function Rutinas() {
         )}
       </Modal>
 
+      {/* ---------- MODAL EDITAR (4 pasos) ---------- */}
       <Modal isOpen={editOpen} onClose={() => setEditOpen(false)}>
         <h2>Editar rutina</h2>
-
         <Stepper>
           <Step active={editStep===1}>1 · Selección</Step>
           <Step active={editStep===2}>2 · Dispositivo</Step>
@@ -910,7 +963,6 @@ export default function Rutinas() {
           <Step active={editStep===4}>4 · Resumen</Step>
         </Stepper>
 
-        {/* Paso 1: nombre + paciente */}
         {editStep === 1 && (
           <>
             <FormGroup>
@@ -941,7 +993,6 @@ export default function Rutinas() {
           </>
         )}
 
-        {/* Paso 2: dispositivo */}
         {editStep === 2 && (
           <>
             <FormGroup>
@@ -966,9 +1017,39 @@ export default function Rutinas() {
           </>
         )}
 
-        {/* Paso 3: horario (con restricción dinámica) + días */}
         {editStep === 3 && (
           <>
+            {/* Usar preset para rellenar horario+días */}
+            <Card style={{ marginBottom: '.75rem' }}>
+              <strong>Usar preset</strong>
+              <div style={{ display:'flex', gap:'.5rem', alignItems:'center', marginTop:'.5rem', flexWrap:'wrap' }}>
+                <select
+                  style={{ minWidth: 260 }}
+                  onChange={(e)=> {
+                    const p = presets.find(x => x.id === e.target.value)
+                    if (!p) return
+                    // adapta fin según restricción
+                    const ends = endOptionsFor(p.start)
+                    const valid = ends.some(o => o.value === p.end)
+                    setEditForm(f => ({
+                      ...f,
+                      expected_start: p.start,
+                      expected_end: valid ? p.end : (ends[0]?.value || f.expected_end),
+                      days: [...p.days]
+                    }))
+                  }}
+                >
+                  <option value="">— Selecciona un preset —</option>
+                  {presets.map(p => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} ({p.start}–{p.end}, {p.days.map(d=>ES_DAYS[d]).join(', ')})
+                    </option>
+                  ))}
+                </select>
+                <Small>Gestiona presets con “+ Añadir preset”.</Small>
+              </div>
+            </Card>
+
             <FormGroup>
               <label>Horario</label>
               <RowInline>
@@ -976,7 +1057,6 @@ export default function Rutinas() {
                   value={editForm.expected_start}
                   onChange={e => {
                     const start = e.target.value;
-                    // si el fin actual ya no es válido con el nuevo inicio, muévelo al mínimo permitido
                     const ends = endOptionsFor(start);
                     const valid = ends.some(o => o.value === editForm.expected_end);
                     setEditForm(f => ({ ...f, expected_start: start, expected_end: valid ? f.expected_end : (ends[0]?.value || f.expected_end) }));
@@ -994,27 +1074,23 @@ export default function Rutinas() {
                   ))}
                 </select>
               </RowInline>
-              <Small>El fin debe ser al menos +30 min y como máximo hasta el mismo horario del día siguiente.</Small>
+              <Small>El fin debe ser ≥ +30 min y ≤ el mismo horario del día siguiente.</Small>
             </FormGroup>
 
             <FormGroup>
               <label>Días</label>
-              <DaysWrap>
+              <TagRow>
                 {DAY_NAMES.map((d, idx) => (
-                  <DayChip
+                  <Chip
                     key={d}
                     active={editForm.days.includes(d)}
-                    onClick={() => {
-                      const s = new Set(editForm.days);
-                      s.has(d) ? s.delete(d) : s.add(d);
-                      setEditForm(f => ({ ...f, days: Array.from(s) }));
-                    }}
+                    onClick={() => toggleEditDay(d)}
                     title={ES_DAYS[d]}
                   >
                     {DAY_SHORT[idx]}
-                  </DayChip>
+                  </Chip>
                 ))}
-              </DaysWrap>
+              </TagRow>
             </FormGroup>
 
             <div style={{display:'flex', justifyContent:'space-between', gap:'.5rem'}}>
@@ -1024,7 +1100,6 @@ export default function Rutinas() {
           </>
         )}
 
-        {/* Paso 4: resumen + guardar */}
         {editStep === 4 && (
           <>
             <div style={{ marginBottom: '.75rem' }}>
@@ -1058,6 +1133,115 @@ export default function Rutinas() {
         )}
       </Modal>
 
+      {/* ---------- MODAL PRESET ---------- */}
+      <Modal isOpen={presetOpen} onClose={() => setPresetOpen(false)}>
+        <h2>Presets de horario</h2>
+
+        <PresetHeaderActions>
+          <Chip active={presetTab==='create'} onClick={()=>setPresetTab('create')}>Nuevo preset</Chip>
+          <Chip active={presetTab==='list'} onClick={()=>setPresetTab('list')}>Mis presets</Chip>
+        </PresetHeaderActions>
+
+        <ModalScroll>
+          {presetTab === 'create' && (
+            <>
+              <Card style={{ marginBottom: '.75rem' }}>
+                <strong>Nuevo preset</strong>
+
+                <FormGroup style={{ marginTop: '.5rem' }}>
+                  <label>Nombre</label>
+                  <input
+                    value={presetForm.name}
+                    onChange={e => setPresetForm(f => ({ ...f, name: e.target.value }))}
+                    placeholder="p.ej. Deporte"
+                  />
+                </FormGroup>
+
+                <FormGroup>
+                  <label>Inicio / Fin</label>
+                  <div style={{display:'flex',gap:'.5rem',alignItems:'center'}}>
+                    <select
+                      value={presetForm.start}
+                      onChange={e => {
+                        const start = e.target.value
+                        const ends = endOptionsFor(start)
+                        const valid = ends.some(o => o.value === presetForm.end)
+                        setPresetForm(f => ({ ...f, start, end: valid ? f.end : (ends[0]?.value || f.end) }))
+                      }}
+                    >
+                      {slots48.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                    <span>—</span>
+                    <select
+                      value={presetForm.end}
+                      onChange={e => setPresetForm(f => ({ ...f, end: e.target.value }))}
+                    >
+                      {endOptionsFor(presetForm.start).map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <Small>El fin debe ser ≥ +30 min y ≤ el mismo horario del día siguiente.</Small>
+                </FormGroup>
+
+                <FormGroup>
+                  <label>Días</label>
+                  <div style={{display:'flex',flexWrap:'wrap',gap:'.35rem',marginTop:'.25rem'}}>
+                    {DAY_NAMES.map((d, idx) => (
+                      <DayBtn
+                        key={d}
+                        $active={presetForm.days.includes(d)}
+                        onClick={() =>
+                          setPresetForm(f => {
+                            const s = new Set(f.days);
+                            s.has(d) ? s.delete(d) : s.add(d);
+                            return { ...f, days: Array.from(s) };
+                          })
+                        }
+                      >
+                        {DAY_SHORT[idx]}
+                      </DayBtn>
+                    ))}
+                  </div>
+                </FormGroup>
+                <div style={{ display:'flex', justifyContent:'flex-end' }}>
+                  <Btn variant="primary" onClick={addPreset}>Guardar preset</Btn>
+                </div>
+              </Card>
+            </>
+          )}
+
+          {presetTab === 'list' && (
+            <Card>
+              <strong>Mis presets</strong>
+              <div style={{ marginTop: '.5rem' }}>
+                {presets.length === 0 && <Muted>Aún no has creado presets.</Muted>}
+                {presets.map(p => (
+                  <div
+                    key={p.id}
+                    style={{
+                      display:'flex',
+                      alignItems:'center',
+                      justifyContent:'space-between',
+                      padding:'.35rem .5rem',
+                      border:'1px solid var(--border)',
+                      borderRadius:6,
+                      marginBottom:'.35rem'
+                    }}
+                  >
+                    <div>
+                      <strong>{p.name}</strong>{' '}
+                      <Small>({p.start}–{p.end}, {p.days.map(d=>ES_DAYS[d]).join(', ')})</Small>
+                    </div>
+                    <DangerBtn onClick={()=>deletePreset(p.id)}>Borrar</DangerBtn>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+        </ModalScroll>
+      </Modal>
+      {/* ---------- MODAL BORRAR ---------- */}
       <Modal isOpen={deleteOpen} onClose={() => setDeleteOpen(false)}>
         <h2>Eliminar rutina</h2>
         <p>¿Seguro que quieres borrar esta rutina? Esta acción no se puede deshacer.</p>
