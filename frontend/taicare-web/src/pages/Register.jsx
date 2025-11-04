@@ -121,7 +121,7 @@ export default function Register() {
     }
 
     try {
-      await register({ name, email, password, role: 'paciente' });
+      await register({ name, email, password, role: 'cuidador' });
       nav('/');
     } catch (err) {
       setError(err.message);
