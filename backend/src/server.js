@@ -15,6 +15,9 @@ import Alert          from './models/Alert.js'
 import Routine        from './models/Routine.js'
 import RoutinePreset  from './models/RoutinePreset.js';
 
+import { getRoutinesStatusForDate } from './services/routineChecker.js';
+
+
 dotenv.config()
 const app = express()
 const { isValidObjectId, Types: { ObjectId } } = mongoose;
@@ -470,6 +473,29 @@ app.delete('/routines/:id', async (req, res) => {
     res.sendStatus(204);
   } catch (e) {
     res.status(400).json({ error: e.message });
+  }
+});
+
+// ————— RUTINAS: ESTADO POR PACIENTE Y DÍA —————
+app.get('/routines/status', async (req, res) => {
+  try {
+    const { user_id, date } = req.query;
+    if (!user_id || !date) {
+      return res.status(400).json({ error: 'Faltan user_id o date' });
+    }
+
+    // Opcional: comprobar que el cuidador tiene permiso sobre ese paciente
+    // por ejemplo: el paciente tiene caregiver_id = req.user.sub
+    if (req.user?.role === 'cuidador') {
+      const patient = await User.findOne({ _id: user_id, caregiver_id: req.user.sub });
+      if (!patient) return res.status(403).json({ error: 'Paciente no autorizado' });
+    }
+
+    const data = await getRoutinesStatusForDate(user_id, date);
+    res.json(data);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'No se pudo obtener el estado de las rutinas' });
   }
 });
 
