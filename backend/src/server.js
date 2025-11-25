@@ -17,6 +17,57 @@ import RoutinePreset  from './models/RoutinePreset.js';
 
 import { getRoutinesStatusForDate } from './services/routineChecker.js';
 
+// ————— Helpers —————
+
+// Devuelve los _id de los pacientes de un cuidador
+async function getCaregiverPatientIds(caregiverId) {
+  const ids = await User.find({ caregiver_id: caregiverId, role: 'paciente' }, { _id: 1 }).lean();
+  return ids.map(x => x._id);
+}
+
+// Valida el owner (paciente) al crear/actualizar
+async function validateAndResolveOwner(req, ownerFromBody) {
+  // Admin: puede elegir cualquier paciente válido
+  if (req.user?.role === 'admin') {
+    if (!ownerFromBody || !isValidObjectId(ownerFromBody)) {
+      throw new Error('owner inválido');
+    }
+    const u = await User.findOne({ _id: ownerFromBody, role: 'paciente' });
+    if (!u) throw new Error('owner no es un paciente válido');
+    return u._id;
+  }
+
+  // Cuidador: owner debe ser un paciente suyo
+  if (req.user?.role === 'cuidador') {
+    if (!ownerFromBody || !isValidObjectId(ownerFromBody)) {
+      throw new Error('Debes indicar el paciente (owner) al crear el hogar');
+    }
+    const u = await User.findOne({ _id: ownerFromBody, role: 'paciente', caregiver_id: req.user.sub });
+    if (!u) throw new Error('El owner no es un paciente tuyo');
+    return u._id;
+  }
+
+  throw new Error('Rol no permitido');
+}
+
+// Comprueba si el usuario actual puede acceder a un household
+async function canAccessHousehold(req, householdDocOrId) {
+  let h = householdDocOrId;
+  if (!h || !h.owner) {
+    h = await Household.findById(householdDocOrId).lean();
+    if (!h) return false;
+  }
+  const ownerId = h.owner.toString();
+
+  if (req.user?.role === 'admin') return true;
+  if (req.user?.role === 'cuidador') {
+    const ids = await getCaregiverPatientIds(req.user.sub);
+    return ids.map(String).includes(ownerId);
+  }
+  return false;
+}
+
+
 
 dotenv.config()
 const app = express()
@@ -216,57 +267,83 @@ app.delete('/users/:id', async (req, res) => {
 
 // ————— RUTAS HOUSEHOLDS —————
 
-// 1) Crear casa bajo este usuario
+// 1) Crear casa bajo el paciente (owner) correcto
 app.post('/households', async (req, res) => {
   try {
     const name = (req.body?.name || '').trim();
     if (!name) return res.status(400).json({ error: 'El nombre del hogar es obligatorio' });
+
+    const owner = await validateAndResolveOwner(req, req.body?.owner);
+
     const h = await Household.create({
       name,
       address: (req.body?.address || '').trim(),
       rooms: [],
       users: [],
-      owner: req.user.sub
+      owner
     });
-    res.status(201).json(h)
+    res.status(201).json(h);
   } catch (e) {
     if (e?.code === 11000) return res.status(400).json({ error: 'Ya existe un hogar con ese nombre' });
+    return res.status(400).json({ error: e.message || 'No se pudo crear el hogar' });
   }
-})
+});
 
-// 2) Listar casas de este usuario
+// 2) Listar casas según rol
 app.get('/households', async (req, res) => {
-  const list = await Household
-    .find({ owner: req.user.sub })
-    .populate('users', 'name email role')
-  res.json(list)
-})
+  try {
+    let filter = {};
+    if (req.user?.role === 'admin') {
+      // sin filtro
+    } else if (req.user?.role === 'paciente') {
+      filter.owner = req.user.sub;
+    } else if (req.user?.role === 'cuidador') {
+      const ids = await getCaregiverPatientIds(req.user.sub);
+      filter.owner = { $in: ids };
+    } else {
+      return res.sendStatus(403);
+    }
 
-// 3) Obtener una casa
+    const list = await Household
+      .find(filter)
+      .populate('users', 'name email role')
+      .lean();
+
+    res.json(list);
+  } catch (e) {
+    res.status(500).json({ error: 'No se pudieron listar hogares' });
+  }
+});
+
+// 3) Obtener una casa (permiso por rol)
 app.get('/households/:id', async (req, res) => {
-  const h = await Household
-    .findOne({ _id: req.params.id, owner: req.user.sub })
-    .populate('users', 'name email role')
-  if (!h) return res.sendStatus(404)
-  res.json(h)
-})
+  try {
+    const h = await Household.findById(req.params.id).populate('users', 'name email role');
+    if (!h) return res.sendStatus(404);
 
-// 4) Actualizar casa (incluye aquí también renombre de rooms)
+    if (!(await canAccessHousehold(req, h))) return res.sendStatus(403);
+    res.json(h);
+  } catch {
+    res.sendStatus(404);
+  }
+});
+
+// 4) Actualizar casa (incluye renombrado de rooms)
 app.put('/households/:id', async (req, res) => {
   try {
     const prev = await Household.findById(req.params.id);
-    if (!prev || prev.owner.toString() !== req.user.sub) {
-      return res.sendStatus(404);
-    }
+    if (!prev) return res.sendStatus(404);
+    if (!(await canAccessHousehold(req, prev))) return res.sendStatus(403);
 
-    const h = await Household.findOneAndUpdate(
-      { _id: req.params.id, owner: req.user.sub },
+    const h = await Household.findByIdAndUpdate(
+      req.params.id,
       req.body,
       { new: true, runValidators: true }
     ).populate('users', 'name email role');
 
     if (!h) return res.sendStatus(404);
 
+    // Renombrado de rooms
     if (Array.isArray(req.body.rooms)) {
       const oldRooms = Array.isArray(prev.rooms) ? prev.rooms : [];
       const newRooms = req.body.rooms;
@@ -292,28 +369,37 @@ app.put('/households/:id', async (req, res) => {
 
 // 5) Borrar casa
 app.delete('/households/:id', async (req, res) => {
-  const h = await Household.findOneAndDelete({
-    _id: req.params.id,
-    owner: req.user.sub
-  })
-  if (!h) return res.sendStatus(404)
-  res.sendStatus(204)
-})
+  try {
+    const h = await Household.findById(req.params.id);
+    if (!h) return res.sendStatus(404);
+    if (!(await canAccessHousehold(req, h))) return res.sendStatus(403);
+
+    await Household.deleteOne({ _id: h._id });
+    res.sendStatus(204);
+  } catch {
+    res.sendStatus(400);
+  }
+});
 
 // 6) Añadir una habitación a la casa
 app.put('/households/:id/rooms', async (req, res) => {
   try {
+    const hPrev = await Household.findById(req.params.id);
+    if (!hPrev) return res.sendStatus(404);
+    if (!(await canAccessHousehold(req, hPrev))) return res.sendStatus(403);
+
     const h = await Household.findOneAndUpdate(
-      { _id: req.params.id, owner: req.user.sub },
+      { _id: req.params.id },
       { $push: { rooms: req.body.room } },
       { new: true }
     ).populate('users', 'name email role');
-    if (!h) return res.sendStatus(404)
-    res.json(h)
+
+    if (!h) return res.sendStatus(404);
+    res.json(h);
   } catch (e) {
-    res.status(400).json({ error: e.message })
+    res.status(400).json({ error: e.message });
   }
-})
+});
 
 // ————— RUTAS DEVICES —————
 app.post('/devices', async (req, res) => {
@@ -397,8 +483,34 @@ app.post('/alerts', async (req, res) => {
   }
 })
 app.get('/alerts', async (req, res) => {
-  res.json(await Alert.find())
-})
+  try {
+    const { user_id } = req.query;
+
+    let filter = {};
+
+    if (user_id) {
+      // 1) Hogares del paciente
+      const hh = await Household.find({ owner: user_id }, { _id: 1 }).lean();
+      const hhIds = hh.map(h => h._id);
+
+      // 2) Dispositivos en esos hogares
+      const devs = await Device.find({ household_id: { $in: hhIds } }, { _id: 1 }).lean();
+      const devIds = devs.map(d => d._id);
+
+      // 3) Alerts de esos dispositivos
+      filter.device_id = { $in: devIds };
+    }
+
+    const data = await Alert
+      .find(filter)
+      .populate({ path: 'device_id', select: 'appliance plugmodel room household_id' }); // ← solo device_id
+
+    res.json(data);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'No se pudieron listar alertas' });
+  }
+});
 app.get('/alerts/:id', async (req, res) => {
   const a = await Alert.findById(req.params.id)
   if (!a) return res.sendStatus(404)
@@ -424,14 +536,32 @@ app.delete('/alerts/:id', async (req, res) => {
 // ————— RUTAS ROUTINES —————
 // utils para no repetir
 const routinePopulate = [
-  { path: 'user_id', select: 'name' },
+  { path: 'user_id', select: 'name email role' },
+  { path: 'caregiver_id', select: 'name email role' },
+  { path: 'household_id', select: 'name' },
   { path: 'device_id', select: 'appliance plugmodel room household_id' }
 ];
+
 
 // Crear
 app.post('/routines', async (req, res) => {
   try {
-    const r = await Routine.create(req.body);
+    const { user_id, device_id, household_id } = req.body;
+
+    const caregiver_id = req.user.sub;
+
+    let hhId = household_id;
+    if (!hhId && device_id) {
+      const dev = await Device.findById(device_id).lean();
+      hhId = dev?.household_id;
+    }
+
+    const r = await Routine.create({
+      ...req.body,
+      caregiver_id,
+      household_id: hhId
+    });
+
     await r.populate(routinePopulate);
     res.status(201).json(r);
   } catch (e) {

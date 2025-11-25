@@ -26,7 +26,6 @@ const Main = styled.main`
   padding: 2rem;
   overflow-y: auto;
 `
-
 const HouseItem = styled.div`
   background: ${({ theme }) => theme.colors.cardBg};
   border-radius: 6px;
@@ -47,7 +46,6 @@ const Actions = styled.div`
   gap: 0.5rem;
   align-items: center;
 `
-
 const Btn = styled.button`
   font-size: 0.85rem;
   padding: 0.25rem 0.6rem;
@@ -68,7 +66,6 @@ const Btn = styled.button`
         : theme.colors.hoverBg};
   }
 `
-
 const ToggleButton = styled.button`
   background: transparent;
   border: none;
@@ -80,7 +77,6 @@ const ToggleButton = styled.button`
     color: ${({ theme }) => theme.colors.primary};
   }
 `
-
 const RoomsList = styled.ul`
   margin-top: 0.75rem;
   padding-left: 1.5rem;
@@ -92,7 +88,6 @@ const RoomItem = styled.li`
   align-items: center;
   margin-bottom: 0.5rem;
 `
-
 const NewButton = styled(Btn).attrs({ variant: 'primary' })`
   margin-bottom: 1rem;
 `
@@ -104,24 +99,37 @@ export default function Hogares() {
   const [households, setHouseholds] = useState([])
   const [openIds, setOpenIds]       = useState({})
   const [mode, setMode]             = useState('house')
-  const [form, setForm]             = useState({
+  const [form, setForm] = useState({
     name: '',
     address: '',
     targetHouseId: '',
-    roomName: ''
+    roomName: '',
+    owner: ''
   })
   const [editRoomOld, setEditRoomOld] = useState('')
   const [showModal, setShowModal]     = useState(false)
+  const [patients, setPatients] = useState([])
 
+  // ------- CARGA INICIAL -------
   useEffect(() => {
     fetchHouseholds()
+    fetch(`${API}/users?role=paciente`, { credentials: 'include' })
+      .then(r => (r.ok ? r.json() : []))
+      .then(setPatients)
+      .catch(() => {})
   }, [])
 
+  // ------- FETCH HOGARES -------
   async function fetchHouseholds() {
-    const res = await fetch(`${API}/households`, { credentials: 'include' })
-    if (!res.ok) return
-    const data = await res.json()
-    setHouseholds(data)
+    try {
+      const res = await fetch(`${API}/households`, { credentials: 'include' })
+      if (!res.ok) return
+      const data = await res.json()
+      setHouseholds(Array.isArray(data) ? data : [])
+    } catch (e) {
+      // opcional: mostrar toast/alert
+      console.error('Error cargando hogares:', e)
+    }
   }
 
   function toggleOpen(id) {
@@ -130,24 +138,34 @@ export default function Hogares() {
 
   function openNewHouse() {
     setMode('house')
-    setForm({ name: '', address: '', targetHouseId: '', roomName: '' })
-    setShowModal(true)
-  }
-  function openEditHouse(h) {
-    setMode('editHouse')
     setForm({
-      name: h.name,
-      address: h.address,
-      targetHouseId: h._id,
-      roomName: ''
+      name: '',
+      address: '',
+      targetHouseId: '',
+      roomName: '',
+      owner: patients[0]?._id || '' // autoselección opcional
     })
     setShowModal(true)
   }
+
+  function openEditHouse(h) {
+    setMode('editHouse')
+    setForm({
+      name: h.name || '',
+      address: h.address || '',
+      targetHouseId: h._id,
+      roomName: '',
+      owner: '' // no se edita el owner aquí
+    })
+    setShowModal(true)
+  }
+
   function openNewRoom(h) {
     setMode('room')
     setForm(f => ({ ...f, targetHouseId: h._id, roomName: '' }))
     setShowModal(true)
   }
+
   function openEditRoom(h, room) {
     setMode('editRoom')
     setEditRoomOld(room)
@@ -155,7 +173,8 @@ export default function Hogares() {
       name: '',
       address: '',
       targetHouseId: h._id,
-      roomName: room
+      roomName: room,
+      owner: ''
     })
     setShowModal(true)
   }
@@ -172,7 +191,8 @@ export default function Hogares() {
   async function deleteRoom(hId, room) {
     if (!confirm('¿Borrar habitación?')) return
     const h = households.find(x => x._id === hId)
-    const newRooms = h.rooms.filter(r => r !== room)
+    const currentRooms = Array.isArray(h?.rooms) ? h.rooms : []
+    const newRooms = currentRooms.filter(r => r !== room)
     await fetch(`${API}/households/${hId}`, {
       method: 'PUT',
       credentials: 'include',
@@ -193,11 +213,11 @@ export default function Hogares() {
           body: JSON.stringify({
             name: form.name,
             address: form.address,
-            rooms: []
+            rooms: [],
+            owner: form.owner
           })
         })
-      }
-      if (mode === 'editHouse') {
+      } else if (mode === 'editHouse') {
         res = await fetch(`${API}/households/${form.targetHouseId}`, {
           method: 'PUT',
           credentials: 'include',
@@ -207,23 +227,17 @@ export default function Hogares() {
             address: form.address
           })
         })
-      }
-      if (mode === 'room') {
-        res = await fetch(
-          `${API}/households/${form.targetHouseId}/rooms`,
-          {
-            method: 'PUT',
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ room: form.roomName })
-          }
-        )
-      }
-      if (mode === 'editRoom') {
+      } else if (mode === 'room') {
+        res = await fetch(`${API}/households/${form.targetHouseId}/rooms`, {
+          method: 'PUT',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ room: form.roomName })
+        })
+      } else if (mode === 'editRoom') {
         const h = households.find(x => x._id === form.targetHouseId)
-        const updated = h.rooms.map(r =>
-          r === editRoomOld ? form.roomName : r
-        )
+        const currentRooms = Array.isArray(h?.rooms) ? h.rooms : []
+        const updated = currentRooms.map(r => (r === editRoomOld ? form.roomName : r))
         res = await fetch(`${API}/households/${form.targetHouseId}`, {
           method: 'PUT',
           credentials: 'include',
@@ -232,11 +246,11 @@ export default function Hogares() {
         })
       }
 
-      if (res.ok) {
+      if (res?.ok) {
         setShowModal(false)
         fetchHouseholds()
       } else {
-        const err = await res.json()
+        const err = await res.json().catch(() => ({}))
         alert(err.error || 'Error al guardar')
       }
     } catch (e) {
@@ -278,7 +292,7 @@ export default function Hogares() {
 
               {openIds[h._id] && (
                 <RoomsList>
-                  {h.rooms.map(room => (
+                  {(Array.isArray(h.rooms) ? h.rooms : []).map(room => (
                     <RoomItem key={room}>
                       {room}
                       <Actions>
@@ -297,7 +311,7 @@ export default function Hogares() {
       <Footer />
 
       <Modal isOpen={showModal} onClose={() => setShowModal(false)}>
-        <h2>
+        <h2 style={{ marginBottom: '0.75rem' }}>
           {mode === 'house'
             ? 'Crear casa'
             : mode === 'editHouse'
@@ -309,44 +323,82 @@ export default function Hogares() {
 
         {(mode === 'house' || mode === 'editHouse') && (
           <>
-            <label>
-              Nombre
+            {mode === 'house' && (
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', fontWeight: 600, marginBottom: '.35rem' }}>
+                  Paciente (propietario)
+                </label>
+                <select
+                  value={form.owner || ''}
+                  onChange={e => setForm(f => ({ ...f, owner: e.target.value }))}
+                  style={{ width: '100%', padding: '.5rem' }}
+                >
+                  <option value="">— Selecciona un paciente —</option>
+                  {(patients || []).map(p => (
+                    <option key={p._id} value={p._id}>{p.name}</option>
+                  ))}
+                </select>
+                <small style={{ display: 'block', opacity: .75, marginTop: '.35rem' }}>
+                  Este paciente quedará como propietario del hogar.
+                </small>
+              </div>
+            )}
+
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', fontWeight: 600, marginBottom: '.35rem' }}>
+                Nombre
+              </label>
               <input
-                value={form.name}
-                onChange={e =>
-                  setForm(f => ({ ...f, name: e.target.value }))
-                }
-                style={{ width: '100%', marginTop: '.5rem' }}
+                value={form.name || ''}
+                onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                placeholder="p.ej., Casa Lucía"
+                style={{ width: '100%', padding: '.5rem' }}
               />
-            </label>
-            <label style={{ marginTop: '1rem' }}>
-              Dirección
+            </div>
+
+            <div style={{ marginBottom: '0.25rem' }}>
+              <label style={{ display: 'block', fontWeight: 600, marginBottom: '.35rem' }}>
+                Dirección
+              </label>
               <input
-                value={form.address}
-                onChange={e =>
-                  setForm(f => ({ ...f, address: e.target.value }))
-                }
-                style={{ width: '100%', marginTop: '.5rem' }}
+                value={form.address || ''}
+                onChange={e => setForm(f => ({ ...f, address: e.target.value }))}
+                placeholder="Calle, nº, piso… (opcional)"
+                style={{ width: '100%', padding: '.5rem' }}
               />
-            </label>
+            </div>
           </>
         )}
 
         {(mode === 'room' || mode === 'editRoom') && (
-          <label>
-            Nombre habitación
+          <div style={{ marginTop: '.25rem' }}>
+            <label style={{ display: 'block', fontWeight: 600, marginBottom: '.35rem' }}>
+              Nombre de la habitación
+            </label>
             <input
-              value={form.roomName}
-              onChange={e =>
-                setForm(f => ({ ...f, roomName: e.target.value }))
-              }
-              style={{ width: '100%', marginTop: '.5rem' }}
+              value={form.roomName || ''}
+              onChange={e => setForm(f => ({ ...f, roomName: e.target.value }))}
+              placeholder="p.ej., Salón, Cocina, Dormitorio…"
+              style={{ width: '100%', padding: '.5rem' }}
             />
-          </label>
+          </div>
         )}
 
-        <div style={{ marginTop: '1.5rem', textAlign: 'right' }}>
-          <Btn variant="primary" onClick={handleSave}>
+        <div style={{ marginTop: '1.25rem', display: 'flex', justifyContent: 'flex-end', gap: '.5rem' }}>
+          <Btn onClick={() => setShowModal(false)}>Cancelar</Btn>
+          <Btn
+            variant="primary"
+            onClick={handleSave}
+            disabled={
+              mode === 'house'
+                ? !( (form.name || '').trim() && (form.owner || '') )
+                : mode === 'editHouse'
+                ? !(form.name || '').trim()
+                : (mode === 'room' || mode === 'editRoom')
+                ? !(form.roomName || '').trim()
+                : true
+            }
+          >
             Guardar
           </Btn>
         </div>

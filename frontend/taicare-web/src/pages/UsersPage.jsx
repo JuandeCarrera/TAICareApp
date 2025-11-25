@@ -260,11 +260,11 @@ export default function UsersPage() {
     loadAlerts(selectedId);
 
     const p = patients.find(x => x._id === selectedId);
-    const house = households.find(h => h._id === (p?.household_id || ''));
+    const house = households.find(h => sameId(h.owner, p?._id));
     setPatientHouse(house || null);
 
     if (house?._id) {
-      const list = allDevices.filter(d => d.household_id === house._id);
+      const list = allDevices.filter(d => sameId(d.household_id, house._id));
       setPatientDevices(list);
     } else {
       setPatientDevices([]);

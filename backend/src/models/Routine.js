@@ -2,6 +2,8 @@ import { Schema, model } from 'mongoose';
 
 const routineSchema = new Schema({
   name:           { type: String, trim: true, default: '' },
+
+  user_id:        { type: Schema.Types.ObjectId, ref: 'User', required: true },
   caregiver_id:   { type: Schema.Types.ObjectId, ref: 'User', required: true },
   household_id:   { type: Schema.Types.ObjectId, ref: 'Household', required: true },
   device_id:      { type: Schema.Types.ObjectId, ref: 'Device', required: true },
@@ -11,7 +13,7 @@ const routineSchema = new Schema({
   days: {
     type: [{
       type: String,
-      enum: ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"]
+      enum: ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
     }],
     required: true
   }
