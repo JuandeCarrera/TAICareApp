@@ -25,14 +25,14 @@ export default function App() {
       <Route path="/register" element={<Register />} />
 
       {/* privadas */}
-      {/* {/*<Route path="/" element={<Private><Home /></Private>} />*/}
+      <Route path="/" element={<Private><Home /></Private>} />
       <Route path="/devices" element={<Private><Dispositivos /></Private>} />
       <Route path="/data" element={<Private><Datos /></Private>} />
       <Route path="/households" element={<Private><Hogares /></Private>} />
       <Route path="/routines" element={<Private><Rutinas /></Private>} />
       <Route path="/alerts" element={<Private><Alertas /></Private>} />
       <Route path="/configuration" element={<Private><Configuracion /></Private>} />
-      <Route path="/" element={<Private><UsersPage /></Private>} />
+      <Route path="/pacientes" element={<Private><UsersPage /></Private>} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

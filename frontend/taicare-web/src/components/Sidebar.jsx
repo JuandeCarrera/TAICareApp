@@ -42,7 +42,8 @@ export default function Sidebar({ open }) {
       <Inner open={open}>
         <Title>Menú</Title>
         <List>
-          <Item><MenuLink to="/">Pacientes</MenuLink></Item>
+          <Item><MenuLink to="/">Home</MenuLink></Item>
+          <Item><MenuLink to="/pacientes">Pacientes</MenuLink></Item>
           <Item><MenuLink to="/devices">Dispositivos</MenuLink></Item>
           <Item><MenuLink to="/routines">Rutinas</MenuLink></Item>
           <Item><MenuLink to="/data">Datos</MenuLink></Item>
