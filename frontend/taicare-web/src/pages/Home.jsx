@@ -399,7 +399,7 @@ export default function Home() {
                         {visibleAlerts.map(a => (
                           <Item key={a._id} onClick={()=>navigate('/alerts')}>
                             <Title>
-                              <strong>{a.type || 'Alerta'} — {a._patientName}</strong>
+                              <strong>{a.title || a.type || 'Alerta'}</strong>
                               <Meta>{fmtDateTime(a.timestamp || a.createdAt)}</Meta>
                             </Title>
                             <div>

@@ -476,36 +476,78 @@ app.delete('/data/:id', async (req, res) => {
 // ————— RUTAS ALERTS —————
 app.post('/alerts', async (req, res) => {
   try {
-    const a = await Alert.create(req.body)
-    res.status(201).json(a)
+    const {
+      device_id, user_id, routine_id = null,
+      kind = 'RoutineMissed',
+      type,
+      timestamp = new Date(),
+      resolved = false
+    } = req.body || {};
+
+    if (!device_id || !user_id || !type) {
+      return res.status(400).json({ error: 'Faltan campos obligatorios (device_id, user_id, type)' });
+    }
+
+    const user = await User.findById(user_id).lean();
+    const patient_name_snapshot = user?.name || '';
+
+    let routine_name_snapshot = '';
+    if (routine_id) {
+      const r = await Routine.findById(routine_id).lean();
+      routine_name_snapshot = r?.name || '';
+    }
+
+    const parts = [];
+    if (patient_name_snapshot) parts.push(`Paciente: ${patient_name_snapshot}`);
+    if (routine_name_snapshot) parts.push(`Rutina: ${routine_name_snapshot}`);
+    if (type) parts.push(type);
+    const title = parts.length ? parts.join(' · ') : 'Alerta';
+
+    const a = await Alert.create({
+      device_id, user_id, routine_id,
+      kind, type, title,
+      patient_name_snapshot, routine_name_snapshot,
+      timestamp, resolved
+    });
+
+    res.status(201).json(a);
   } catch (e) {
-    res.status(400).json({ error: e.message })
+    res.status(400).json({ error: e.message });
   }
-})
+});
 app.get('/alerts', async (req, res) => {
   try {
     const { user_id } = req.query;
-
     let filter = {};
 
     if (user_id) {
-      // 1) Hogares del paciente
       const hh = await Household.find({ owner: user_id }, { _id: 1 }).lean();
       const hhIds = hh.map(h => h._id);
-
-      // 2) Dispositivos en esos hogares
       const devs = await Device.find({ household_id: { $in: hhIds } }, { _id: 1 }).lean();
       const devIds = devs.map(d => d._id);
-
-      // 3) Alerts de esos dispositivos
       filter.device_id = { $in: devIds };
     }
 
-    const data = await Alert
-      .find(filter)
-      .populate({ path: 'device_id', select: 'appliance plugmodel room household_id' }); // ← solo device_id
+    const data = await Alert.find(filter)
+      .populate({ path: 'device_id', select: 'appliance plugmodel room household_id' })
+      .populate({ path: 'user_id',   select: 'name' })
+      .populate({ path: 'routine_id', select: 'name' })
+      .lean();
 
-    res.json(data);
+    // Fallback por si hay alertas viejas sin title
+    const hydrated = data.map(a => {
+      if (a.title && a.title.trim()) return a;
+      const patient = a.patient_name_snapshot || a.user_id?.name || '';
+      const routine = a.routine_name_snapshot || a.routine_id?.name || '';
+      const type    = a.type || 'Alerta';
+      const parts = [];
+      if (patient) parts.push(`Paciente: ${patient}`);
+      if (routine) parts.push(`Rutina: ${routine}`);
+      if (type)    parts.push(type);
+      return { ...a, title: parts.length ? parts.join(' · ') : 'Alerta' };
+    });
+
+    res.json(hydrated);
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'No se pudieron listar alertas' });
