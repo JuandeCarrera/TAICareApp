@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect } from 'react'
+import React, { useContext, useState, useEffect, useMemo } from 'react'
 import styled from 'styled-components'
 import { useNavigate } from 'react-router-dom'
 import { AuthContext } from '../contexts/AuthContext.jsx'
@@ -7,6 +7,7 @@ import Sidebar  from '../components/Sidebar.jsx'
 import Footer   from '../components/Footer.jsx'
 import Modal    from '../components/Modal.jsx'
 import { FormGroup } from '../components/Modal.jsx'
+import SearchToolbar from '../components/SearchToolbar.jsx' // ← NUEVO
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3000'
 
@@ -33,6 +34,10 @@ const DeviceItem = styled.li`
   justify-content: space-between;
   align-items: center;
   margin-bottom: 0.5rem;
+  background: ${({ theme }) => theme.colors.cardBg};
+  border: 1px solid ${({ theme }) => theme.colors.border};
+  border-radius: 8px;
+  padding: .65rem .8rem;
 `
 
 const Actions = styled.div`
@@ -62,16 +67,18 @@ const Btn = styled.button`
 `
 
 const NewButton = styled(Btn).attrs({ variant: 'primary' })`
-  margin-bottom: 1rem;
+  margin: 0 0 1rem 0;
 `
 
 export default function Dispositivos() {
   const { logout } = useContext(AuthContext)
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(window.innerWidth >= 768)
+
   const [households, setHouseholds] = useState([])
   const [rooms,      setRooms]      = useState([])
   const [devices,    setDevices]    = useState([])
+
   const [showModal,  setShowModal]  = useState(false)
   const [editId,     setEditId]     = useState(null)
   const [form, setForm] = useState({
@@ -80,6 +87,11 @@ export default function Dispositivos() {
     room: '',
     appliance: ''
   })
+
+  /* -------- SearchToolbar state -------- */
+  const [q, setQ] = useState('')
+  const [flt, setFlt] = useState({ householdId: '', room: '' })
+  const [sort, setSort] = useState('recent_desc')
 
   useEffect(() => {
     fetchDevices()
@@ -173,6 +185,61 @@ export default function Dispositivos() {
     }
   }
 
+  /* ---------- Helpers ---------- */
+  const hhName = (id) => households.find(h => h._id === id)?.name || ''
+
+  /* ---------- Options for SearchToolbar ---------- */
+  const householdOptions = useMemo(() => ([
+    { value: '', label: 'Todos' },
+    ...households.map(h => ({ value: h._id, label: h.name }))
+  ]), [households])
+
+  const roomOptions = useMemo(() => {
+    const uniqueRooms = Array.from(new Set(devices.map(d => d.room).filter(Boolean))).sort()
+    return [{ value: '', label: 'Todas' }, ...uniqueRooms.map(r => ({ value: r, label: r }))]
+  }, [devices])
+
+  const sortOptions = [
+    { value: 'recent_desc', label: 'Más recientes' },
+    { value: 'recent_asc',  label: 'Más antiguos' },
+    { value: 'model_alpha', label: 'Modelo (A–Z)' },
+    { value: 'room_alpha',  label: 'Habitación (A–Z)' },
+  ]
+
+  /* ---------- Filtered + Sorted devices ---------- */
+  const filteredDevices = useMemo(() => {
+    let list = [...devices]
+    const qnorm = q.trim().toLowerCase()
+
+    if (flt.householdId) list = list.filter(d => String(d.household_id) === String(flt.householdId))
+    if (flt.room)        list = list.filter(d => (d.room || '') === flt.room)
+
+    if (qnorm) {
+      list = list.filter(d => {
+        const model = (d.plugmodel || '').toLowerCase()
+        const app   = (d.appliance || '').toLowerCase()
+        const room  = (d.room || '').toLowerCase()
+        const home  = hhName(d.household_id).toLowerCase()
+        return [model, app, room, home].some(t => t.includes(qnorm))
+      })
+    }
+
+    // sort
+    if (sort === 'recent_desc' || sort === 'recent_asc') {
+      list.sort((a,b) => {
+        const ta = new Date(a.updatedAt || a.createdAt || 0).getTime()
+        const tb = new Date(b.updatedAt || b.createdAt || 0).getTime()
+        return sort === 'recent_desc' ? (tb - ta) : (ta - tb)
+      })
+    } else if (sort === 'model_alpha') {
+      list.sort((a,b) => String(a.plugmodel || '').localeCompare(String(b.plugmodel || '')))
+    } else if (sort === 'room_alpha') {
+      list.sort((a,b) => String(a.room || '').localeCompare(String(b.room || '')))
+    }
+
+    return list
+  }, [devices, q, flt, sort, households])
+
   return (
     <AppContainer>
       <Header onToggleMenu={() => setMenuOpen(o => !o)} onLogout={handleLogout} />
@@ -180,12 +247,39 @@ export default function Dispositivos() {
         <Sidebar open={menuOpen} />
         <Main>
           <h1>Dispositivos</h1>
+
+          {/* ---- Barra de búsqueda y filtros ---- */}
+          <div style={{ marginBottom: '1rem' }}>
+            <SearchToolbar
+              query={q}
+              onQueryChange={setQ}
+              placeholder="Buscar por modelo, electrodoméstico, habitación u hogar"
+              filters={[
+                { type:'select', key:'householdId', label:'Hogar',       options: householdOptions },
+                { type:'select', key:'room',        label:'Habitación',  options: roomOptions },
+              ]}
+              values={flt}
+              onValuesChange={setFlt}
+              sortOptions={sortOptions}
+              sort={sort}
+              onSortChange={setSort}
+              onClear={() => { setQ(''); setFlt({ householdId:'', room:'' }); setSort('recent_desc'); }}
+            />
+          </div>
+
           <NewButton onClick={openNew}>+ Nuevo</NewButton>
+
           <ul>
-            {devices.map(d => (
+            {filteredDevices.map(d => (
               <DeviceItem key={d._id}>
                 <span>
-                  {d.plugmodel} — {d.room} / {d.appliance}
+                  <strong>{d.plugmodel}</strong>
+                  {' — '}
+                  {d.room || 'Sin sala'}
+                  {' / '}
+                  {d.appliance || '—'}
+                  {' · '}
+                  <em>{hhName(d.household_id) || 'Sin hogar'}</em>
                 </span>
                 <Actions>
                   <Btn variant="primary" onClick={() => openEdit(d)}>✎</Btn>
@@ -193,6 +287,9 @@ export default function Dispositivos() {
                 </Actions>
               </DeviceItem>
             ))}
+            {!filteredDevices.length && (
+              <li style={{ opacity:.8 }}>No hay dispositivos que coincidan con el filtro.</li>
+            )}
           </ul>
         </Main>
       </Body>

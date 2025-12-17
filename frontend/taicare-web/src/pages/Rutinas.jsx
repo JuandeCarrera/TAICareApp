@@ -1,3 +1,4 @@
+// src/pages/Rutinas.jsx
 import React, { useContext, useEffect, useMemo, useRef, useState } from 'react'
 import styled from 'styled-components'
 import { useNavigate } from 'react-router-dom'
@@ -6,6 +7,7 @@ import Header  from '../components/Header.jsx'
 import Sidebar from '../components/Sidebar.jsx'
 import Footer  from '../components/Footer.jsx'
 import Modal, { FormGroup } from '../components/Modal.jsx'
+import SearchToolbar from '../components/SearchToolbar.jsx'   // ← NUEVO
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3000'
 
@@ -172,23 +174,16 @@ const DayBtn = styled.button`
   cursor: pointer;
   position: relative;
   transition: background .15s, border-color .15s, color .15s, box-shadow .15s, transform .02s;
-
-  /* Halo suave cuando está activo para que “cante” mejor */
   box-shadow: ${({ theme, active }) =>
     active ? `0 0 0 3px ${theme.colors.primary}33` : 'none'};
-
   &:hover {
     background: ${({ theme, active }) =>
       active ? theme.colors.primaryDark : theme.colors.hoverBg};
   }
-
-  /* Accesible: foco bien visible con teclado */
   &:focus-visible {
     outline: 2px solid ${({ theme }) => theme.colors.primary};
     outline-offset: 2px;
   }
-
-  /* Pequeño relieve cuando está activo */
   ${({ active, theme }) =>
     active ? `inset 0 -2px 0 ${theme.colors.primaryDark}` : ''};
 `;
@@ -201,7 +196,6 @@ const PresetHeaderActions = styled.div`
   display:flex; gap:.5rem; align-items:center; margin-bottom:.5rem;
 `;
 
-
 /* ---------- Botones tarjeta ---------- */
 const RowInline = styled.div` display:flex; gap:.5rem; align-items:center; `
 const ActionBtn = styled(Btn)` padding:.25rem .55rem; `
@@ -211,7 +205,7 @@ const DangerBtn = styled(ActionBtn)`
 `
 
 /* ---------- Constantes / helpers ---------- */
-const DAY_NAMES = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'] // backend enum
+const DAY_NAMES = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
 const DAY_SHORT = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom']
 
 const ES_DAYS = {
@@ -219,19 +213,14 @@ const ES_DAYS = {
   Thursday:'Jueves', Friday:'Viernes', Saturday:'Sábado', Sunday:'Domingo'
 }
 const slots48 = Array.from({ length: 48 }, (_, i) => {
-const hh = String(Math.floor(i / 2)).padStart(2,'0');
+  const hh = String(Math.floor(i / 2)).padStart(2,'0');
   const mm = i % 2 === 0 ? '00' : '30';
   return `${hh}:${mm}`;
 });
 const rangeLabel = (startIdx, endIdx) => `${slots48[startIdx]}–${slots48[endIdx]}`
-
-/* ---- presets (localStorage) ---- */
 const PRESETS_KEY = 'routine_presets_v1'
-const loadPresets = () => {
-  try { return JSON.parse(localStorage.getItem(PRESETS_KEY) || '[]') } catch { return [] }
-}
+const loadPresets = () => { try { return JSON.parse(localStorage.getItem(PRESETS_KEY) || '[]') } catch { return [] } }
 const savePresets = (list) => localStorage.setItem(PRESETS_KEY, JSON.stringify(list))
-
 function compressDayToRanges(slotsSet) {
   const arr = Array.from(slotsSet).sort((a,b)=>a-b);
   const out = []; let i = 0;
@@ -272,13 +261,13 @@ export default function Rutinas() {
 
   // selección de dispositivos
   const [selectedDevices, setSelectedDevices] = useState(new Set())  // device._id
-  const [roomOpen, setRoomOpen] = useState({}) // expand/collapse rooms
+  const [roomOpen, setRoomOpen] = useState({})
 
-  // horarios: por dispositivo, dayIndex -> Set(slotIdx)
-  const [schedule, setSchedule] = useState({ /* deviceId: { 0:Set,...6:Set } */ })
-  const [editTarget, setEditTarget] = useState('ALL') // 'ALL' o deviceId
+  // horarios
+  const [schedule, setSchedule] = useState({})
+  const [editTarget, setEditTarget] = useState('ALL')
   const isMouseDown = useRef(false)
-  const paintMode = useRef(null) // 'on'|'off'
+  const paintMode = useRef(null)
 
   // edición / borrado
   const [editOpen, setEditOpen] = useState(false);
@@ -290,10 +279,15 @@ export default function Rutinas() {
   });
   const [deleteId, setDeleteId] = useState(null);
 
-  // gestor de presets (modal)
+  // gestor de presets
   const [presetOpen, setPresetOpen] = useState(false)
   const [presetForm, setPresetForm] = useState({ name:'', start:'18:00', end:'19:00', days:[] })
   const [presetTab, setPresetTab] = useState('create')
+
+  /* ---------- filtros / búsqueda (Toolbar) ---------- */
+  const [q, setQ] = useState('')
+  const [flt, setFlt] = useState({ patientId:'', day:'' })
+  const [sort, setSort] = useState('recent_desc') // por defecto
 
   /* ---------- data fetch ---------- */
   useEffect(() => {
@@ -316,7 +310,6 @@ export default function Rutinas() {
   }
 
   /* ---------- memos ---------- */
-
   const patientHousehold = useMemo(() => {
     const p = patients.find(x => x._id === form.user_id)
     if (!p?.household_id) return null
@@ -439,7 +432,7 @@ export default function Rutinas() {
     if (!preset) return
     const s = idxOf(preset.start), e = idxOf(preset.end)
     if (s < 0 || e < 0) return
-    const wrap = e <= s // cruza medianoche
+    const wrap = e <= s
     setSchedule(prev => {
       const copy = { ...prev }
       for (const devId of targetIds) {
@@ -447,12 +440,10 @@ export default function Rutinas() {
         for (const dayName of preset.days) {
           const dIdx = DAY_NAMES.indexOf(dayName)
           if (dIdx < 0) continue
-          // mismo día
           const setToday = new Set(dev[dIdx] || [])
           const endToday = wrap ? 48 : e
           for (let i = s; i < endToday; i++) setToday.add(i)
           dev[dIdx] = setToday
-          // día siguiente si cruza
           if (wrap) {
             const next = (dIdx + 1) % 7
             const setNext = new Set(dev[next] || [])
@@ -551,15 +542,81 @@ export default function Rutinas() {
     return { name: dispName, room, home };
   }
 
-  const sortedRoutines = useMemo(() => {
-    return [...routines].sort((a,b) => {
-      const au = getPatientName(a.user_id).localeCompare(getPatientName(b.user_id));
-      if (au !== 0) return au;
-      const ad = getDeviceMeta(a.device_id).name.localeCompare(getDeviceMeta(b.device_id).name);
-      if (ad !== 0) return ad;
-      return (a.expected_start||'').localeCompare(b.expected_start||'');
-    });
-  }, [routines, patients, devices, households]);
+  /* ---------- LISTA: búsqueda + filtros + orden ---------- */
+
+  // Opciones de filtros
+  const patientOptions = useMemo(() => ([
+    { value: '', label: 'Todos' },
+    ...patients.map(p => ({ value: p._id, label: p.name || p._id }))
+  ]), [patients])
+
+  const dayOptions = useMemo(() => ([
+    { value: '', label: 'Todos' },
+    ...DAY_NAMES.map(d => ({ value: d, label: ES_DAYS[d] }))
+  ]), [])
+
+  const sortOptions = [
+    { value: 'recent_desc', label: 'Más recientes' },
+    { value: 'recent_asc',  label: 'Más antiguas' },
+    { value: 'start_time',  label: 'Hora (inicio)' },
+    { value: 'alpha',       label: 'Paciente / Nombre' },
+  ]
+
+  // Resultado filtrado y ordenado
+  const filteredSorted = useMemo(() => {
+    const qnorm = q.trim().toLowerCase()
+    let arr = [...routines]
+
+    // filtro por paciente
+    if (flt.patientId) {
+      arr = arr.filter(r => {
+        const id = typeof r.user_id === 'object' ? r.user_id?._id : r.user_id
+        return String(id) === String(flt.patientId)
+      })
+    }
+
+    // filtro por día de la semana
+    if (flt.day) {
+      arr = arr.filter(r => Array.isArray(r.days) && r.days.includes(flt.day))
+    }
+
+    // filtro por búsqueda libre
+    if (qnorm) {
+      arr = arr.filter(r => {
+        const patient = getPatientName(r.user_id)?.toLowerCase?.() || ''
+        const devMeta = getDeviceMeta(r.device_id)
+        const dev = (devMeta.name || '').toLowerCase()
+        const room = (devMeta.room || '').toLowerCase()
+        const home = (devMeta.home || '').toLowerCase()
+        const name = (r.name || '').toLowerCase()
+        const hours = `${r.expected_start || ''} ${r.expected_end || ''}`.toLowerCase()
+        return [patient, dev, room, home, name, hours].some(t => t.includes(qnorm))
+      })
+    }
+
+    // orden
+    if (sort === 'recent_desc' || sort === 'recent_asc') {
+      arr.sort((a,b) => {
+        const ta = new Date(a.updatedAt || a.createdAt || 0).getTime()
+        const tb = new Date(b.updatedAt || b.createdAt || 0).getTime()
+        return sort === 'recent_desc' ? (tb - ta) : (ta - tb)
+      })
+    } else if (sort === 'start_time') {
+      arr.sort((a,b) => String(a.expected_start || '').localeCompare(String(b.expected_start || '')))
+    } else { // alpha
+      arr.sort((a,b) => {
+        const ap = getPatientName(a.user_id)
+        const bp = getPatientName(b.user_id)
+        const c1 = ap.localeCompare(bp)
+        if (c1 !== 0) return c1
+        const ad = (a.name || getDeviceMeta(a.device_id).name || '')
+        const bd = (b.name || getDeviceMeta(b.device_id).name || '')
+        return ad.localeCompare(bd)
+      })
+    }
+
+    return arr
+  }, [q, flt, sort, routines, patients, devices, households])
 
   /* ---------- edición ---------- */
   const HALF_HOURS = slots48
@@ -600,7 +657,7 @@ export default function Rutinas() {
     const startIdx = idxOf(start)
     if (startIdx < 0) return []
     const opts = []
-    for (let i = 1; i <= 48; i++) { // +30min hasta 24h
+    for (let i = 1; i <= 48; i++) {
       const idx = (startIdx + i) % 48
       const label = `${slots48[idx]}${i<=48 && idx<=startIdx ? ' (+1 día)' : ''}`
       opts.push({ value: slots48[idx], label })
@@ -692,9 +749,29 @@ export default function Rutinas() {
               <NewButton onClick={openCreator}>+ Añadir rutina</NewButton>
             </div>
           </Toolbar>
+
+          {/* ---------- BARRA DE BÚSQUEDA / FILTROS ---------- */}
+          <div style={{ marginBottom: '1rem' }}>
+            <SearchToolbar
+              query={q}
+              onQueryChange={setQ}
+              placeholder="Buscar por nombre, paciente, dispositivo, sala o casa"
+              filters={[
+                { type:'select', key:'patientId', label:'Paciente', options: patientOptions },
+                { type:'select', key:'day',       label:'Día',      options: dayOptions },
+              ]}
+              values={flt}
+              onValuesChange={setFlt}
+              sortOptions={sortOptions}
+              sort={sort}
+              onSortChange={setSort}
+              onClear={() => { setQ(''); setFlt({ patientId:'', day:'' }); setSort('recent_desc'); }}
+            />
+          </div>
+
           {/* ----- LISTADO ----- */}
           <List>
-            {sortedRoutines.map(r => {
+            {filteredSorted.map(r => {
               const patient = getPatientName(r.user_id)
               const meta = getDeviceMeta(r.device_id)
               const daysPretty = (r.days || []).map(d => ES_DAYS[d] || d)
@@ -725,7 +802,7 @@ export default function Rutinas() {
                 </RoutineCard>
               )
             })}
-            {!sortedRoutines.length && <Muted>No hay rutinas todavía.</Muted>}
+            {!filteredSorted.length && <Muted>No hay rutinas que coincidan con el filtro.</Muted>}
           </List>
         </Main>
       </Body>
@@ -1241,6 +1318,7 @@ export default function Rutinas() {
           )}
         </ModalScroll>
       </Modal>
+      
       {/* ---------- MODAL BORRAR ---------- */}
       <Modal isOpen={deleteOpen} onClose={() => setDeleteOpen(false)}>
         <h2>Eliminar rutina</h2>
