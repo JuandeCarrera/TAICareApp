@@ -13,9 +13,15 @@ import Device         from './models/Device.js'
 import Data           from './models/Data.js'
 import Alert          from './models/Alert.js'
 import Routine        from './models/Routine.js'
-import RoutinePreset  from './models/RoutinePreset.js';
+import RoutinePreset  from './models/RoutinePreset.js'
 
-import { getRoutinesStatusForDate } from './services/routineChecker.js';
+import { getRoutinesStatusForDate } from './services/routineChecker.js'
+
+import alertsRouter            from './routes/alerts.js'
+import alertRulesRouter        from './routes/alertRules.js'
+import notificationPrefsRouter from './routes/notificationPrefs.js'
+import systemSettingsRouter    from './routes/systemSettings.js'
+import jobsRouter              from './routes/jobs.js'
 
 // ————— Helpers —————
 
@@ -66,8 +72,6 @@ async function canAccessHousehold(req, householdDocOrId) {
   }
   return false;
 }
-
-
 
 dotenv.config()
 const app = express()
@@ -146,9 +150,16 @@ app.use((req, res, next) => {
   next();
 });
 
+// ==== routers de alertas/sistema (protegidos) ====
+app.use('/alerts', alertsRouter)
+app.use('/alert-rules', alertRulesRouter)
+app.use('/notification-prefs', notificationPrefsRouter)
+app.use('/settings', systemSettingsRouter)
+app.use('/jobs', jobsRouter)
+
 // ————— RUTAS USERS —————
 
-    // LISTAR 
+// LISTAR 
 app.get('/users', async (req, res) => {
   try {
     const { role, caregiver_id } = req.query;
@@ -193,7 +204,7 @@ app.post('/users', async (req, res) => {
   }
 });
 
-// OBTENER UNO (mantiene GET /users/:id)
+// OBTENER UNO
 app.get('/users/:id', async (req, res) => {
   const { id } = req.params;
   if (!isValidObjectId(id)) return res.status(400).json({ error: 'id inválido' });
@@ -263,7 +274,6 @@ app.delete('/users/:id', async (req, res) => {
   if (!deleted) return res.sendStatus(404);
   res.sendStatus(204);
 });
-
 
 // ————— RUTAS HOUSEHOLDS —————
 
@@ -473,110 +483,7 @@ app.delete('/data/:id', async (req, res) => {
   res.sendStatus(204)
 })
 
-// ————— RUTAS ALERTS —————
-app.post('/alerts', async (req, res) => {
-  try {
-    const {
-      device_id, user_id, routine_id = null,
-      kind = 'RoutineMissed',
-      type,
-      timestamp = new Date(),
-      resolved = false
-    } = req.body || {};
-
-    if (!device_id || !user_id || !type) {
-      return res.status(400).json({ error: 'Faltan campos obligatorios (device_id, user_id, type)' });
-    }
-
-    const user = await User.findById(user_id).lean();
-    const patient_name_snapshot = user?.name || '';
-
-    let routine_name_snapshot = '';
-    if (routine_id) {
-      const r = await Routine.findById(routine_id).lean();
-      routine_name_snapshot = r?.name || '';
-    }
-
-    const parts = [];
-    if (patient_name_snapshot) parts.push(`Paciente: ${patient_name_snapshot}`);
-    if (routine_name_snapshot) parts.push(`Rutina: ${routine_name_snapshot}`);
-    if (type) parts.push(type);
-    const title = parts.length ? parts.join(' · ') : 'Alerta';
-
-    const a = await Alert.create({
-      device_id, user_id, routine_id,
-      kind, type, title,
-      patient_name_snapshot, routine_name_snapshot,
-      timestamp, resolved
-    });
-
-    res.status(201).json(a);
-  } catch (e) {
-    res.status(400).json({ error: e.message });
-  }
-});
-app.get('/alerts', async (req, res) => {
-  try {
-    const { user_id } = req.query;
-    let filter = {};
-
-    if (user_id) {
-      const hh = await Household.find({ owner: user_id }, { _id: 1 }).lean();
-      const hhIds = hh.map(h => h._id);
-      const devs = await Device.find({ household_id: { $in: hhIds } }, { _id: 1 }).lean();
-      const devIds = devs.map(d => d._id);
-      filter.device_id = { $in: devIds };
-    }
-
-    const data = await Alert.find(filter)
-      .populate({ path: 'device_id', select: 'appliance plugmodel room household_id' })
-      .populate({ path: 'user_id',   select: 'name' })
-      .populate({ path: 'routine_id', select: 'name' })
-      .lean();
-
-    // Fallback por si hay alertas viejas sin title
-    const hydrated = data.map(a => {
-      if (a.title && a.title.trim()) return a;
-      const patient = a.patient_name_snapshot || a.user_id?.name || '';
-      const routine = a.routine_name_snapshot || a.routine_id?.name || '';
-      const type    = a.type || 'Alerta';
-      const parts = [];
-      if (patient) parts.push(`Paciente: ${patient}`);
-      if (routine) parts.push(`Rutina: ${routine}`);
-      if (type)    parts.push(type);
-      return { ...a, title: parts.length ? parts.join(' · ') : 'Alerta' };
-    });
-
-    res.json(hydrated);
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: 'No se pudieron listar alertas' });
-  }
-});
-app.get('/alerts/:id', async (req, res) => {
-  const a = await Alert.findById(req.params.id)
-  if (!a) return res.sendStatus(404)
-  res.json(a)
-})
-app.put('/alerts/:id', async (req, res) => {
-  try {
-    const a = await Alert.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    )
-    res.json(a)
-  } catch (e) {
-    res.status(400).json({ error: e.message })
-  }
-})
-app.delete('/alerts/:id', async (req, res) => {
-  await Alert.findByIdAndDelete(req.params.id)
-  res.sendStatus(204)
-})
-
 // ————— RUTAS ROUTINES —————
-// utils para no repetir
 const routinePopulate = [
   { path: 'user_id', select: 'name email role' },
   { path: 'caregiver_id', select: 'name email role' },
@@ -584,12 +491,10 @@ const routinePopulate = [
   { path: 'device_id', select: 'appliance plugmodel room household_id' }
 ];
 
-
 // Crear
 app.post('/routines', async (req, res) => {
   try {
-    const { user_id, device_id, household_id } = req.body;
-
+    const { device_id, household_id } = req.body;
     const caregiver_id = req.user.sub;
 
     let hhId = household_id;
@@ -612,7 +517,7 @@ app.post('/routines', async (req, res) => {
 });
 
 // Listar
-app.get('/routines', async (req, res) => {
+app.get('/routines', async (_req, res) => {
   const data = await Routine.find().populate(routinePopulate);
   res.json(data);
 });
@@ -656,8 +561,6 @@ app.get('/routines/status', async (req, res) => {
       return res.status(400).json({ error: 'Faltan user_id o date' });
     }
 
-    // Opcional: comprobar que el cuidador tiene permiso sobre ese paciente
-    // por ejemplo: el paciente tiene caregiver_id = req.user.sub
     if (req.user?.role === 'cuidador') {
       const patient = await User.findOne({ _id: user_id, caregiver_id: req.user.sub });
       if (!patient) return res.status(403).json({ error: 'Paciente no autorizado' });
@@ -672,7 +575,6 @@ app.get('/routines/status', async (req, res) => {
 });
 
 // ----- ROUTINE PRESETS -----
-// Crear
 app.post('/routine-presets', async (req, res) => {
   try {
     const { name, expected_start, expected_end, days, description } = req.body || {};
@@ -684,28 +586,26 @@ app.post('/routine-presets', async (req, res) => {
       name: name.trim(),
       expected_start,
       expected_end,
-      days
-    , description: (description || '').trim() });
+      days,
+      description: (description || '').trim()
+    });
     res.status(201).json(p);
   } catch (e) {
     res.status(400).json({ error: e.message });
   }
 });
 
-// Listar (solo del usuario actual)
 app.get('/routine-presets', async (req, res) => {
   const list = await RoutinePreset.find({ owner: req.user.sub }).sort({ createdAt: -1 });
   res.json(list);
 });
 
-// Obtener una
 app.get('/routine-presets/:id', async (req, res) => {
   const p = await RoutinePreset.findOne({ _id: req.params.id, owner: req.user.sub });
   if (!p) return res.sendStatus(404);
   res.json(p);
 });
 
-// Actualizar
 app.put('/routine-presets/:id', async (req, res) => {
   try {
     const upd = await RoutinePreset.findOneAndUpdate(
@@ -720,13 +620,11 @@ app.put('/routine-presets/:id', async (req, res) => {
   }
 });
 
-// Borrar
 app.delete('/routine-presets/:id', async (req, res) => {
   const del = await RoutinePreset.findOneAndDelete({ _id: req.params.id, owner: req.user.sub });
   if (!del) return res.sendStatus(404);
   res.sendStatus(204);
 });
-
 
 // ————— Iniciar servidor —————
 const PORT = process.env.PORT || 3000

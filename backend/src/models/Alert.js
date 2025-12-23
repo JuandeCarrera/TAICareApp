@@ -1,44 +1,38 @@
 import { Schema, model } from 'mongoose';
 
 const alertSchema = new Schema({
-  device_id: { type: Schema.Types.ObjectId, ref: 'Device', required: true },
-  user_id:   { type: Schema.Types.ObjectId, ref: 'User',   required: true },
 
+  device_id:   { type: Schema.Types.ObjectId, ref: 'Device', required: true },
+  user_id:     { type: Schema.Types.ObjectId, ref: 'User',   required: true },
+  timestamp:   { type: Date, required: true },            
+  type:        { type: String, required: true },          
+  resolved:    { type: Boolean, default: false },       
 
-  routine_id: { type: Schema.Types.ObjectId, ref: 'Routine' },
+  caregiver_id:{ type: Schema.Types.ObjectId, ref: 'User' },
+  household_id:{ type: Schema.Types.ObjectId, ref: 'Household' },
+  routine_id:  { type: Schema.Types.ObjectId, ref: 'Routine' },
 
-  kind: { 
-    type: String,
-    enum: ['RoutineMissed','DeviceOffline','Anomaly','Other'],
-    default: 'RoutineMissed'
-  },
+  title:       { type: String, trim: true },              
+  message:     { type: String, trim: true },
 
-  title: { type: String, trim: true },
+  severity:    { type: String, enum: ['low','medium','high','critical'], default: 'medium' },
+  status:      { type: String, enum: ['open','ack','resolved','suppressed'], default: 'open' },
 
-  type:  { type: String, required: true },
+  dedupe_key:  { type: String, index: true },        
+  first_seen:  { type: Date },
+  last_seen:   { type: Date },
+  count:       { type: Number, default: 1 },
 
-  patient_name_snapshot: { type: String },
-  routine_name_snapshot: { type: String },
-
-  timestamp: { type: Date, required: true },
-  resolved:  { type: Boolean, default: false }
+  metadata:    { type: Schema.Types.Mixed },           
 }, {
   timestamps: true,
   collection: 'alerts'
 });
 
-alertSchema.pre('save', function(next) {
-  if (!this.title) {
-    const who  = this.patient_name_snapshot || '';
-    const what = this.routine_name_snapshot || '';
-    const type = this.type || '';
-    const parts = [];
-    if (who)  parts.push(`Paciente: ${who}`);
-    if (what) parts.push(`Rutina: ${what}`);
-    if (type) parts.push(type);
-    this.title = parts.length ? parts.join(' · ') : 'Alerta';
-  }
-  next();
-});
+
+alertSchema.index({ user_id: 1, resolved: 1, timestamp: 1 });
+alertSchema.index({ type: 1, timestamp: -1 });
+alertSchema.index({ status: 1, severity: 1, timestamp: -1 });
+alertSchema.index({ routine_id: 1, timestamp: -1 });
 
 export default model('Alert', alertSchema);
