@@ -4,6 +4,7 @@ import SystemSetting from '../models/SystemSetting.js';
 import User from '../models/User.js';
 import Device from '../models/Device.js';
 import Routine from '../models/Routine.js';
+import { getRoutinesStatusForDate } from './routineChecker.js'
 
 const z2 = (n) => String(n).padStart(2, '0');
 const dayKey = (d) => `${d.getFullYear()}-${z2(d.getMonth()+1)}-${z2(d.getDate())}`;
@@ -130,4 +131,38 @@ export async function evaluateRulesAndAlert(event) {
   }
 
   return created;
+}
+
+export async function processTick({ date = new Date() } = {}) {
+  // Por si el sistema está desactivado
+  if (!(await alertsEnabled())) {
+    return { ok: true, ran: false, reason: 'alerts_disabled' }
+  }
+
+  // Obtenemos los pacientes que tengan rutinas
+  const patients = await User.find({ role: 'paciente' }, { _id: 1 }).lean()
+  let created = 0
+  let checkedRoutines = 0
+
+  for (const p of patients) {
+    const statuses = await getRoutinesStatusForDate(p._id, date)
+    for (const s of statuses) {
+      checkedRoutines += 1
+      if (s.status === 'MISSED') {
+        await ensureAlert({
+          type: 'routine_missed',
+          user_id: p._id,
+          device_id: s.routine.device_id,
+          routine_id: s.routine._id,
+          timestamp: s.windowEnd || date,
+          resolved: false,
+          seen: false,
+          // título/mensaje se auto-generan con contextFromRefs si no los pasas
+        })
+        created += 1
+      }
+    }
+  }
+
+  return { ok: true, ran: true, created, checkedRoutines, patients: patients.length }
 }
