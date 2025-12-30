@@ -304,8 +304,7 @@ export default function Home() {
             {/* Charts arriba */}
             <ChartsBand>
               <ChartsHeader>
-                <h3>Charts</h3>
-                <AddBtn title="Añadir chart">＋</AddBtn>
+                
               </ChartsHeader>
 
               <ChartGrid>
@@ -385,7 +384,6 @@ export default function Home() {
               <Card>
                 <CardHeader>
                   <h3>Alertas</h3>
-                  <AddBtn title="Crear alerta manual">＋</AddBtn>
                 </CardHeader>
 
                 {loadingAlerts ? (
