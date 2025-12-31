@@ -47,7 +47,9 @@ export default function Sidebar({ open }) {
           <Item><MenuLink to="/devices">Dispositivos</MenuLink></Item>
           <Item><MenuLink to="/routines">Rutinas</MenuLink></Item>
           <Item><MenuLink to="/data">Datos</MenuLink></Item>
-          <Item><MenuLink to="/alerts">Alertas</MenuLink></Item>
+          <Item><MenuLink to="/alertas">Alertas</MenuLink></Item>
+          <Item style={{ marginLeft: '1rem' }}><MenuLink to="/alertas/ajustes">Ajustes de alertas</MenuLink></Item>
+          <Item style={{ marginLeft: '1rem' }}><MenuLink to="/alertas/reglas">Reglas de alertas</MenuLink></Item>
           <Item><MenuLink to="/households">Hogares</MenuLink></Item>
           <Item><MenuLink to="/configuration">Configuración</MenuLink></Item>
         </List>

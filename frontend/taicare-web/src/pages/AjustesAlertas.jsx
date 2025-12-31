@@ -5,7 +5,7 @@ import Header from '../components/Header.jsx';
 import Sidebar from '../components/Sidebar.jsx';
 import Footer from '../components/Footer.jsx';
 import { AuthContext } from '../contexts/AuthContext.jsx';
-import { SettingsAPI, NotifPrefsAPI, JobsAPI } from '../services/alertsApi.js';
+import { SettingsAPI, NotifPrefsAPI, JobsAPI, DevAPI } from '../services/alertsApi.js';
 
 const App = styled.div`display:flex;flex-direction:column;height:100vh;width:100vw;`;
 const Body = styled.div`flex:1;display:flex;overflow:hidden;`;
@@ -15,7 +15,7 @@ const Card = styled.section`
   border:1px solid ${({theme})=>theme.colors.border};
   border-radius:10px;padding:1rem;margin-bottom:1rem;
 `;
-const Row = styled.div`display:flex;align-items:center;justify-content:space-between;gap:1rem;`;
+const Row = styled.div`display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;`;
 const Btn = styled.button`
   font-size:.9rem;padding:.4rem .75rem;border-radius:8px;cursor:pointer;
   border:1px solid ${({theme,variant}) => variant==='primary'? theme.colors.primary : theme.colors.border};
@@ -23,8 +23,14 @@ const Btn = styled.button`
   color:${({theme,variant}) => variant==='primary'? '#fff' : theme.colors.text};
   &:hover{background:${({theme,variant}) => variant==='primary'? theme.colors.primaryDark : theme.colors.hoverBg};}
 `;
-const Input = styled.input`width:100%;padding:.5rem;border:1px solid ${({theme})=>theme.colors.border};border-radius:8px;background:${({theme})=>theme.colors.cardBg};color:${({theme})=>theme.colors.text};`;
-const Select = styled.select`width:100%;padding:.5rem;border:1px solid ${({theme})=>theme.colors.border};border-radius:8px;background:${({theme})=>theme.colors.cardBg};color:${({theme})=>theme.colors.text};`;
+const Input = styled.input`
+  width:100%;padding:.5rem;border:1px solid ${({theme})=>theme.colors.border};
+  border-radius:8px;background:${({theme})=>theme.colors.cardBg};color:${({theme})=>theme.colors.text};
+`;
+const Select = styled.select`
+  width:100%;padding:.5rem;border:1px solid ${({theme})=>theme.colors.border};
+  border-radius:8px;background:${({theme})=>theme.colors.cardBg};color:${({theme})=>theme.colors.text};
+`;
 
 export default function AjustesAlertas() {
   const { logout } = useContext(AuthContext);
@@ -41,7 +47,17 @@ export default function AjustesAlertas() {
   const [channelPush, setChannelPush] = useState(false);
   const [minSeverity, setMinSeverity] = useState('LOW');
 
+  // dev tools: selector de rutina de hoy y parámetros de inserción
+  const DAY_NAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const todayName = DAY_NAMES[new Date().getDay()];
+  const [routinesToday, setRoutinesToday] = useState([]);
+  const [selRoutineId, setSelRoutineId] = useState('');
+  const [testWhere, setTestWhere] = useState('outside'); // 'inside' | 'outside'
+  const [testPower, setTestPower] = useState(60);        // W
+  const [testOffset, setTestOffset] = useState(0);       // minutos (+/-)
+
   useEffect(()=>{ load(); }, []);
+  useEffect(() => { loadRoutinesToday(); }, []); // cargar rutinas del día para el selector
 
   async function load() {
     const s = await SettingsAPI.getSystem().catch(()=>null);
@@ -55,6 +71,19 @@ export default function AjustesAlertas() {
       setChannelEmail(!!p.channels?.email);
       setChannelPush(!!p.channels?.push);
       setMinSeverity(p.min_severity || 'LOW');
+    }
+  }
+
+  async function loadRoutinesToday() {
+    try {
+      const API = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+      const res = await fetch(`${API}/routines`, { credentials:'include' });
+      const all = res.ok ? await res.json() : [];
+      const todays = (all || []).filter(r => Array.isArray(r.days) && r.days.includes(todayName));
+      setRoutinesToday(todays);
+      if (todays[0]?._id) setSelRoutineId(todays[0]._id);
+    } catch (e) {
+      // no-op
     }
   }
 
@@ -72,6 +101,62 @@ export default function AjustesAlertas() {
       min_severity: minSeverity
     });
     alert('Preferencias guardadas');
+  }
+
+  async function insertTestData() {
+    try {
+      if (!selRoutineId) return alert('Selecciona una rutina');
+      const r = routinesToday.find(x => x._id === selRoutineId);
+      if (!r) return alert('Rutina no encontrada');
+
+      // obtener ids "planos" por si vienen populados
+      const deviceId = typeof r.device_id === 'object' ? (r.device_id?._id || r.device_id?.id) : r.device_id;
+      const userId   = typeof r.user_id   === 'object' ? (r.user_id?._id   || r.user_id?.id)   : r.user_id;
+
+      if (!deviceId) return alert('La rutina no tiene device_id');
+      if (!userId)   return alert('La rutina no tiene user_id');
+
+      // calcular timestamp
+      const now = new Date(); now.setSeconds(0,0);
+
+      const [sh, sm] = (r.expected_start || '08:00').split(':').map(Number);
+      const [eh, em] = (r.expected_end   || '09:00').split(':').map(Number);
+
+      let base = new Date(now);
+      if (testWhere === 'inside') {
+        // punto medio de la ventana, soportando cruce de medianoche
+        const startDate = new Date(now); startDate.setHours(sh||0, sm||0, 0, 0);
+        const endDate   = new Date(now); endDate.setHours(eh||0, em||0, 0, 0);
+        if (endDate <= startDate) endDate.setDate(endDate.getDate() + 1);
+        const midpoint = new Date((startDate.getTime() + endDate.getTime()) / 2);
+        base = midpoint;
+      } else {
+        // fuera: fin + 2h
+        const endPlus = new Date(now);
+        endPlus.setHours((eh||0), (em||0) + 120, 0, 0);
+        base = endPlus;
+      }
+
+      // aplicar offset manual
+      const t = new Date(base.getTime() + Number(testOffset || 0) * 60 * 1000);
+
+      // insertar lectura
+      await DevAPI.insertData({
+        device_id: deviceId,
+        user_id:   userId,
+        time:      t.toISOString(),
+        status:    true,
+        power:     Number(testPower || 0),
+        synthetic: true,
+      });
+
+      // ejecutar checker
+      await JobsAPI.runRoutineCheck();
+
+      alert(`Lectura insertada (${testWhere === 'inside' ? 'dentro' : 'fuera'}) y checker ejecutado. Revisa /alerts.`);
+    } catch (e) {
+      alert(`Error: ${e.message}`);
+    }
   }
 
   return (
@@ -133,7 +218,67 @@ export default function AjustesAlertas() {
 
           <Card>
             <h3>Herramientas de prueba (dev)</h3>
-            <Btn onClick={JobsAPI.runRoutineCheck}>Ejecutar chequeo de rutinas ahora</Btn>
+            <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'.75rem', marginTop:'.25rem'}}>
+              <div>
+                <label>Rutina (hoy)</label>
+                <Select
+                  value={selRoutineId}
+                  onChange={e=>setSelRoutineId(e.target.value)}
+                >
+                  {routinesToday.map(r => {
+                    const dname = typeof r.device_id === 'object'
+                      ? (r.device_id?.appliance || r.device_id?.plugmodel || 'Dispositivo')
+                      : String(r.device_id).slice(-6);
+                    const uname = typeof r.user_id === 'object'
+                      ? (r.user_id?.name || 'Paciente')
+                      : String(r.user_id).slice(-6);
+                    return (
+                      <option key={r._id} value={r._id}>
+                        {r.name || 'Rutina'} · {uname} · {dname} · {r.expected_start}–{r.expected_end}
+                      </option>
+                    );
+                  })}
+                  {!routinesToday.length && <option value="">(No hay rutinas para hoy)</option>}
+                </Select>
+              </div>
+
+              <div>
+                <label>¿Dónde insertar?</label>
+                <Select value={testWhere} onChange={e=>setTestWhere(e.target.value)}>
+                  <option value="inside">Dentro de la ventana</option>
+                  <option value="outside">Fuera de la ventana</option>
+                </Select>
+                <small style={{display:'block', opacity:.75}}>
+                  Dentro → debería evitar la alerta. Fuera → debería disparar <em>routine_missed</em>.
+                </small>
+              </div>
+
+              <div>
+                <label>Potencia (W)</label>
+                <Input
+                  type="number"
+                  value={testPower}
+                  onChange={e=>setTestPower(e.target.value)}
+                />
+                <small style={{display:'block', opacity:.75}}>
+                  Umbral de uso en el checker ≈ 5W.
+                </small>
+              </div>
+
+              <div>
+                <label>Offset minutos (+/-)</label>
+                <Input
+                  type="number"
+                  value={testOffset}
+                  onChange={e=>setTestOffset(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div style={{ marginTop:'.75rem', display:'flex', gap:'.5rem', flexWrap:'wrap' }}>
+              <Btn onClick={insertTestData}>Insertar lectura de prueba + ejecutar checker</Btn>
+              <Btn onClick={JobsAPI.runRoutineCheck}>Ejecutar chequeo de rutinas ahora</Btn>
+            </div>
           </Card>
         </Main>
       </Body>
