@@ -395,7 +395,7 @@ export default function Home() {
                     <ListScroll ref={alertListRef}>
                       <List>
                         {visibleAlerts.map(a => (
-                          <Item key={a._id} onClick={()=>navigate('/alerts')}>
+                          <Item key={a._id} onClick={()=>navigate('/alertas')}>
                             <Title>
                               <strong>{a.title || a.type || 'Alerta'}</strong>
                               <Meta>{fmtDateTime(a.timestamp || a.createdAt)}</Meta>
