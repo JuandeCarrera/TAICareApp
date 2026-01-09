@@ -37,13 +37,13 @@ async function contextFromRefs({ user_id, device_id, routine_id }) {
     const rname = routine.name || 'Rutina';
     const uname = user.name || 'Paciente';
     title = `Incumplida — ${rname} — ${uname}`;
-    message = `${uname} no ha completado “${rname}” (${routine.expected_start}–${routine.expected_end}).`;
+    message = `${uname} no ha completado “${rname}”.`; 
   } else if (user && device) {
     title = `Alerta de ${user.name || 'Paciente'}`;
     message = `Evento en ${device.appliance || device.plugmodel || 'dispositivo'}.`;
   }
 
-  const window_key = routine ? `${routine.expected_start}–${routine.expected_end}` : undefined;
+  const window_key = undefined;
 
   return { caregiver_id, household_id, title, message, window_key, user, device, routine };
 }
@@ -134,35 +134,43 @@ export async function evaluateRulesAndAlert(event) {
 }
 
 export async function processTick({ date = new Date() } = {}) {
-  // Por si el sistema está desactivado
   if (!(await alertsEnabled())) {
-    return { ok: true, ran: false, reason: 'alerts_disabled' }
+    return { ok: true, ran: false, reason: 'alerts_disabled' };
   }
 
-  // Obtenemos los pacientes que tengan rutinas
-  const patients = await User.find({ role: 'paciente' }, { _id: 1 }).lean()
-  let created = 0
-  let checkedRoutines = 0
+  const patients = await User.find({ role: 'paciente' }, { _id: 1 }).lean();
+  let created = 0;
+  let checked = 0;
 
   for (const p of patients) {
-    const statuses = await getRoutinesStatusForDate(p._id, date)
+    const statuses = await getRoutinesStatusForDate(p._id, date);
     for (const s of statuses) {
-      checkedRoutines += 1
+      checked += 1;
       if (s.status === 'MISSED') {
+        const mainDevice = Array.isArray(s.occurrence.device_ids)
+          ? s.occurrence.device_ids[0]
+          : undefined;
+
+        const start = s.occurrence?.expected_start || '';
+        const end   = s.occurrence?.expected_end   || '';
+        const title = `Incumplida — ${s.routine?.name || 'Rutina'}`;
+        const message = `No se completó la ventana ${start}–${end}.`;
+
         await ensureAlert({
           type: 'routine_missed',
           user_id: p._id,
-          device_id: s.routine.device_id,
+          device_id: mainDevice,
           routine_id: s.routine._id,
           timestamp: s.windowEnd || date,
           resolved: false,
           seen: false,
-          // título/mensaje se auto-generan con contextFromRefs si no los pasas
-        })
-        created += 1
+          title,
+          message,
+        });
+        created += 1;
       }
     }
   }
 
-  return { ok: true, ran: true, created, checkedRoutines, patients: patients.length }
+  return { ok: true, ran: true, created, checked, patients: patients.length };
 }
