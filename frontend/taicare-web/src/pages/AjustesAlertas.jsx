@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState, useMemo } from 'react';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header.jsx';
@@ -47,19 +47,21 @@ export default function AjustesAlertas() {
   const [channelPush, setChannelPush] = useState(false);
   const [minSeverity, setMinSeverity] = useState('LOW');
 
-  // dev tools: selector de rutina de hoy y parámetros de inserción
+  // dev tools: selector de "ventanas de hoy" basadas en occurrences
   const DAY_NAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   const todayName = DAY_NAMES[new Date().getDay()];
-  const [routinesToday, setRoutinesToday] = useState([]);
-  const [selRoutineId, setSelRoutineId] = useState('');
+  const [routines, setRoutines] = useState([]);       // crudas del backend
+  const [devices, setDevices] = useState([]);         // para nombres bonitos
+  const [entriesToday, setEntriesToday] = useState([]); // aplanado occurrence×device para hoy
+  const [selKey, setSelKey] = useState('');           // routineId::occIdx::deviceId
   const [testWhere, setTestWhere] = useState('outside'); // 'inside' | 'outside'
   const [testPower, setTestPower] = useState(60);        // W
   const [testOffset, setTestOffset] = useState(0);       // minutos (+/-)
 
   useEffect(()=>{ load(); }, []);
-  useEffect(() => { loadRoutinesToday(); }, []); // cargar rutinas del día para el selector
 
   async function load() {
+    // ajustes
     const s = await SettingsAPI.getSystem().catch(()=>null);
     if (s) {
       setEnabled(!!s.alerts_enabled);
@@ -72,20 +74,60 @@ export default function AjustesAlertas() {
       setChannelPush(!!p.channels?.push);
       setMinSeverity(p.min_severity || 'LOW');
     }
+
+    // datos para dev tool
+    const API = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+    const [rRes, dRes] = await Promise.all([
+      fetch(`${API}/routines`, { credentials:'include' }),
+      fetch(`${API}/devices`,  { credentials:'include' })
+    ]);
+    const [rts, devs] = await Promise.all([
+      rRes.ok ? rRes.json() : [],
+      dRes.ok ? dRes.json() : []
+    ]);
+    setRoutines(Array.isArray(rts) ? rts : []);
+    setDevices(Array.isArray(devs) ? devs : []);
   }
 
-  async function loadRoutinesToday() {
-    try {
-      const API = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-      const res = await fetch(`${API}/routines`, { credentials:'include' });
-      const all = res.ok ? await res.json() : [];
-      const todays = (all || []).filter(r => Array.isArray(r.days) && r.days.includes(todayName));
-      setRoutinesToday(todays);
-      if (todays[0]?._id) setSelRoutineId(todays[0]._id);
-    } catch (e) {
-      // no-op
+  // construir entradas seleccionables de hoy (routine×occurrence×device)
+  useEffect(() => {
+    const deviceMap = new Map(devices.map(d => [String(d._id), d]));
+    const list = [];
+
+    for (const r of routines) {
+      const userId = typeof r.user_id === 'object' ? (r.user_id?._id || r.user_id?.id || '') : (r.user_id || '');
+      const userName = typeof r.user_id === 'object' ? (r.user_id?.name || '') : '';
+      const occs = Array.isArray(r.occurrences) ? r.occurrences : [];
+
+      occs.forEach((o, idx) => {
+        if (!o || !Array.isArray(o.days) || !o.days.includes(todayName)) return;
+        const start = o.start || '08:00';
+        const end   = o.end   || '09:00';
+        const devIds = Array.isArray(o.device_ids) ? o.device_ids : [];
+        devIds.forEach(devIdRaw => {
+          const devId = typeof devIdRaw === 'object' ? (devIdRaw?._id || devIdRaw?.id || '') : (devIdRaw || '');
+          if (!devId) return;
+          const d = deviceMap.get(String(devId));
+          const devName = d?.appliance || d?.plugmodel || String(devId).slice(-6);
+          list.push({
+            key: `${r._id}::${idx}::${devId}`,
+            routineId: r._id,
+            occIdx: idx,
+            device_id: devId,
+            device_name: devName,
+            user_id: userId,
+            user_name: userName,
+            start,
+            end,
+            routine_name: r.name || 'Rutina'
+          });
+        });
+      });
     }
-  }
+
+    setEntriesToday(list);
+    if (list[0]?.key) setSelKey(list[0].key);
+  }, [routines, devices, todayName]);
 
   async function saveSystem() {
     await SettingsAPI.updateSystem({
@@ -103,28 +145,38 @@ export default function AjustesAlertas() {
     alert('Preferencias guardadas');
   }
 
+  function parseSel() {
+    if (!selKey) return null;
+    const [routineId, occIdxStr, deviceId] = selKey.split('::');
+    const occIdx = Number(occIdxStr);
+    const entry = entriesToday.find(e => e.key === selKey);
+    if (!entry) return null;
+    return {
+      routineId,
+      occIdx,
+      device_id: deviceId,
+      user_id: entry.user_id,
+      start: entry.start,
+      end: entry.end
+    };
+  }
+
   async function insertTestData() {
     try {
-      if (!selRoutineId) return alert('Selecciona una rutina');
-      const r = routinesToday.find(x => x._id === selRoutineId);
-      if (!r) return alert('Rutina no encontrada');
+      const parsed = parseSel();
+      if (!parsed) return alert('Selecciona una franja de hoy');
 
-      // obtener ids "planos" por si vienen populados
-      const deviceId = typeof r.device_id === 'object' ? (r.device_id?._id || r.device_id?.id) : r.device_id;
-      const userId   = typeof r.user_id   === 'object' ? (r.user_id?._id   || r.user_id?.id)   : r.user_id;
+      const { device_id, user_id, start, end } = parsed;
+      if (!device_id || !user_id) return alert('Faltan device_id o user_id');
 
-      if (!deviceId) return alert('La rutina no tiene device_id');
-      if (!userId)   return alert('La rutina no tiene user_id');
-
-      // calcular timestamp
       const now = new Date(); now.setSeconds(0,0);
 
-      const [sh, sm] = (r.expected_start || '08:00').split(':').map(Number);
-      const [eh, em] = (r.expected_end   || '09:00').split(':').map(Number);
+      const [sh, sm] = (start || '08:00').split(':').map(Number);
+      const [eh, em] = (end   || '09:00').split(':').map(Number);
 
       let base = new Date(now);
       if (testWhere === 'inside') {
-        // punto medio de la ventana, soportando cruce de medianoche
+        // punto medio soportando cruce de día
         const startDate = new Date(now); startDate.setHours(sh||0, sm||0, 0, 0);
         const endDate   = new Date(now); endDate.setHours(eh||0, em||0, 0, 0);
         if (endDate <= startDate) endDate.setDate(endDate.getDate() + 1);
@@ -137,20 +189,18 @@ export default function AjustesAlertas() {
         base = endPlus;
       }
 
-      // aplicar offset manual
+      // offset manual en minutos
       const t = new Date(base.getTime() + Number(testOffset || 0) * 60 * 1000);
 
-      // insertar lectura
       await DevAPI.insertData({
-        device_id: deviceId,
-        user_id:   userId,
+        device_id,
+        user_id,
         time:      t.toISOString(),
         status:    true,
         power:     Number(testPower || 0),
         synthetic: true,
       });
 
-      // ejecutar checker
       await JobsAPI.runRoutineCheck();
 
       alert(`Lectura insertada (${testWhere === 'inside' ? 'dentro' : 'fuera'}) y checker ejecutado. Revisa /alerts.`);
@@ -220,25 +270,17 @@ export default function AjustesAlertas() {
             <h3>Herramientas de prueba (dev)</h3>
             <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'.75rem', marginTop:'.25rem'}}>
               <div>
-                <label>Rutina (hoy)</label>
+                <label>Rutina de hoy (franja × dispositivo)</label>
                 <Select
-                  value={selRoutineId}
-                  onChange={e=>setSelRoutineId(e.target.value)}
+                  value={selKey}
+                  onChange={e=>setSelKey(e.target.value)}
                 >
-                  {routinesToday.map(r => {
-                    const dname = typeof r.device_id === 'object'
-                      ? (r.device_id?.appliance || r.device_id?.plugmodel || 'Dispositivo')
-                      : String(r.device_id).slice(-6);
-                    const uname = typeof r.user_id === 'object'
-                      ? (r.user_id?.name || 'Paciente')
-                      : String(r.user_id).slice(-6);
-                    return (
-                      <option key={r._id} value={r._id}>
-                        {r.name || 'Rutina'} · {uname} · {dname} · {r.expected_start}–{r.expected_end}
-                      </option>
-                    );
-                  })}
-                  {!routinesToday.length && <option value="">(No hay rutinas para hoy)</option>}
+                  {entriesToday.map(e => (
+                    <option key={e.key} value={e.key}>
+                      {e.routine_name} · {e.user_name || String(e.user_id).slice(-6)} · {e.device_name} · {e.start}–{e.end}
+                    </option>
+                  ))}
+                  {!entriesToday.length && <option value="">(No hay franjas para hoy)</option>}
                 </Select>
               </div>
 
