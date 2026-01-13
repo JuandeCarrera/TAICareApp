@@ -48,25 +48,15 @@ export const FormGroup = styled.div`
   input,
   select {
     padding: 0.5rem;
-    border: 1px solid ${({ theme }) => theme.colors.fg}; /* use fg as border */
+    border: 1px solid ${({ theme }) => theme.colors.fg};
     border-radius: 4px;
     font-size: 1rem;
     width: 100%;
     background: ${({ theme }) => theme.colors.bg};
     color: ${({ theme }) => theme.colors.fg};
   }
-
-  button {
-    margin-top: 1rem;
-    padding: 0.75rem;
-    background: ${({ theme }) => theme.colors.primary};
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    &:hover { opacity: 0.9; }
-  }
 `
+
 
 export default function Modal({ isOpen, onClose, children }) {
   if (!isOpen) return null

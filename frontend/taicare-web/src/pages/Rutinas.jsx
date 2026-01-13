@@ -54,8 +54,18 @@ const Wizard = styled.div` max-width: 960px; width: 100%; margin: 0 auto; box-si
 const ModalBody = styled.div`
   display:flex; flex-direction:column; gap:.75rem; width:100%; max-height:min(88vh, 900px);
 `
-const ModalHeader = styled.div` position:sticky; top:0; z-index:1; background:${({theme})=>theme.colors.cardBg}; padding-bottom:.25rem;`
-const ModalContent = styled.div` flex:1; overflow:auto; padding-right:.25rem; min-height:0; `
+const ModalHeader = styled.div`
+  position:sticky; top:0; z-index:1;
+  background:${({theme})=>theme.colors.cardBg};
+  padding-bottom:.25rem;
+`
+const ModalContent = styled.div`
+  flex:1;
+  overflow:auto;
+  padding-right:.25rem;
+  min-height:0;
+  min-width:0;
+`
 const StepFooter = styled.div`
   position: sticky;
   bottom: 0;
@@ -84,38 +94,88 @@ const Progress = styled.div`
 const ProgressFill = styled.div` height:100%; background:${({theme})=>theme.colors.primary}; width:0%; transition:width .25s ease;`
 const CompactHeader = styled.div` display:grid; grid-template-columns:1fr; gap:.5rem; `
 
-/* ---------- Paso 2 ---------- */
-const WideGrid = styled.div`
-  display:grid; gap:.75rem; align-items:start;
-  grid-template-columns:minmax(260px,1fr) 2fr;
-  @media (max-width:1100px){ grid-template-columns:1fr; }
-`
+/* ---------- Cards ---------- */
 const Card = styled.div`
   background:${({theme})=>theme.colors.cardBg};
   border:1px solid ${({theme})=>theme.colors.border};
   border-radius:8px; padding:.75rem;
 `
-const ScrollCard = styled(Card)` max-height:60vh; overflow:auto; `
-const Room = styled.div`
-  display:flex; align-items:center; justify-content:space-between;
-  padding:.35rem .45rem; border-radius:6px; cursor:pointer;
-  &:hover{ background:${({theme})=>theme.colors.hoverBg}; }
+const ScrollCard = styled(Card)`
+  max-height:60vh;
+  overflow:auto;
+  min-width:0;
 `
 const Small = styled.small` opacity:.75; `
+
+/* ---------- Row device (CREAR + EDITAR) ---------- */
 const DeviceRow = styled.label`
-  display:flex; align-items:center; gap:.5rem; padding:.35rem .45rem; border-radius:6px; cursor:pointer;
+  display:grid;
+  grid-template-columns: 18px 1fr;
+  gap:.5rem;
+  align-items:start;
+
+  padding:.35rem .45rem;
+  border-radius:6px;
+  cursor:pointer;
+
+  min-width:0;
   &:hover{ background:${({theme})=>theme.colors.hoverBg}; }
+
+  input{
+    margin:0;
+    margin-top:2px;
+  }
+
+  .devText{
+    min-width:0;
+    line-height:1.2;
+    word-break:break-word;
+  }
 `
 
-/* ---------- Paso 3 ---------- */
+/* ---------- Chips (DÍAS) ---------- */
 const Chip = styled.button`
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+
   border:1px solid ${({theme})=>theme.colors.border};
-  background:${({theme,active})=>active?theme.colors.primary:theme.colors.cardBg};
-  color:${({active})=>active?'#fff':'inherit'};
-  border-radius:999px; padding:.25rem .6rem; font-size:.8rem; cursor:pointer;
-  &:hover{ background:${({theme,active})=>active?theme.colors.primaryDark:theme.colors.hoverBg}; }
+  background:${({theme,$active})=>$active ? theme.colors.primary : theme.colors.cardBg};
+  color:${({$active})=>$active ? '#fff' : 'inherit'};
+
+  border-radius:999px;
+  padding:.25rem .6rem;
+  font-size:.8rem;
+  cursor:pointer;
+  user-select:none;
+  white-space:nowrap;
+
+  &:hover{
+    background:${({theme,$active})=>$active ? theme.colors.primaryDark : theme.colors.hoverBg};
+  }
 `
-const DayBtn = styled(Chip)``
+const DayBtn = styled.button`
+  border: 1px solid ${({theme}) => theme.colors.border};
+  background: ${({theme, active}) => (active ? theme.colors.primary : theme.colors.cardBg)};
+  color: ${({active}) => (active ? '#fff' : 'inherit')};
+
+  border-radius: 999px;
+  padding: .25rem .6rem;
+  font-size: .8rem;
+  cursor: pointer;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    background: ${({theme, active}) => (active ? theme.colors.primaryDark : theme.colors.hoverBg)};
+  }
+
+  appearance: none;
+  -webkit-appearance: none;
+  outline: none;
+`
 
 /* ---------- Constantes ---------- */
 const DAY_NAMES = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
@@ -124,13 +184,13 @@ const ES_DAYS = { Monday:'Lunes', Tuesday:'Martes', Wednesday:'Miércoles', Thur
 const slots48 = Array.from({length:48},(_,i)=>`${String(Math.floor(i/2)).padStart(2,'0')}:${i%2===0?'00':'30'}`)
 const PRESETS_KEY = 'routine_presets_v1'
 const STEP_TITLES = ['Selección', 'Dispositivos', 'Horarios', 'Resumen']
+
 const loadPresets = () => { try { return JSON.parse(localStorage.getItem(PRESETS_KEY) || '[]') } catch { return [] } }
 const savePresets = (list) => localStorage.setItem(PRESETS_KEY, JSON.stringify(list))
 const idxOf = (t)=>slots48.indexOf(t)
 const minutesBetween = (a,b)=>(idxOf(b)-idxOf(a)+(idxOf(b)<=idxOf(a)?48:0))*30
 const idEq = (a,b) => String(a ?? '') === String(b ?? '')
 
-/* ========================================================= */
 export default function Rutinas(){
   const { logout } = useContext(AuthContext)
   const navigate = useNavigate()
@@ -160,12 +220,11 @@ export default function Rutinas(){
 
   // paso 2/3
   const [selectedDevices,setSelectedDevices] = useState(new Set())
-  const [roomOpen,setRoomOpen] = useState({})
-  const [scheduleBlocks,setScheduleBlocks] = useState({}) 
+  const [scheduleBlocks,setScheduleBlocks] = useState({})
   const [target,setTarget] = useState('ALL')
   const [builder,setBuilder] = useState({ start:'14:00', end:'15:00', days:[] })
   const [builderPresetId,setBuilderPresetId] = useState('')
-  const [roomFilter, setRoomFilter] = useState('ALL')     
+  const [roomFilter, setRoomFilter] = useState('ALL')
   const [deviceQuery, setDeviceQuery] = useState('')
 
   // edición / borrado
@@ -184,7 +243,7 @@ export default function Rutinas(){
     fetch(`${API}/devices`, {credentials:'include'}).then(r=>r.ok?r.json():[]).then(setDevices).catch(()=>{})
   }
 
-  // --- helpers relación paciente↔casa ---
+  /* ---------- helpers relación paciente↔casa ---------- */
   function householdHasPatient(h, patientId) {
     if (!h || !patientId) return false
     const pid = String(patientId)
@@ -226,7 +285,6 @@ export default function Rutinas(){
   }, [form.user_id, availableHouseholds, form.household_id])
 
   /* ---------- memos ---------- */
-
   const devicesByRoom = useMemo(() => {
     const hhId = form.household_id || ''
     const list = devices.filter(d => idEq(d.household_id, hhId))
@@ -271,37 +329,14 @@ export default function Rutinas(){
   }
   function openCreator(){ resetCreator(); setOpen(true) }
 
-  function toggleRoom(room){ setRoomOpen(prev=>({...prev, [room]:!prev[room]})) }
-  function selectWholeRoom(room){
-    const list = devicesByRoom[room] || []
-    const next = new Set(selectedDevices); for(const d of list) next.add(d._id)
-    setSelectedDevices(next); ensureBlocksFor([...next])
-  }
   function toggleDevice(d){
-    const next = new Set(selectedDevices); next.has(d._id)?next.delete(d._id):next.add(d._id)
-    setSelectedDevices(next); ensureBlocksFor([...next])
+    const next = new Set(selectedDevices)
+    next.has(d._id) ? next.delete(d._id) : next.add(d._id)
+    setSelectedDevices(next)
+    ensureBlocksFor([...next])
   }
   function ensureBlocksFor(ids){
     setScheduleBlocks(prev=>{ const out={...prev}; for(const id of ids) if(!out[id]) out[id]=[]; return out })
-  }
-
-  // --- helpers relación paciente↔casa ---
-  function householdHasPatient(h, patientId) {
-    if (!h || !patientId) return false
-
-    const pid = String(patientId)
-
-    // casos comunes: users: [id], patients: [id], members: [id]...
-    const arrCandidates = [h.users, h.patients, h.members, h.user_ids, h.patient_ids]
-      .filter(Array.isArray)
-
-    for (const arr of arrCandidates) {
-      if (arr.some(x => idEq(typeof x === 'object' ? (x?._id ?? x?.id) : x, pid))) return true
-    }
-
-    if (h.patient_id && idEq(h.patient_id, pid)) return true
-
-    return false
   }
 
   /* ---------- validación paso 1 ---------- */
@@ -325,10 +360,19 @@ export default function Rutinas(){
   /* ---------- paso 3 builder ---------- */
   const endOptionsFor = (start)=>{
     const s = idxOf(start); if(s<0) return []
-    const out=[]; for(let i=1;i<=48;i++){ const idx=(s+i)%48; out.push({value:slots48[idx], label:`${slots48[idx]}${idx<=s?' (+1 día)':''}`}); if(i===48) break }
+    const out=[]
+    for(let i=1;i<=48;i++){
+      const idx=(s+i)%48
+      out.push({value:slots48[idx], label:`${slots48[idx]}${idx<=s?' (+1 día)':''}`})
+      if(i===48) break
+    }
     return out
   }
-  const toggleBuilderDay = (d)=> setBuilder(b=>{const s=new Set(b.days); s.has(d)?s.delete(d):s.add(d); return {...b, days:[...s]} })
+  const toggleBuilderDay = (d)=> setBuilder(b=>{
+    const s=new Set(b.days)
+    s.has(d)?s.delete(d):s.add(d)
+    return {...b, days:[...s]}
+  })
   function applyBuilder(){
     if(!builder.start||!builder.end) return alert('Elige inicio y fin')
     if(!builder.days?.length) return alert('Selecciona al menos un día')
@@ -337,7 +381,11 @@ export default function Rutinas(){
     const ids = target==='ALL' ? [...selectedDevices] : [target]
     setScheduleBlocks(prev=>{
       const out={...prev}
-      for(const id of ids){ const list=out[id]?[...out[id]]:[]; list.push({...builder}); out[id]=list }
+      for(const id of ids){
+        const list=out[id]?[...out[id]]:[]
+        list.push({...builder})
+        out[id]=list
+      }
       return out
     })
   }
@@ -366,25 +414,64 @@ export default function Rutinas(){
     const householdId = form.household_id
     const payload={ name:(form.name||'').trim(), user_id:form.user_id, household_id:householdId, occurrences }
     try{
-      const res=await fetch(`${API}/routines`,{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
-      if(!res.ok){ const err=await res.json().catch(()=>({})); throw new Error(err.error||'No se pudo guardar la rutina') }
+      const res=await fetch(`${API}/routines`,{
+        method:'POST',
+        credentials:'include',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(payload)
+      })
+      if(!res.ok){
+        const err=await res.json().catch(()=>({}))
+        throw new Error(err.error||'No se pudo guardar la rutina')
+      }
       const list=await fetch(`${API}/routines`,{credentials:'include'})
-      setRoutines(list.ok?await list.json():[]); setOpen(false)
+      setRoutines(list.ok?await list.json():[])
+      setOpen(false)
     }catch(e){ alert(e.message) }
   }
 
   /* ---------- helpers listado ---------- */
-  function normalizeRef(ref,{type}){ if(!ref) return {id:'',name:''}; if(typeof ref==='string') return {id:ref,name:''}; if(ref.name&&typeof ref.name==='string') return {id:ref._id||ref.id||'',name:ref.name}; if(type==='device'&&(ref.appliance||ref.plugmodel)) return {id:ref._id||ref.id||'',name:ref.appliance||ref.plugmodel}; return {id:ref._id||ref.id||'',name:''}; }
-  function getPatientName(userRef){ const {id,name}=normalizeRef(userRef,{type:'user'}); if (name) return name; const p=patients.find(u=>idEq(u._id,id)); return p?.name||id||'—' }
+  function normalizeRef(ref,{type}){
+    if(!ref) return {id:'',name:''}
+    if(typeof ref==='string') return {id:ref,name:''}
+    if(ref.name && typeof ref.name==='string') return {id:ref._id||ref.id||'',name:ref.name}
+    if(type==='device' && (ref.appliance||ref.plugmodel)) return {id:ref._id||ref.id||'',name:ref.appliance||ref.plugmodel}
+    return {id:ref._id||ref.id||'',name:''}
+  }
+  function getPatientName(userRef){
+    const {id,name}=normalizeRef(userRef,{type:'user'})
+    if (name) return name
+    const p=patients.find(u=>idEq(u._id,id))
+    return p?.name||id||'—'
+  }
   function getDeviceMeta(deviceRef,devs=devices,hhs=households){
-    const norm=normalizeRef(deviceRef,{type:'device'}); const d=devs.find(x=>idEq(x?._id,norm.id)); const isObj= deviceRef && typeof deviceRef==='object'
+    const norm=normalizeRef(deviceRef,{type:'device'})
+    const d=devs.find(x=>idEq(x?._id,norm.id))
+    const isObj= deviceRef && typeof deviceRef==='object'
     const dispName=norm.name||d?.appliance||d?.plugmodel||norm.id||'Dispositivo'
-    const room=d?.room||(isObj?deviceRef.room:'')||''; const hhIdRaw=d?.household_id||(isObj?deviceRef.household_id:'')||''; const home=hhs.find(h=>idEq(h?._id, hhIdRaw))?.name||''
+    const room=d?.room||(isObj?deviceRef.room:'')||''
+    const hhIdRaw=d?.household_id||(isObj?deviceRef.household_id:'')||''
+    const home=hhs.find(h=>idEq(h?._id, hhIdRaw))?.name||''
     return {name:dispName, room, home}
   }
-  function summarizeTimes(occ=[]){ const m=new Map(); for(const o of occ){ const k=`${o.start}–${o.end}`; m.set(k,(m.get(k)||0)+((o.device_ids||[]).length)) } return [...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0,2).map(([k])=>k) }
-  function uniqueDevicesCount(occ=[]){ const s=new Set(); for(const o of occ)(o.device_ids||[]).forEach(id=>s.add(String(id))); return s.size }
-  function daysUnion(occ=[]){ const s=new Set(); for(const o of occ)(o.days||[]).forEach(d=>s.add(d)); return [...s] }
+  function summarizeTimes(occ=[]){
+    const m=new Map()
+    for(const o of occ){
+      const k=`${o.start}–${o.end}`
+      m.set(k,(m.get(k)||0)+((o.device_ids||[]).length))
+    }
+    return [...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0,2).map(([k])=>k)
+  }
+  function uniqueDevicesCount(occ=[]){
+    const s=new Set()
+    for(const o of occ)(o.device_ids||[]).forEach(id=>s.add(String(id)))
+    return s.size
+  }
+  function daysUnion(occ=[]){
+    const s=new Set()
+    for(const o of occ)(o.days||[]).forEach(d=>s.add(d))
+    return [...s]
+  }
 
   /* ---------- búsqueda/filtros/orden ---------- */
   const [q,setQ] = useState('')
@@ -392,26 +479,45 @@ export default function Rutinas(){
   const [sort,setSort]=useState('recent_desc')
 
   const filteredSorted = useMemo(()=>{
-    const qnorm=q.trim().toLowerCase(); let arr=[...routines]
-    if(flt.patientId){ arr=arr.filter(r=>idEq((typeof r.user_id==='object'?r.user_id?._id:r.user_id), flt.patientId)) }
-    if(flt.day){ arr=arr.filter(r=>Array.isArray(r.occurrences)&&r.occurrences.some(o=>Array.isArray(o.days)&&o.days.includes(flt.day))) }
+    const qnorm=q.trim().toLowerCase()
+    let arr=[...routines]
+
+    if(flt.patientId){
+      arr=arr.filter(r=>idEq((typeof r.user_id==='object'?r.user_id?._id:r.user_id), flt.patientId))
+    }
+    if(flt.day){
+      arr=arr.filter(r=>Array.isArray(r.occurrences)&&r.occurrences.some(o=>Array.isArray(o.days)&&o.days.includes(flt.day)))
+    }
     if(qnorm){
       arr=arr.filter(r=>{
         const patient=(getPatientName(r.user_id)||'').toLowerCase()
         const name=(r.name||'').toLowerCase()
         let devicesTxt='', timeTxt=''
         if(Array.isArray(r.occurrences)){
-          for(const o of r.occurrences){ timeTxt+=` ${o.start||''} ${o.end||''}`
-            for(const dRef of (o.device_ids||[])){ const meta=getDeviceMeta(dRef,devices,households); devicesTxt+=` ${meta.name||''} ${meta.room||''} ${meta.home||''}` }
+          for(const o of r.occurrences){
+            timeTxt+=` ${o.start||''} ${o.end||''}`
+            for(const dRef of (o.device_ids||[])){
+              const meta=getDeviceMeta(dRef,devices,households)
+              devicesTxt+=` ${meta.name||''} ${meta.room||''} ${meta.home||''}`
+            }
           }
         }
         return `${patient} ${name} ${devicesTxt.toLowerCase()} ${timeTxt.toLowerCase()}`.includes(qnorm)
       })
     }
+
     if(sort==='recent_desc'||sort==='recent_asc'){
-      arr.sort((a,b)=>{ const ta=new Date(a.updatedAt||a.createdAt||0).getTime(), tb=new Date(b.updatedAt||b.createdAt||0).getTime(); return sort==='recent_desc'?(tb-ta):(ta-tb) })
+      arr.sort((a,b)=>{
+        const ta=new Date(a.updatedAt||a.createdAt||0).getTime()
+        const tb=new Date(b.updatedAt||b.createdAt||0).getTime()
+        return sort==='recent_desc'?(tb-ta):(ta-tb)
+      })
     }else{
-      arr.sort((a,b)=>{ const c1=getPatientName(a.user_id).localeCompare(getPatientName(b.user_id)); if(c1!==0) return c1; return (a.name||'').localeCompare(b.name||'') })
+      arr.sort((a,b)=>{
+        const c1=getPatientName(a.user_id).localeCompare(getPatientName(b.user_id))
+        if(c1!==0) return c1
+        return (a.name||'').localeCompare(b.name||'')
+      })
     }
     return arr
   },[q,flt,sort,routines,patients,devices,households])
@@ -420,7 +526,8 @@ export default function Rutinas(){
   function openEditModal(r){
     setEditId(r._id)
     const occs=Array.isArray(r.occurrences)?r.occurrences.map(o=>({
-      start:o.start||'14:00', end:o.end||'15:00',
+      start:o.start||'14:00',
+      end:o.end||'15:00',
       days:Array.isArray(o.days)?[...o.days]:[],
       device_ids:Array.isArray(o.device_ids)?o.device_ids.map(d=> (typeof d==='object'?(d?._id||d?.id):d) ):[]
     })):[]
@@ -432,11 +539,28 @@ export default function Rutinas(){
     })
     setEditOpen(true)
   }
-  const updateOccurrence=(idx,patch)=> setEditData(ed=>{const next=[...ed.occurrences]; next[idx]={...next[idx],...patch}; return {...ed,occurrences:next}})
-  const toggleOccDevice=(idx,deviceId)=> setEditData(ed=>{const next=[...ed.occurrences]; const s=new Set(next[idx].device_ids); s.has(deviceId)?s.delete(deviceId):s.add(deviceId); next[idx]={...next[idx],device_ids:[...s]}; return {...ed,occurrences:next}})
-  const toggleOccDay=(idx,day)=> setEditData(ed=>{const next=[...ed.occurrences]; const s=new Set(next[idx].days||[]); s.has(day)?s.delete(day):s.add(day); next[idx]={...next[idx],days:[...s]}; return {...ed,occurrences:next}})
+  const updateOccurrence=(idx,patch)=> setEditData(ed=>{
+    const next=[...ed.occurrences]
+    next[idx]={...next[idx],...patch}
+    return {...ed,occurrences:next}
+  })
+  const toggleOccDevice=(idx,deviceId)=> setEditData(ed=>{
+    const next=[...ed.occurrences]
+    const s=new Set(next[idx].device_ids)
+    s.has(deviceId)?s.delete(deviceId):s.add(deviceId)
+    next[idx]={...next[idx],device_ids:[...s]}
+    return {...ed,occurrences:next}
+  })
+  const toggleOccDay=(idx,day)=> setEditData(ed=>{
+    const next=[...ed.occurrences]
+    const s=new Set(next[idx].days||[])
+    s.has(day)?s.delete(day):s.add(day)
+    next[idx]={...next[idx],days:[...s]}
+    return {...ed,occurrences:next}
+  })
   const addOccurrence=()=> setEditData(ed=>({...ed,occurrences:[...ed.occurrences,{start:'14:00',end:'15:00',days:[],device_ids:[]}] }))
   const removeOccurrence=(idx)=> setEditData(ed=>({...ed,occurrences:ed.occurrences.filter((_,i)=>i!==idx)}))
+
   async function saveEdit(){
     try{
       if(!editId) return
@@ -446,12 +570,194 @@ export default function Rutinas(){
         if(!o.days?.length) return alert('Cada franja debe tener días')
         if(!o.device_ids?.length) return alert('Cada franja debe tener dispositivos')
       }
-      const payload={ name:(editData.name||'').trim(), occurrences:editData.occurrences.map(o=>({start:o.start,end:o.end,days:o.days,device_ids:o.device_ids})) }
-      const res=await fetch(`${API}/routines/${editId}`,{method:'PUT',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
-      if(!res.ok){ const err=await res.json().catch(()=>({})); throw new Error(err.error||'No se pudo editar la rutina') }
-      const r=await fetch(`${API}/routines`,{credentials:'include'}); setRoutines(r.ok?await r.json():[])
-      setEditOpen(false); setEditId(null)
+      const payload={
+        name:(editData.name||'').trim(),
+        occurrences:editData.occurrences.map(o=>({start:o.start,end:o.end,days:o.days,device_ids:o.device_ids}))
+      }
+      const res=await fetch(`${API}/routines/${editId}`,{
+        method:'PUT',
+        credentials:'include',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(payload)
+      })
+      if(!res.ok){
+        const err=await res.json().catch(()=>({}))
+        throw new Error(err.error||'No se pudo editar la rutina')
+      }
+      const r=await fetch(`${API}/routines`,{credentials:'include'})
+      setRoutines(r.ok?await r.json():[])
+      setEditOpen(false)
+      setEditId(null)
     }catch(e){ alert(e.message) }
+  }
+
+  function EditOccurrenceCard({
+    idx, o,
+    devices,
+    slots48, idxOf,
+    updateOccurrence, toggleOccDay, toggleOccDevice, removeOccurrence
+  }){
+    const endOptionsForEdit = (start) => {
+      const s = idxOf(start)
+      if (s < 0) return []
+      const out=[]
+      for (let i=1;i<=48;i++){
+        const id=(s+i)%48
+        out.push({value:slots48[id], label:`${slots48[id]}${id<=s?' (+1 día)':''}`})
+        if(i===48) break
+      }
+      return out
+    }
+
+    // filtros dispositivos (por habitación + búsqueda)
+    const [roomF, setRoomF] = useState('ALL')
+    const [qq, setQQ] = useState('')
+
+    const rooms = useMemo(() => {
+      const set = new Set()
+      for (const d of devices) if (d?.room) set.add(d.room)
+      return [...set].sort((a,b)=>a.localeCompare(b))
+    }, [devices])
+
+    const visibleDevs = useMemo(() => {
+      const q = qq.trim().toLowerCase()
+      let list = devices
+      if (roomF !== 'ALL') list = list.filter(d => d.room === roomF)
+      if (!q) return list
+      return list.filter(d => {
+        const a = (d.appliance || '').toLowerCase()
+        const p = (d.plugmodel || '').toLowerCase()
+        return a.includes(q) || p.includes(q)
+      })
+    }, [devices, roomF, qq])
+
+    return (
+      <Card>
+        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', gap:'.75rem'}}>
+          <strong>Franja #{idx+1}</strong>
+          <Btn style={{borderColor:'#e04848',background:'#e04848',color:'#fff'}} onClick={()=>removeOccurrence(idx)}>
+            Eliminar
+          </Btn>
+        </div>
+
+        {/* Inicio/Fin */}
+        <FormGroup style={{marginTop:'.5rem'}}>
+          <label>Inicio / Fin</label>
+          <div style={{display:'flex', gap:'.5rem', alignItems:'center', flexWrap:'wrap'}}>
+            <select
+              value={o.start}
+              onChange={e=>{
+                const start=e.target.value
+                const ends=endOptionsForEdit(start)
+                const valid=ends.some(opt=>opt.value===o.end)
+                updateOccurrence(idx,{start, end: valid ? o.end : (ends[0]?.value || o.end)})
+              }}
+            >
+              {slots48.map(t=><option key={t} value={t}>{t}</option>)}
+            </select>
+            <span>—</span>
+            <select value={o.end} onChange={e=>updateOccurrence(idx,{end:e.target.value})}>
+              {endOptionsForEdit(o.start).map(opt=>(
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
+        </FormGroup>
+
+        {/* Días */}
+        <FormGroup>
+          <label>Días</label>
+          <div style={{ display:'flex', flexWrap:'wrap', gap:'.35rem' }}>
+            {DAY_NAMES.map((d,i)=>(
+              <DayBtn
+                key={d}
+                type="button"
+                active={o.days.includes(d)}
+                onClick={() => toggleOccDay(idx, d)}
+                title={ES_DAYS[d]}
+                style={{ minWidth: 44 }}
+              >
+                {DAY_SHORT[i]}
+              </DayBtn>
+            ))}
+          </div>
+        </FormGroup>
+
+
+        {/* Dispositivos */}
+        <FormGroup>
+          <label>Dispositivos</label>
+
+          {/* Filtros */}
+          <Card style={{marginTop:'.25rem'}}>
+            <div style={{display:'flex', gap:'.75rem', flexWrap:'wrap', alignItems:'end'}}>
+              <div style={{minWidth:220}}>
+                <label style={{display:'block', marginBottom:6}}>Habitación</label>
+                <select value={roomF} onChange={e=>setRoomF(e.target.value)}>
+                  <option value="ALL">Todas</option>
+                  {rooms.map(r => <option key={r} value={r}>{r}</option>)}
+                </select>
+              </div>
+
+              <div style={{flex:1, minWidth:260}}>
+                <label style={{display:'block', marginBottom:6}}>Buscar dispositivo</label>
+                <input
+                  value={qq}
+                  onChange={e=>setQQ(e.target.value)}
+                  placeholder="Buscar por electrodoméstico o modelo"
+                />
+              </div>
+
+              <div style={{display:'flex', gap:'.5rem'}}>
+                <Btn
+                  onClick={()=>{
+                    const s = new Set(o.device_ids)
+                    for (const d of visibleDevs) s.add(d._id)
+                    updateOccurrence(idx,{ device_ids:[...s] })
+                  }}
+                  disabled={!visibleDevs.length}
+                >
+                  Seleccionar visibles
+                </Btn>
+
+                <Btn
+                  onClick={()=>{
+                    const s = new Set(o.device_ids)
+                    for (const d of visibleDevs) s.delete(d._id)
+                    updateOccurrence(idx,{ device_ids:[...s] })
+                  }}
+                  disabled={!visibleDevs.length}
+                >
+                  Quitar visibles
+                </Btn>
+              </div>
+            </div>
+          </Card>
+
+          {/* Lista */}
+          <ScrollCard style={{marginTop:'.75rem', maxHeight:'38vh'}}>
+            <strong>Dispositivos</strong>
+            <div style={{ marginTop:'.5rem' }}>
+              {!visibleDevs.length && <Small>No hay dispositivos que coincidan.</Small>}
+
+              {visibleDevs.map(d => (
+                <DeviceRow key={d._id}>
+                  <input
+                    type="checkbox"
+                    checked={o.device_ids.includes(d._id)}
+                    onChange={()=>toggleOccDevice(idx,d._id)}
+                  />
+                  <span className="devText">
+                    {d.appliance || 'Dispositivo'} <Small>({d.plugmodel})</Small>
+                    {d.room ? <Small style={{marginLeft:8}}>— {d.room}</Small> : null}
+                  </span>
+                </DeviceRow>
+              ))}
+            </div>
+          </ScrollCard>
+        </FormGroup>
+      </Card>
+    )
   }
 
   /* ---------- borrado ---------- */
@@ -460,14 +766,22 @@ export default function Rutinas(){
     try{
       if(!deleteId) return
       const res=await fetch(`${API}/routines/${deleteId}`,{method:'DELETE',credentials:'include'})
-      if(!res.ok && res.status!==204){ const err=await res.json().catch(()=>({})); throw new Error(err.error||'No se pudo borrar la rutina') }
-      const r=await fetch(`${API}/routines`,{credentials:'include'}); setRoutines(r.ok?await r.json():[])
+      if(!res.ok && res.status!==204){
+        const err=await res.json().catch(()=>({}))
+        throw new Error(err.error||'No se pudo borrar la rutina')
+      }
+      const r=await fetch(`${API}/routines`,{credentials:'include'})
+      setRoutines(r.ok?await r.json():[])
       setDeleteOpen(false); setDeleteId(null)
     }catch(e){ alert(e.message) }
   }
 
   /* ---------- presets modal ---------- */
-  const togglePresetDay=(d)=> setPresetForm(f=>{const s=new Set(f.days); s.has(d)?s.delete(d):s.add(d); return {...f, days:[...s]} })
+  const togglePresetDay=(d)=> setPresetForm(f=>{
+    const s=new Set(f.days)
+    s.has(d)?s.delete(d):s.add(d)
+    return {...f, days:[...s]}
+  })
   const addPreset=()=>{
     const {name,start,end,days}=presetForm
     if(!name.trim()||!days.length||idxOf(start)<0||idxOf(end)<0) return alert('Completa nombre, días e inicio/fin')
@@ -504,7 +818,11 @@ export default function Rutinas(){
               ]}
               values={flt}
               onValuesChange={setFlt}
-              sortOptions={[{value:'recent_desc',label:'Más recientes'},{value:'recent_asc',label:'Más antiguas'},{value:'alpha',label:'Paciente / Nombre'}]}
+              sortOptions={[
+                {value:'recent_desc',label:'Más recientes'},
+                {value:'recent_asc',label:'Más antiguas'},
+                {value:'alpha',label:'Paciente / Nombre'}
+              ]}
               sort={sort}
               onSortChange={setSort}
               onClear={()=>{ setQ(''); setFlt({patientId:'', day:''}); setSort('recent_desc') }}
@@ -684,7 +1002,7 @@ export default function Rutinas(){
                             checked={selectedDevices.has(d._id)}
                             onChange={() => toggleDevice(d)}
                           />
-                          <span>
+                          <span className="devText">
                             {d.appliance || 'Dispositivo'} <Small>({d.plugmodel})</Small>
                             {d.room ? <Small style={{marginLeft:8}}>— {d.room}</Small> : null}
                           </span>
@@ -731,7 +1049,13 @@ export default function Rutinas(){
                           </option>
                         ))}
                       </select>
-                      <Btn onClick={()=>{ const p=presets.find(x=>x.id===builderPresetId); if(p) setBuilder({start:p.start,end:p.end,days:[...p.days]}) }} disabled={!builderPresetId}>
+                      <Btn
+                        onClick={()=>{
+                          const p=presets.find(x=>x.id===builderPresetId)
+                          if(p) setBuilder({start:p.start,end:p.end,days:[...p.days]})
+                        }}
+                        disabled={!builderPresetId}
+                      >
                         Cargar preset
                       </Btn>
                     </div>
@@ -767,7 +1091,12 @@ export default function Rutinas(){
                         <label style={{display:'block',marginBottom:6}}>Días</label>
                         <div style={{display:'flex',flexWrap:'wrap',gap:'.35rem'}}>
                           {DAY_NAMES.map((d,idx)=>(
-                            <DayBtn key={d} active={builder.days.includes(d)} onClick={()=>toggleBuilderDay(d)}>
+                            <DayBtn
+                              key={d}
+                              type="button"
+                              $active={builder.days.includes(d)}
+                              onClick={()=>toggleBuilderDay(d)}
+                            >
                               {DAY_SHORT[idx]}
                             </DayBtn>
                           ))}
@@ -822,6 +1151,7 @@ export default function Rutinas(){
                       <div><Small>Nombre:</Small> {form.name || <em>(sin nombre)</em>}</div>
                       <div><Small>Paciente:</Small> {patients.find(p=>idEq(p._id,form.user_id))?.name || form.user_id}</div>
                       <div><Small>Casa:</Small> {selectedHouse?.name || '(ninguna)'}</div>
+
                       <div style={{marginTop:'.75rem'}}>
                         <Small>Horarios por dispositivo</Small>
                         <div style={{display:'grid',gap:'.5rem',marginTop:'.35rem'}}>
@@ -835,7 +1165,9 @@ export default function Rutinas(){
                                 {blocks.map((b,i)=>(
                                   <div key={`${id}-sum-${i}`} style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap',marginBottom:6}}>
                                     <TimePill>{b.start}–{b.end}{idxOf(b.end)<=idxOf(b.start)?' (+1)':''}</TimePill>
-                                    <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>{(b.days||[]).map(dn=><Tag key={`${id}-sum-${i}-${dn}`}>{ES_DAYS[dn]}</Tag>)}</div>
+                                    <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+                                      {(b.days||[]).map(dn=><Tag key={`${id}-sum-${i}-${dn}`}>{ES_DAYS[dn]}</Tag>)}
+                                    </div>
                                   </div>
                                 ))}
                               </Card>
@@ -862,72 +1194,63 @@ export default function Rutinas(){
 
       {/* ---------- MODAL EDITAR ---------- */}
       <Modal isOpen={editOpen} onClose={()=>setEditOpen(false)}>
-        <h2>Editar rutina</h2>
+        <Wizard>
+          <ModalBody>
+            <ModalHeader>
+              <CompactHeader>
+                <div>
+                  <h2>Editar rutina</h2>
+                  <StepSub>Modifica nombre y franjas (occurrences)</StepSub>
+                </div>
+                <StepBadge>Editar</StepBadge>
+                <Progress aria-hidden="true">
+                  <ProgressFill style={{ width: `100%` }} />
+                </Progress>
+              </CompactHeader>
+            </ModalHeader>
 
-        <FormGroup>
-          <label>Nombre (opcional)</label>
-          <input value={editData.name} onChange={e=>setEditData(ed=>({...ed, name:e.target.value}))} placeholder="p.ej. Comida" />
-        </FormGroup>
+            <ModalContent>
+              <Card>
+                <FormGroup>
+                  <label>Nombre (opcional)</label>
+                  <input
+                    value={editData.name}
+                    onChange={e=>setEditData(ed=>({...ed, name:e.target.value}))}
+                    placeholder="p.ej. Comida"
+                  />
+                </FormGroup>
 
-        <div style={{marginTop:'.75rem',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-          <strong>Franjas (occurrences)</strong>
-          <Btn onClick={addOccurrence}>+ Añadir franja</Btn>
-        </div>
+                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:'.5rem'}}>
+                  <strong>Franjas (occurrences)</strong>
+                  <Btn onClick={addOccurrence}>+ Añadir franja</Btn>
+                </div>
+                <Small>Puedes crear varias franjas con distintos días y dispositivos.</Small>
+              </Card>
 
-        {editData.occurrences.map((o,idx)=>{
-          const hhId=editData.household_id||''; const devs=hhId?devices.filter(d=>idEq(d.household_id,hhId)):devices
-          const endOptionsForEdit=(start)=>{ const s=idxOf(start); if(s<0) return []; const out=[]; for(let i=1;i<=48;i++){ const id=(s+i)%48; out.push({value:slots48[id], label:`${slots48[id]}${id<=s?' (+1 día)':''}`}); if(i===48)break } return out }
-          return (
-            <Card key={idx} style={{marginTop:'.6rem'}}>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'.4rem'}}>
-                <strong>Franja #{idx+1}</strong>
-                <Btn style={{borderColor:'#e04848',background:'#e04848',color:'#fff'}} onClick={()=>removeOccurrence(idx)}>Eliminar</Btn>
+              <div style={{display:'grid', gap:'.75rem', marginTop:'.75rem'}}>
+                {editData.occurrences.map((o,idx)=>(
+                  <EditOccurrenceCard
+                    key={idx}
+                    idx={idx}
+                    o={o}
+                    devices={devices}
+                    slots48={slots48}
+                    idxOf={idxOf}
+                    updateOccurrence={updateOccurrence}
+                    toggleOccDay={toggleOccDay}
+                    toggleOccDevice={toggleOccDevice}
+                    removeOccurrence={removeOccurrence}
+                  />
+                ))}
               </div>
+            </ModalContent>
 
-              <FormGroup>
-                <label>Inicio / Fin</label>
-                <div style={{display:'flex',gap:'.5rem',alignItems:'center'}}>
-                  <select value={o.start} onChange={e=>{ const start=e.target.value; const ends=endOptionsForEdit(start); const valid=ends.some(opt=>opt.value===o.end); updateOccurrence(idx,{start,end:valid?o.end:(ends[0]?.value||o.end)}) }}>
-                    {slots48.map(t=><option key={t} value={t}>{t}</option>)}
-                  </select>
-                  <span>—</span>
-                  <select value={o.end} onChange={e=>updateOccurrence(idx,{end:e.target.value})}>
-                    {endOptionsForEdit(o.start).map(opt=><option key={opt.value} value={opt.value}>{opt.label}</option>)}
-                  </select>
-                </div>
-              </FormGroup>
-
-              <FormGroup>
-                <label>Días</label>
-                <TagRow>
-                  {DAY_NAMES.map((d,i)=>(
-                    <Chip key={d} active={o.days.includes(d)} onClick={()=>toggleOccDay(idx,d)} title={ES_DAYS[d]}>
-                      {DAY_SHORT[i]}
-                    </Chip>
-                  ))}
-                </TagRow>
-              </FormGroup>
-
-              <FormGroup>
-                <label>Dispositivos</label>
-                <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))',gap:'.35rem'}}>
-                  {devs.map(d=>(
-                    <label key={d._id} style={{display:'flex',alignItems:'center',gap:'.5rem'}}>
-                      <input type="checkbox" checked={o.device_ids.includes(d._id)} onChange={()=>toggleOccDevice(idx,d._id)} />
-                      <span>{d.appliance||d.plugmodel}{d.room?` — ${d.room}`:''}</span>
-                    </label>
-                  ))}
-                  {!devs.length && <Small>No hay dispositivos disponibles para esta casa.</Small>}
-                </div>
-              </FormGroup>
-            </Card>
-          )
-        })}
-
-        <div style={{display:'flex',justifyContent:'flex-end',gap:'.5rem',marginTop:'.75rem'}}>
-          <Btn onClick={()=>setEditOpen(false)}>Cancelar</Btn>
-          <Btn variant="primary" onClick={saveEdit}>Guardar cambios</Btn>
-        </div>
+            <StepFooter>
+              <Btn onClick={()=>setEditOpen(false)}>Cancelar</Btn>
+              <Btn variant="primary" onClick={saveEdit}>Guardar cambios</Btn>
+            </StepFooter>
+          </ModalBody>
+        </Wizard>
       </Modal>
 
       {/* ---------- MODAL PRESET ---------- */}
@@ -935,8 +1258,8 @@ export default function Rutinas(){
         <h2>Presets de horario</h2>
 
         <div style={{display:'flex',gap:'.5rem',alignItems:'center',marginBottom:'.5rem'}}>
-          <Chip active={presetTab==='create'} onClick={()=>setPresetTab('create')}>Nuevo preset</Chip>
-          <Chip active={presetTab==='list'} onClick={()=>setPresetTab('list')}>Mis presets</Chip>
+          <Chip as="button" type="button" $active={presetTab==='create'} onClick={()=>setPresetTab('create')}>Nuevo preset</Chip>
+          <Chip as="button" type="button" $active={presetTab==='list'} onClick={()=>setPresetTab('list')}>Mis presets</Chip>
         </div>
 
         {presetTab==='create' && (
@@ -951,12 +1274,19 @@ export default function Rutinas(){
             <FormGroup>
               <label>Inicio / Fin</label>
               <div style={{display:'flex',gap:'.5rem',alignItems:'center'}}>
-                <select value={presetForm.start} onChange={e=>{ const start=e.target.value; const ends=endOptionsFor(start); const valid=ends.some(o=>o.value===presetForm.end); setPresetForm(f=>({...f,start,end:valid?f.end:(ends[0]?.value||f.end)})) }}>
+                <select value={presetForm.start} onChange={e=>{
+                  const start=e.target.value
+                  const ends=endOptionsFor(start)
+                  const valid=ends.some(o=>o.value===presetForm.end)
+                  setPresetForm(f=>({...f,start,end:valid?f.end:(ends[0]?.value||f.end)}))
+                }}>
                   {slots48.map(t=><option key={t} value={t}>{t}</option>)}
                 </select>
                 <span>—</span>
                 <select value={presetForm.end} onChange={e=>setPresetForm(f=>({...f,end:e.target.value}))}>
-                  {endOptionsFor(presetForm.start).map(opt=><option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                  {endOptionsFor(presetForm.start).map(opt=>(
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
                 </select>
               </div>
               <Small>El fin debe ser ≥ +30 min y ≤ el mismo horario del día siguiente.</Small>
@@ -966,7 +1296,14 @@ export default function Rutinas(){
               <label>Días</label>
               <div style={{display:'flex',flexWrap:'wrap',gap:'.35rem',marginTop:'.25rem'}}>
                 {DAY_NAMES.map((d,idx)=>(
-                  <DayBtn key={d} active={presetForm.days.includes(d)} onClick={()=>togglePresetDay(d)}>{DAY_SHORT[idx]}</DayBtn>
+                  <DayBtn
+                    key={d}
+                    type="button"
+                    active={presetForm.days.includes(d)}
+                    onClick={(e)=>{ e.preventDefault(); togglePresetDay(d) }}
+                  >
+                    {DAY_SHORT[idx]}
+                  </DayBtn>
                 ))}
               </div>
             </FormGroup>
