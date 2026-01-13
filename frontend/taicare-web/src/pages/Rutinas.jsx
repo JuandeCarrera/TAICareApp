@@ -1,4 +1,3 @@
-// src/pages/Rutinas.jsx
 import React, { useContext, useEffect, useMemo, useState } from 'react'
 import styled from 'styled-components'
 import { useNavigate } from 'react-router-dom'
@@ -57,7 +56,20 @@ const ModalBody = styled.div`
 `
 const ModalHeader = styled.div` position:sticky; top:0; z-index:1; background:${({theme})=>theme.colors.cardBg}; padding-bottom:.25rem;`
 const ModalContent = styled.div` flex:1; overflow:auto; padding-right:.25rem; min-height:0; `
-const StepFooter = styled.div` display:flex; justify-content:flex-end; align-items:center; gap:.5rem; margin-top:.75rem; `
+const StepFooter = styled.div`
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  background: ${({theme})=>theme.colors.cardBg};
+  border-top: 1px solid ${({theme})=>theme.colors.border};
+  padding-top: .75rem;
+
+  display:flex;
+  justify-content:flex-end;
+  align-items:center;
+  gap:.5rem;
+  margin-top:.75rem;
+`
 const StepSub = styled.div` opacity:.9; font-size:.9rem; `
 const StepBadge = styled.div`
   display:inline-flex; align-items:center; justify-content:center;
@@ -149,10 +161,12 @@ export default function Rutinas(){
   // paso 2/3
   const [selectedDevices,setSelectedDevices] = useState(new Set())
   const [roomOpen,setRoomOpen] = useState({})
-  const [scheduleBlocks,setScheduleBlocks] = useState({}) // { deviceId: [{start,end,days[]}] }
+  const [scheduleBlocks,setScheduleBlocks] = useState({}) 
   const [target,setTarget] = useState('ALL')
   const [builder,setBuilder] = useState({ start:'14:00', end:'15:00', days:[] })
   const [builderPresetId,setBuilderPresetId] = useState('')
+  const [roomFilter, setRoomFilter] = useState('ALL')     
+  const [deviceQuery, setDeviceQuery] = useState('')
 
   // edición / borrado
   const [deleteOpen,setDeleteOpen] = useState(false)
@@ -170,25 +184,51 @@ export default function Rutinas(){
     fetch(`${API}/devices`, {credentials:'include'}).then(r=>r.ok?r.json():[]).then(setDevices).catch(()=>{})
   }
 
+  // --- helpers relación paciente↔casa ---
+  function householdHasPatient(h, patientId) {
+    if (!h || !patientId) return false
+    const pid = String(patientId)
+
+    const arrCandidates = [h.users, h.patients, h.members, h.user_ids, h.patient_ids].filter(Array.isArray)
+    for (const arr of arrCandidates) {
+      if (arr.some(x => idEq(typeof x === 'object' ? (x?._id ?? x?.id) : x, pid))) return true
+    }
+    if (h.patient_id && idEq(h.patient_id, pid)) return true
+    return false
+  }
+
+  const availableHouseholds = useMemo(() => {
+    if (!form.user_id) return []
+    return households.filter(h => householdHasPatient(h, form.user_id))
+  }, [households, form.user_id])
+
+  const selectedHouse = useMemo(() => {
+    if (!form.household_id) return null
+    return households.find(h => idEq(h._id, form.household_id)) || null
+  }, [households, form.household_id])
+
   /* ---------- Paciente → Casa ---------- */
   useEffect(() => {
-    if (!form.user_id) return
-    const p = patients.find(x => idEq(x._id, form.user_id))
-    const phId = p?.household_id ?? ''
-    setForm(f => ({ ...f, household_id: phId || '' }))
-  }, [form.user_id, patients])
+    if (!form.user_id) {
+      setForm(f => ({ ...f, household_id: '' }))
+      return
+    }
+
+    // si ya hay una seleccionada y sigue siendo válida, la respetamos
+    if (form.household_id && availableHouseholds.some(h => idEq(h._id, form.household_id))) return
+
+    // si solo hay 1, autoselecciona; si hay varias, obligamos a elegir
+    if (availableHouseholds.length === 1) {
+      setForm(f => ({ ...f, household_id: availableHouseholds[0]._id }))
+    } else {
+      setForm(f => ({ ...f, household_id: '' }))
+    }
+  }, [form.user_id, availableHouseholds, form.household_id])
 
   /* ---------- memos ---------- */
-  const patientHouse = useMemo(()=>{
-    if(!form.user_id) return null
-    const p = patients.find(x=>idEq(x._id, form.user_id))
-    if(!p?.household_id) return null
-    const phId = (p.household_id?._id ?? p.household_id)
-    return households.find(h=>idEq(h._id, phId)) || null
-  },[form.user_id, patients, households])
 
   const devicesByRoom = useMemo(() => {
-    const hhId = patientHouse?._id || form.household_id || ''
+    const hhId = form.household_id || ''
     const list = devices.filter(d => idEq(d.household_id, hhId))
     const map = {}
     for (const d of list) {
@@ -196,7 +236,25 @@ export default function Rutinas(){
       map[d.room].push(d)
     }
     return map
-  }, [devices, form.household_id, patientHouse])
+  }, [devices, form.household_id])
+
+  const roomNames = useMemo(() => Object.keys(devicesByRoom), [devicesByRoom])
+
+  const visibleDevices = useMemo(() => {
+    const q = deviceQuery.trim().toLowerCase()
+    const rooms = roomFilter === 'ALL' ? roomNames : [roomFilter]
+
+    let list = []
+    for (const r of rooms) list = list.concat(devicesByRoom[r] || [])
+
+    if (!q) return list
+
+    return list.filter(d => {
+      const a = (d.appliance || '').toLowerCase()
+      const p = (d.plugmodel || '').toLowerCase()
+      return a.includes(q) || p.includes(q)
+    })
+  }, [deviceQuery, roomFilter, roomNames, devicesByRoom])
 
   /* ---------- helpers ---------- */
   function resetCreator(){
@@ -208,6 +266,8 @@ export default function Rutinas(){
     setTarget('ALL')
     setBuilder({ start:'14:00', end:'15:00', days:[] })
     setBuilderPresetId('')
+    setRoomFilter('ALL')
+    setDeviceQuery('')
   }
   function openCreator(){ resetCreator(); setOpen(true) }
 
@@ -225,16 +285,39 @@ export default function Rutinas(){
     setScheduleBlocks(prev=>{ const out={...prev}; for(const id of ids) if(!out[id]) out[id]=[]; return out })
   }
 
+  // --- helpers relación paciente↔casa ---
+  function householdHasPatient(h, patientId) {
+    if (!h || !patientId) return false
+
+    const pid = String(patientId)
+
+    // casos comunes: users: [id], patients: [id], members: [id]...
+    const arrCandidates = [h.users, h.patients, h.members, h.user_ids, h.patient_ids]
+      .filter(Array.isArray)
+
+    for (const arr of arrCandidates) {
+      if (arr.some(x => idEq(typeof x === 'object' ? (x?._id ?? x?.id) : x, pid))) return true
+    }
+
+    if (h.patient_id && idEq(h.patient_id, pid)) return true
+
+    return false
+  }
+
   /* ---------- validación paso 1 ---------- */
   function validateStep1() {
     const e = {}
+
     if (!form.user_id) e.user_id = 'Selecciona un paciente.'
-    const p = patients.find(x => idEq(x._id, form.user_id))
-    const mustHouse = p?.household_id ?? ''
-    if (!mustHouse) e.household_id = 'Este paciente no tiene casa asignada.'
-    else if (form.household_id && !idEq(form.household_id, mustHouse)) {
-      e.household_id = 'La casa debe ser la del paciente.'
+    if (!availableHouseholds.length) {
+      e.household_id = 'Este paciente no tiene casa asignada.'
+    } else {
+      if (!form.household_id) e.household_id = 'Selecciona una casa.'
+      else if (!availableHouseholds.some(h => idEq(h._id, form.household_id))) {
+        e.household_id = 'La casa seleccionada no está asociada a este paciente.'
+      }
     }
+
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -280,7 +363,7 @@ export default function Rutinas(){
     if(selectedDevices.size===0) return alert('Selecciona al menos un dispositivo')
     const occurrences=buildOccurrencesFromBlocks()
     if(!occurrences.length) return alert('Añade al menos una franja en el paso 3')
-    const householdId=form.household_id || patientHouse?._id || ''
+    const householdId = form.household_id
     const payload={ name:(form.name||'').trim(), user_id:form.user_id, household_id:householdId, occurrences }
     try{
       const res=await fetch(`${API}/routines`,{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
@@ -503,15 +586,32 @@ export default function Rutinas(){
 
                   <FormGroup>
                     <label>Casa</label>
-                    {patientHouse ? (
+
+                    {!form.user_id ? (
+                      <select disabled><option>— Selecciona un paciente —</option></select>
+                    ) : availableHouseholds.length === 0 ? (
                       <>
-                        <input value={patientHouse.name} readOnly disabled />
-                        <Small>La casa queda fijada a la del paciente.</Small>
+                        <select disabled><option>— Sin casa asignada —</option></select>
+                        {errors.household_id && <div style={{color:'#e04848', fontSize:'.85rem', marginTop:4}}>{errors.household_id}</div>}
+                      </>
+                    ) : availableHouseholds.length === 1 ? (
+                      <>
+                        <input value={availableHouseholds[0].name || availableHouseholds[0]._id} readOnly disabled />
+                        <Small>La casa queda fijada a la única casa del paciente.</Small>
                       </>
                     ) : (
                       <>
-                        <select disabled><option>— Selecciona un paciente con casa —</option></select>
-                        {errors.household_id && <div style={{color:'#e04848', fontSize:'.85rem', marginTop:4}}>{errors.household_id}</div>}
+                        <select
+                          value={form.household_id}
+                          onChange={e => { setForm(f => ({ ...f, household_id: e.target.value })); setTouched(t => ({ ...t, household_id: true })); setErrors({}); }}
+                        >
+                          <option value="">— Selecciona —</option>
+                          {availableHouseholds.map(h => (
+                            <option key={h._id} value={h._id}>{h.name || h._id}</option>
+                          ))}
+                        </select>
+                        <Small>Este paciente está asociado a varias casas. Elige en cuál crear la rutina.</Small>
+                        {touched.household_id && errors.household_id && <div style={{color:'#e04848', fontSize:'.85rem', marginTop:4}}>{errors.household_id}</div>}
                       </>
                     )}
                   </FormGroup>
@@ -526,46 +626,82 @@ export default function Rutinas(){
               {/* PASO 2 */}
               {step === 2 && (
                 <>
-                  <WideGrid>
-                    <ScrollCard>
-                      <strong>Habitaciones</strong>
-                      <div style={{ marginTop:'.5rem' }}>
-                        {Object.keys(devicesByRoom).length === 0 && <Small>No hay dispositivos para la casa del paciente.</Small>}
-                        {Object.entries(devicesByRoom).map(([room, list]) => (
-                          <div key={room} style={{ marginBottom: '.35rem' }}>
-                            <Room onClick={() => null}>
-                              <span>{room}</span>
-                              <div style={{ display:'flex', gap:'.35rem', alignItems:'center' }}>
-                                <Small>{list.length} disp.</Small>
-                                <Btn onClick={(e)=>{ e.stopPropagation(); selectWholeRoom(room) }}>Seleccionar sala</Btn>
-                              </div>
-                            </Room>
-                          </div>
-                        ))}
+                  <Card>
+                    <div style={{display:'flex', gap:'.75rem', flexWrap:'wrap', alignItems:'end'}}>
+                      <div style={{minWidth:220}}>
+                        <label style={{display:'block', marginBottom:6}}>Habitación</label>
+                        <select value={roomFilter} onChange={e=>setRoomFilter(e.target.value)}>
+                          <option value="ALL">Todas</option>
+                          {roomNames.map(r => <option key={r} value={r}>{r}</option>)}
+                        </select>
                       </div>
-                    </ScrollCard>
 
-                    <ScrollCard>
-                      <strong>Dispositivos</strong>
-                      <div style={{ marginTop:'.5rem' }}>
-                        {Object.entries(devicesByRoom).map(([room, list]) => (
-                          <div key={room} style={{ marginBottom:'.5rem' }}>
-                            <div style={{ opacity:.75, fontWeight:600, marginBottom:'.25rem' }}>{room}</div>
-                            {list.map(d => (
-                              <DeviceRow key={d._id}>
-                                <input type="checkbox" checked={selectedDevices.has(d._id)} onChange={() => toggleDevice(d)} />
-                                <span>{d.appliance} <Small>({d.plugmodel})</Small></span>
-                              </DeviceRow>
-                            ))}
-                          </div>
-                        ))}
+                      <div style={{flex:1, minWidth:260}}>
+                        <label style={{display:'block', marginBottom:6}}>Buscar dispositivo</label>
+                        <input
+                          value={deviceQuery}
+                          onChange={e=>setDeviceQuery(e.target.value)}
+                          placeholder="Buscar por electrodoméstico o modelo (p.ej. Televisión, nevera, HS110...)"
+                        />
                       </div>
-                    </ScrollCard>
-                  </WideGrid>
+
+                      <div style={{display:'flex', gap:'.5rem'}}>
+                        <Btn
+                          onClick={() => {
+                            const next = new Set(selectedDevices)
+                            for (const d of visibleDevices) next.add(d._id)
+                            setSelectedDevices(next)
+                            ensureBlocksFor([...next])
+                          }}
+                          disabled={!visibleDevices.length}
+                        >
+                          Seleccionar visibles
+                        </Btn>
+
+                        <Btn
+                          onClick={() => {
+                            const next = new Set(selectedDevices)
+                            for (const d of visibleDevices) next.delete(d._id)
+                            setSelectedDevices(next)
+                          }}
+                          disabled={!visibleDevices.length}
+                        >
+                          Quitar visibles
+                        </Btn>
+                      </div>
+                    </div>
+                  </Card>
+
+                  <ScrollCard style={{marginTop:'.75rem'}}>
+                    <strong>Dispositivos</strong>
+                    <div style={{ marginTop:'.5rem' }}>
+                      {!visibleDevices.length && <Small>No hay dispositivos que coincidan.</Small>}
+
+                      {visibleDevices.map(d => (
+                        <DeviceRow key={d._id}>
+                          <input
+                            type="checkbox"
+                            checked={selectedDevices.has(d._id)}
+                            onChange={() => toggleDevice(d)}
+                          />
+                          <span>
+                            {d.appliance || 'Dispositivo'} <Small>({d.plugmodel})</Small>
+                            {d.room ? <Small style={{marginLeft:8}}>— {d.room}</Small> : null}
+                          </span>
+                        </DeviceRow>
+                      ))}
+                    </div>
+                  </ScrollCard>
 
                   <StepFooter>
                     <Btn onClick={() => setStep(1)}>Atrás</Btn>
-                    <Btn variant="primary" onClick={() => { if(selectedDevices.size){ ensureBlocksFor([...selectedDevices]); setStep(3); } }} disabled={!selectedDevices.size}>Siguiente</Btn>
+                    <Btn
+                      variant="primary"
+                      onClick={() => { if(selectedDevices.size){ ensureBlocksFor([...selectedDevices]); setStep(3); } }}
+                      disabled={!selectedDevices.size}
+                    >
+                      Siguiente
+                    </Btn>
                   </StepFooter>
                 </>
               )}
@@ -600,10 +736,11 @@ export default function Rutinas(){
                       </Btn>
                     </div>
 
-                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'.75rem',marginTop:'.75rem'}}>
+                    <div style={{display:'grid',gridTemplateColumns:'1fr',gap:'.75rem',marginTop:'.75rem'}}>
+                      {/* Inicio / Fin */}
                       <div>
                         <label style={{display:'block',marginBottom:6}}>Inicio / Fin</label>
-                        <div style={{display:'flex',gap:'.5rem',alignItems:'center'}}>
+                        <div style={{display:'flex',gap:'.5rem',alignItems:'center',flexWrap:'wrap'}}>
                           <select
                             value={builder.start}
                             onChange={e=>{
@@ -625,6 +762,7 @@ export default function Rutinas(){
                         <Small>El fin debe ser ≥ +30 min y puede cruzar medianoche.</Small>
                       </div>
 
+                      {/* Días */}
                       <div>
                         <label style={{display:'block',marginBottom:6}}>Días</label>
                         <div style={{display:'flex',flexWrap:'wrap',gap:'.35rem'}}>
@@ -683,8 +821,7 @@ export default function Rutinas(){
                     <div style={{marginTop:'.5rem'}}>
                       <div><Small>Nombre:</Small> {form.name || <em>(sin nombre)</em>}</div>
                       <div><Small>Paciente:</Small> {patients.find(p=>idEq(p._id,form.user_id))?.name || form.user_id}</div>
-                      <div><Small>Casa:</Small> {patientHouse?.name || '(ninguna)'}</div>
-
+                      <div><Small>Casa:</Small> {selectedHouse?.name || '(ninguna)'}</div>
                       <div style={{marginTop:'.75rem'}}>
                         <Small>Horarios por dispositivo</Small>
                         <div style={{display:'grid',gap:'.5rem',marginTop:'.35rem'}}>
