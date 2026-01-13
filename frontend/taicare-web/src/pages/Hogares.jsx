@@ -289,7 +289,6 @@ export default function Hogares() {
           })
         })
       } else if (mode === 'room') {
-        // Si no usas el endpoint /rooms, usamos PUT general con rooms actualizadas
         const h = households.find(x => x._id === form.targetHouseId)
         const curr = Array.isArray(h?.rooms) ? h.rooms : []
         const next = [...curr, form.roomName].filter(Boolean)
