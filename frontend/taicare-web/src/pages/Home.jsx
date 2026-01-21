@@ -193,66 +193,124 @@ export default function Home() {
     if (!routines.length) return []
 
     const usersById = Object.fromEntries(patients.map(u => [String(u._id), u]))
-    const hhById = Object.fromEntries(households.map(h => [String(h._id), h]))
 
     const now = new Date()
+    const horizonMs = horizonHours * 3600 * 1000
     const items = []
 
+    const safeId = (x) => (x && typeof x === 'object') ? (x._id ?? x.id ?? '') : (x ?? '')
+    const getUserName = (userId) => {
+      const u = usersById[String(userId || '')]
+      return u?.name || '(Paciente)'
+    }
+
     for (const r of routines) {
-      const hh = hhById[String(r.household_id)]
-      const ownerId = hh?.owner ? String(hh.owner) : null
-      const patientName = ownerId && usersById[ownerId]?.name ? usersById[ownerId].name : '(Paciente)'
+      // ✅ ahora el paciente debe salir de r.user_id (no del owner de la casa)
+      const routineUserId = safeId(r.user_id)
+      const patientName = routineUserId ? getUserName(routineUserId) : '(Paciente)'
 
-      let best = null
-      for (let offset=0; offset<=2; offset++) {
-        const date = addDays(now, offset)
-        const wname = dayName(date.getDay())
-        if (!Array.isArray(r.days) || !r.days.includes(wname)) continue
+      const routineName = r.name || '(Rutina)'
+      const rid = safeId(r._id)
 
-        const { H: sH, M: sM } = parseHM(r.expected_start)
-        const { H: eH, M: eM } = parseHM(r.expected_end)
-        const start = new Date(date.getFullYear(), date.getMonth(), date.getDate(), sH, sM, 0, 0)
-        let end   = new Date(date.getFullYear(), date.getMonth(), date.getDate(), eH, eM, 0, 0)
-        if (end <= start) end = addDays(end, 1)
+      // ---- NUEVO: occurrences ----
+      const occs = Array.isArray(r.occurrences) ? r.occurrences : []
 
-        const startsInMs   = start - now
-        const endsInMs     = end - now
-        const inProgress   = now >= start && now < end
-        const withinHorizon= (startsInMs <= horizonHours*3600*1000) || inProgress
-        if (!withinHorizon) continue
+      // Compatibilidad con schema viejo (por si aún tienes datos antiguos)
+      const legacyDays = Array.isArray(r.days) ? r.days : null
+      const legacyStart = r.expected_start
+      const legacyEnd = r.expected_end
 
-        const record = {
-          _id: r._id,
-          routineName: r.name || '(Rutina)',
-          patientName,
-          start, end, inProgress,
-          sortKey: inProgress ? endsInMs : startsInMs,
-          rangeLabel: `${String(sH).padStart(2,'0')}:${String(sM).padStart(2,'0')}–${String(eH).padStart(2,'0')}:${String(eM).padStart(2,'0')}`,
-        }
+      // helper para generar candidatos en próximos 0..2 días
+      const candidates = []
 
-        if (!best) best = record
-        else {
-          if (best.inProgress && record.inProgress) {
-            if (record.sortKey < best.sortKey) best = record
-          } else if (best.inProgress !== record.inProgress) {
-            if (record.inProgress) best = record
-            else if (!best.inProgress && record.sortKey < best.sortKey) best = record
-          } else if (record.sortKey < best.sortKey) {
-            best = record
+      // 1) Si hay occurrences, usamos eso
+      if (occs.length) {
+        for (const o of occs) {
+          const days = Array.isArray(o.days) ? o.days : []
+          if (!days.length) continue
+
+          const { H: sH, M: sM } = parseHM(o.start)
+          const { H: eH, M: eM } = parseHM(o.end)
+
+          for (let offset = 0; offset <= 2; offset++) {
+            const date = addDays(now, offset)
+            const wname = dayName(date.getDay())
+            if (!days.includes(wname)) continue
+
+            const start = new Date(date.getFullYear(), date.getMonth(), date.getDate(), sH, sM, 0, 0)
+            let end = new Date(date.getFullYear(), date.getMonth(), date.getDate(), eH, eM, 0, 0)
+            if (end <= start) end = addDays(end, 1) // cruza medianoche
+
+            const startsInMs = start - now
+            const inProgress = now >= start && now < end
+            const withinHorizon = inProgress || (startsInMs >= -horizonMs && startsInMs <= horizonMs)
+            if (!withinHorizon) continue
+
+            candidates.push({
+              _id: rid,
+              routineName,
+              patientName,
+              start,
+              end,
+              inProgress,
+              sortKey: inProgress ? (end - now) : startsInMs,
+              rangeLabel: `${String(sH).padStart(2, '0')}:${String(sM).padStart(2, '0')}–${String(eH).padStart(2, '0')}:${String(eM).padStart(2, '0')}`,
+            })
           }
         }
       }
-      if (best) items.push(best)
+
+      // 2) Si NO hay occurrences pero hay legacy fields, caemos al método antiguo
+      if (!candidates.length && legacyDays?.length && legacyStart && legacyEnd) {
+        for (let offset = 0; offset <= 2; offset++) {
+          const date = addDays(now, offset)
+          const wname = dayName(date.getDay())
+          if (!legacyDays.includes(wname)) continue
+
+          const { H: sH, M: sM } = parseHM(legacyStart)
+          const { H: eH, M: eM } = parseHM(legacyEnd)
+          const start = new Date(date.getFullYear(), date.getMonth(), date.getDate(), sH, sM, 0, 0)
+          let end = new Date(date.getFullYear(), date.getMonth(), date.getDate(), eH, eM, 0, 0)
+          if (end <= start) end = addDays(end, 1)
+
+          const startsInMs = start - now
+          const inProgress = now >= start && now < end
+          const withinHorizon = inProgress || (startsInMs >= -horizonMs && startsInMs <= horizonMs)
+          if (!withinHorizon) continue
+
+          candidates.push({
+            _id: rid,
+            routineName,
+            patientName,
+            start,
+            end,
+            inProgress,
+            sortKey: inProgress ? (end - now) : startsInMs,
+            rangeLabel: `${String(sH).padStart(2, '0')}:${String(sM).padStart(2, '0')}–${String(eH).padStart(2, '0')}:${String(eM).padStart(2, '0')}`,
+          })
+        }
+      }
+
+      // Elegimos “la mejor” ocurrencia de esa rutina (la más relevante)
+      if (candidates.length) {
+        candidates.sort((a, b) => {
+          if (a.inProgress !== b.inProgress) return a.inProgress ? -1 : 1
+          return a.sortKey - b.sortKey
+        })
+        items.push(candidates[0])
+      }
     }
 
-    items.sort((a,b) => {
+    // Orden global
+    items.sort((a, b) => {
       if (a.inProgress !== b.inProgress) return a.inProgress ? -1 : 1
       if (a.sortKey !== b.sortKey) return a.sortKey - b.sortKey
       return String(a._id).localeCompare(String(b._id))
     })
 
     return items
-  }, [routines, households, patients])
+  }, [routines, patients])
+
 
   // Alertas no resueltas ordenadas por fecha ascendente
   const unresolvedSorted = useMemo(() => {
