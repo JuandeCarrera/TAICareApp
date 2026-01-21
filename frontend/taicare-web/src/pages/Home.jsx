@@ -205,25 +205,20 @@ export default function Home() {
     }
 
     for (const r of routines) {
-      // ✅ ahora el paciente debe salir de r.user_id (no del owner de la casa)
       const routineUserId = safeId(r.user_id)
       const patientName = routineUserId ? getUserName(routineUserId) : '(Paciente)'
 
       const routineName = r.name || '(Rutina)'
       const rid = safeId(r._id)
 
-      // ---- NUEVO: occurrences ----
       const occs = Array.isArray(r.occurrences) ? r.occurrences : []
 
-      // Compatibilidad con schema viejo (por si aún tienes datos antiguos)
       const legacyDays = Array.isArray(r.days) ? r.days : null
       const legacyStart = r.expected_start
       const legacyEnd = r.expected_end
 
-      // helper para generar candidatos en próximos 0..2 días
       const candidates = []
 
-      // 1) Si hay occurrences, usamos eso
       if (occs.length) {
         for (const o of occs) {
           const days = Array.isArray(o.days) ? o.days : []
@@ -260,7 +255,6 @@ export default function Home() {
         }
       }
 
-      // 2) Si NO hay occurrences pero hay legacy fields, caemos al método antiguo
       if (!candidates.length && legacyDays?.length && legacyStart && legacyEnd) {
         for (let offset = 0; offset <= 2; offset++) {
           const date = addDays(now, offset)
@@ -291,7 +285,6 @@ export default function Home() {
         }
       }
 
-      // Elegimos “la mejor” ocurrencia de esa rutina (la más relevante)
       if (candidates.length) {
         candidates.sort((a, b) => {
           if (a.inProgress !== b.inProgress) return a.inProgress ? -1 : 1
@@ -301,7 +294,6 @@ export default function Home() {
       }
     }
 
-    // Orden global
     items.sort((a, b) => {
       if (a.inProgress !== b.inProgress) return a.inProgress ? -1 : 1
       if (a.sortKey !== b.sortKey) return a.sortKey - b.sortKey
@@ -312,7 +304,6 @@ export default function Home() {
   }, [routines, patients])
 
 
-  // Alertas no resueltas ordenadas por fecha ascendente
   const unresolvedSorted = useMemo(() => {
     const usersById = Object.fromEntries(patients.map(u => [String(u._id), u]))
     const hhById = Object.fromEntries(households.map(h => [String(h._id), h]))
