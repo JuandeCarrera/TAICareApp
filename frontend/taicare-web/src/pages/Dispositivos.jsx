@@ -28,7 +28,6 @@ const Main = styled.main`
   padding: 2rem;
   overflow-y: auto;
 `
-
 const DeviceItem = styled.li`
   display: flex;
   justify-content: space-between;
@@ -39,12 +38,10 @@ const DeviceItem = styled.li`
   border-radius: 8px;
   padding: .65rem .8rem;
 `
-
 const Actions = styled.div`
   display: flex;
   gap: 0.5rem;
 `
-
 const Btn = styled.button`
   font-size: 0.85rem;
   padding: 0.25rem 0.6rem;
@@ -65,10 +62,15 @@ const Btn = styled.button`
         : theme.colors.hoverBg};
   }
 `
-
 const NewButton = styled(Btn).attrs({ variant: 'primary' })`
   margin: 0 0 1rem 0;
 `
+const DangerBtn = styled(Btn)`
+  border-color: #ef4444;
+  color: #fff;
+  background: #e04848;
+  &:hover { background: rgba(239, 68, 68, .12); }
+`;
 
 export default function Dispositivos() {
   const { logout } = useContext(AuthContext)
@@ -267,7 +269,7 @@ export default function Dispositivos() {
             />
           </div>
 
-          <NewButton onClick={openNew}>+ Nuevo</NewButton>
+          <Btn variant="primary" onClick={openNew}>+ Nuevo</Btn>
 
           <ul>
             {filteredDevices.map(d => (
@@ -283,7 +285,7 @@ export default function Dispositivos() {
                 </span>
                 <Actions>
                   <Btn variant="primary" onClick={() => openEdit(d)}>✎</Btn>
-                  <Btn onClick={() => deleteDevice(d._id)}>🗑</Btn>
+                  <DangerBtn onClick={() => deleteDevice(d._id)}>🗑</DangerBtn>
                 </Actions>
               </DeviceItem>
             ))}

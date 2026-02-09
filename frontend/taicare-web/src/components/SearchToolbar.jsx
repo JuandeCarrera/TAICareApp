@@ -126,7 +126,7 @@ export default function SearchToolbar({
 
   // Variables CSS derivadas del tema (claro/oscuro)
   const cssVars = useMemo(() => ({
-    '--bg'     : theme.colors.cardBg,
+    '--bg'     : theme.isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(15, 23, 42, 0.06)',
     '--text'   : theme.colors.text,
     '--border' : theme.colors.border,
     '--hint'   : theme.colors.textSecondary || 'rgba(255,255,255,.6)',

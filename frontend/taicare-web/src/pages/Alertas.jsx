@@ -55,6 +55,12 @@ const Btn = styled.button`
 const Meta = styled.div`
   font-size: .85rem; opacity: .85;
 `;
+const DangerBtn = styled(Btn)`
+  border-color: #ef4444;
+  color: #fff;
+  background: #e04848;
+  &:hover { background: rgba(239, 68, 68, .12); }
+`;
 
 export default function Alertas() {
   const { logout } = useContext(AuthContext);
@@ -264,7 +270,7 @@ export default function Alertas() {
         <Main>
           <TopBar>
             <h1>Alertas</h1>
-            <Btn onClick={loadData}>Recargar</Btn>
+            <Btn variant="primary" onClick={loadData}>Recargar</Btn>
           </TopBar>
 
           <SearchToolbar
@@ -344,7 +350,7 @@ export default function Alertas() {
                       {!a.seen && (
                         <Btn variant="primary" onClick={() => markSeen(a._id)} title="Marcar como vista">✓</Btn>
                       )}
-                      <Btn onClick={() => deleteAlert(a._id)} title="Eliminar">🗑</Btn>
+                      <DangerBtn onClick={() => deleteAlert(a._id)} title="Eliminar">🗑</DangerBtn>
                     </Actions>
                   </AlertItem>
                 ))}

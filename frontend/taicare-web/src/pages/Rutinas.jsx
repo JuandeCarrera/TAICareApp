@@ -26,8 +26,12 @@ const Btn = styled.button`
   transition:background .2s;
   &:hover{ background:${({theme,variant})=>variant==='primary'?theme.colors.primaryDark:theme.colors.hoverBg}; }
 `
-const NewButton = styled(Btn).attrs({variant:'primary'})``
-
+const DangerBtn = styled(Btn)`
+  border-color: #ef4444;
+  color: #fff;
+  background: #e04848;
+  &:hover { background: rgba(239, 68, 68, .12); }
+`
 /* ---------- Listado ---------- */
 const List = styled.ul` list-style:none; margin:0; padding:0; `
 const RoutineCard = styled.li`
@@ -710,6 +714,7 @@ export default function Rutinas(){
 
               <div style={{display:'flex', gap:'.5rem'}}>
                 <Btn
+                 variant='primary'
                   onClick={()=>{
                     const s = new Set(o.device_ids)
                     for (const d of visibleDevs) s.add(d._id)
@@ -721,6 +726,7 @@ export default function Rutinas(){
                 </Btn>
 
                 <Btn
+                  variant='primary'
                   onClick={()=>{
                     const s = new Set(o.device_ids)
                     for (const d of visibleDevs) s.delete(d._id)
@@ -801,8 +807,8 @@ export default function Rutinas(){
           <Toolbar>
             <h1>Rutinas</h1>
             <div>
-              <Btn onClick={()=>setPresetOpen(true)}>+ Añadir preset</Btn>
-              <NewButton onClick={openCreator}>+ Añadir rutina</NewButton>
+              <Btn variant="primary" onClick={()=>setPresetOpen(true)}>+ Añadir preset</Btn>
+              <Btn variant="primary" onClick={openCreator}>+ Añadir rutina</Btn>
             </div>
           </Toolbar>
 
@@ -842,8 +848,8 @@ export default function Rutinas(){
                   <CardTop>
                     <CardTitle>{r.name || `Rutina ${String(r._id).slice(-6)}`}</CardTitle>
                     <div style={{display:'flex',gap:'.5rem',alignItems:'center'}}>
-                      <Btn onClick={()=>openEditModal(r)}>✎ Editar</Btn>
-                      <Btn style={{borderColor:'#e04848',background:'#e04848',color:'#fff'}} onClick={()=>openDeleteModal(r._id)}>🗑 Borrar</Btn>
+                      <Btn variant='primary' onClick={()=>openEditModal(r)}>✎ Editar</Btn>
+                      <DangerBtn onClick={()=>openDeleteModal(r._id)}>🗑 Borrar</DangerBtn>
                       {times.length>0 && <TimePill>{times.join(' · ')}</TimePill>}
                     </div>
                   </CardTop>
@@ -935,7 +941,7 @@ export default function Rutinas(){
                   </FormGroup>
 
                   <StepFooter>
-                    <Btn onClick={()=>setOpen(false)}>Cancelar</Btn>
+                    <DangerBtn onClick={()=>setOpen(false)}>Cancelar</DangerBtn>
                     <Btn variant="primary" onClick={()=>{ if(validateStep1()) setStep(2) }}>Siguiente</Btn>
                   </StepFooter>
                 </>
@@ -964,7 +970,19 @@ export default function Rutinas(){
                       </div>
 
                       <div style={{display:'flex', gap:'.5rem'}}>
+                        <DangerBtn
+                          onClick={() => {
+                            const next = new Set(selectedDevices)
+                            for (const d of visibleDevices) next.delete(d._id)
+                            setSelectedDevices(next)
+                          }}
+                          disabled={!visibleDevices.length}
+                        >
+                          Quitar visibles
+                        </DangerBtn>
+
                         <Btn
+                        variant='primary'
                           onClick={() => {
                             const next = new Set(selectedDevices)
                             for (const d of visibleDevices) next.add(d._id)
@@ -974,17 +992,6 @@ export default function Rutinas(){
                           disabled={!visibleDevices.length}
                         >
                           Seleccionar visibles
-                        </Btn>
-
-                        <Btn
-                          onClick={() => {
-                            const next = new Set(selectedDevices)
-                            for (const d of visibleDevices) next.delete(d._id)
-                            setSelectedDevices(next)
-                          }}
-                          disabled={!visibleDevices.length}
-                        >
-                          Quitar visibles
                         </Btn>
                       </div>
                     </div>
@@ -1012,7 +1019,7 @@ export default function Rutinas(){
                   </ScrollCard>
 
                   <StepFooter>
-                    <Btn onClick={() => setStep(1)}>Atrás</Btn>
+                    <DangerBtn onClick={() => setStep(1)}>Atrás</DangerBtn>
                     <Btn
                       variant="primary"
                       onClick={() => { if(selectedDevices.size){ ensureBlocksFor([...selectedDevices]); setStep(3); } }}
@@ -1050,6 +1057,7 @@ export default function Rutinas(){
                         ))}
                       </select>
                       <Btn
+                        variant='primary'
                         onClick={()=>{
                           const p=presets.find(x=>x.id===builderPresetId)
                           if(p) setBuilder({start:p.start,end:p.end,days:[...p.days]})
@@ -1136,7 +1144,7 @@ export default function Rutinas(){
                   </ScrollCard>
 
                   <StepFooter>
-                    <Btn onClick={() => setStep(2)}>Atrás</Btn>
+                    <DangerBtn onClick={() => setStep(2)}>Atrás</DangerBtn>
                     <Btn variant="primary" onClick={() => setStep(4)}>Siguiente</Btn>
                   </StepFooter>
                 </>
@@ -1179,9 +1187,9 @@ export default function Rutinas(){
                   </div>
 
                   <StepFooter>
-                    <Btn onClick={()=>setStep(3)}>Atrás</Btn>
+                    <DangerBtn onClick={()=>setStep(3)}>Atrás</DangerBtn>
                     <div style={{display:'flex',gap:'.5rem'}}>
-                      <Btn onClick={()=>setOpen(false)}>Cancelar</Btn>
+                      <DangerBtn onClick={()=>setOpen(false)}>Cancelar</DangerBtn>
                       <Btn variant="primary" onClick={saveRoutine}>Guardar</Btn>
                     </div>
                   </StepFooter>
@@ -1222,7 +1230,7 @@ export default function Rutinas(){
 
                 <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:'.5rem'}}>
                   <strong>Franjas (occurrences)</strong>
-                  <Btn onClick={addOccurrence}>+ Añadir franja</Btn>
+                  <Btn variant='primary' onClick={addOccurrence}>+ Añadir franja</Btn>
                 </div>
                 <Small>Puedes crear varias franjas con distintos días y dispositivos.</Small>
               </Card>
@@ -1246,7 +1254,7 @@ export default function Rutinas(){
             </ModalContent>
 
             <StepFooter>
-              <Btn onClick={()=>setEditOpen(false)}>Cancelar</Btn>
+              <DangerBtn onClick={()=>setEditOpen(false)}>Cancelar</DangerBtn>
               <Btn variant="primary" onClick={saveEdit}>Guardar cambios</Btn>
             </StepFooter>
           </ModalBody>

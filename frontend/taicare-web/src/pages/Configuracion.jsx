@@ -75,6 +75,14 @@ const Button = styled.button`
     opacity: 0.9;
   }
 `
+const DangerBtn = styled(Button)`
+  border: 1px solid #ef4444;
+  color: #fff;
+  background: #e04848;
+  &:hover {
+    background: rgba(239, 68, 68, 0.12);
+  }
+`
 
 export default function Configuracion() {
   const { user, setUser, logout } = useContext(AuthContext)
@@ -241,7 +249,7 @@ export default function Configuracion() {
                   </Field>
                 )}
                 <Actions>
-                  <Button onClick={handleCancel}>Cancelar</Button>
+                  <DangerBtn onClick={handleCancel}>Cancelar</DangerBtn>
                   <Button variant="primary" onClick={handleSave}>
                     Guardar
                   </Button>

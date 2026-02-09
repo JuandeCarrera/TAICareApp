@@ -80,11 +80,17 @@ const RoomItem = styled.li`
   border-radius: 6px;
   &:hover { background: ${({ theme }) => theme.colors.hoverBg}; }
 `
-const NewButton = styled(Btn).attrs({ variant: 'primary' })`
-  margin-bottom: 1rem;
-`
 const Small = styled.small`
   opacity: .8;
+`
+const DangerBtn = styled(Btn)`
+  border-color: #ef4444;
+  color: #fff;
+  background: #e04848;
+  &:hover { background: rgba(239, 68, 68, .12); }
+`
+const ActionsTop = styled.div`
+  margin-bottom: 1rem;
 `
 
 export default function Hogares() {
@@ -371,7 +377,11 @@ export default function Hogares() {
             />
           </div>
 
-          <NewButton onClick={openNewHouse}>+ Nuevo</NewButton>
+          <ActionsTop>
+            <Btn variant="primary" onClick={openNewHouse}>
+              + Nuevo
+            </Btn>
+          </ActionsTop>
 
           {filtered.map(h => (
             <HouseItem key={h._id}>
@@ -380,7 +390,7 @@ export default function Hogares() {
                 <Actions>
                   <Btn variant="primary" onClick={() => openNewRoom(h)}>+ Habitación</Btn>
                   <Btn variant="primary" onClick={() => openEditHouse(h)}>✎ Editar</Btn>
-                  <Btn variant="primary" onClick={() => deleteHouse(h._id)}>🗑 Borrar</Btn>
+                  <DangerBtn variant="primary" onClick={() => deleteHouse(h._id)}>🗑 Borrar</DangerBtn>
                   <ToggleButton
                     aria-label="Mostrar habitaciones"
                     onClick={() => toggleOpen(h._id)}
@@ -403,7 +413,7 @@ export default function Hogares() {
                       {room}
                       <Actions>
                         <Btn variant="primary" onClick={() => openEditRoom(h, room)}>✎</Btn>
-                        <Btn variant="primary" onClick={() => deleteRoom(h._id, room)}>🗑</Btn>
+                        <DangerBtn variant="primary" onClick={() => deleteRoom(h._id, room)}>🗑</DangerBtn>
                       </Actions>
                     </RoomItem>
                   ))}
@@ -489,7 +499,7 @@ export default function Hogares() {
         )}
 
         <div style={{ marginTop: '1.25rem', display: 'flex', justifyContent: 'flex-end', gap: '.5rem' }}>
-          <Btn onClick={() => setShowModal(false)}>Cancelar</Btn>
+          <DangerBtn onClick={() => setShowModal(false)}>Cancelar</DangerBtn>
           <Btn
             variant="primary"
             onClick={handleSave}

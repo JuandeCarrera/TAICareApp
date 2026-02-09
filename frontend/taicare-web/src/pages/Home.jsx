@@ -42,12 +42,18 @@ const CardHeader = styled.div`
   h3 { margin: 0; font-size: 1.05rem; color: ${({ theme }) => theme.colors.text}; }
 `
 const AddBtn = styled.button`
-  border: 1px solid ${({ theme }) => theme.colors.border};
-  background: ${({ theme }) => theme.colors.cardBg};
-  color: ${({ theme }) => theme.colors.text};
+  border: 1px solid ${({ theme, variant }) =>
+    variant === 'primary' ? theme.colors.primary : theme.colors.border};
+  background: ${({ theme, variant }) =>
+    variant === 'primary' ? theme.colors.primary : theme.colors.cardBg};
+  color: ${({ theme, variant }) =>
+    variant === 'primary' ? '#fff' : theme.colors.text};
   width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center;
   border-radius: 6px; cursor: pointer; transition: background .15s ease;
-  &:hover { background: ${({ theme }) => theme.colors.hoverBg}; }
+  &:hover {
+    background: ${({ theme, variant }) =>
+      variant === 'primary' ? theme.colors.primaryDark : theme.colors.hoverBg};
+  }
 `
 const CardBody = styled.div`
   flex: 1; display: grid; place-items: center;
@@ -379,7 +385,7 @@ export default function Home() {
               <Card>
                 <CardHeader>
                   <h3>Próximas rutinas</h3>
-                  <AddBtn title="Añadir rutina" onClick={()=>navigate('/routines')}>＋</AddBtn>
+                  <AddBtn variant="primary" title="Añadir rutina" onClick={()=>navigate('/routines')}>＋</AddBtn>
                 </CardHeader>
 
                 {loading ? (
