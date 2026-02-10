@@ -1,28 +1,30 @@
 // src/components/SearchToolbar.jsx
-import React, { useMemo } from 'react'
-import styled, { useTheme } from 'styled-components'
+import React, { useMemo } from 'react';
+import styled, { useTheme } from 'styled-components';
 
 const Bar = styled.div`
   display: flex;
   flex-wrap: wrap;
-  gap: .75rem;
+  gap: 0.75rem;
   align-items: flex-end;
 
   > * {
     flex: 1 1 260px;
     min-width: 220px;
   }
-`
+`;
 
 const Field = styled.label`
   display: flex;
   flex-direction: column;
-  gap: .35rem;
-  font-size: .9rem;
+  gap: 0.35rem;
+  font-size: 0.9rem;
   color: ${({ theme }) => theme.colors.text};
 
-  span { opacity: .9; }
-`
+  span {
+    opacity: 0.9;
+  }
+`;
 
 const baseInput = `
   width: 100%;
@@ -37,11 +39,11 @@ const baseInput = `
 
   &::placeholder { color: var(--hint); }
   &:focus { border-color: var(--primary); }
-`
+`;
 
 const TextInput = styled.input`
   ${baseInput}
-`
+`;
 
 const Select = styled.select`
   ${baseInput}
@@ -53,86 +55,111 @@ const Select = styled.select`
   background-position:
     calc(100% - 16px) calc(50% - 3px),
     calc(100% - 11px) calc(50% - 3px);
-  background-size: 6px 6px, 6px 6px;
+  background-size:
+    6px 6px,
+    6px 6px;
   background-repeat: no-repeat;
-`
+`;
 
 // Forzamos colores del menú de opciones (Chromium/Firefox lo respetan)
 const Option = styled.option`
   background: var(--bg);
   color: var(--text);
-`
+`;
 
 const DateInput = styled.input.attrs({ type: 'date' })`
   ${baseInput}
   &::-webkit-calendar-picker-indicator {
     filter: invert(var(--invert));
   }
-`
+`;
 
 const SwitchWrap = styled.div`
-  display: flex; align-items: center; gap: .5rem; height: 38px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 38px;
   border: 1px solid var(--border);
   background: var(--bg);
   color: var(--text);
-  padding: 0 .75rem; border-radius: 8px;
-  input { accent-color: var(--primary); }
-`
+  padding: 0 0.75rem;
+  border-radius: 8px;
+  input {
+    accent-color: var(--primary);
+  }
+`;
 
 const TagList = styled.div`
-  display: flex; flex-wrap: wrap; gap: .5rem;
-  padding: .5rem; border: 1px solid var(--border);
-  background: var(--bg); color: var(--text);
-  border-radius: 8px; min-height: 38px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  border-radius: 8px;
+  min-height: 38px;
 
   button {
     border: 1px solid var(--border);
     background: ${({ theme }) => theme.colors.cardBg};
     color: var(--text);
     border-radius: 999px;
-    padding: .15rem .5rem; cursor: pointer;
+    padding: 0.15rem 0.5rem;
+    cursor: pointer;
   }
-`
+`;
 
 const ClearBtn = styled.button`
   flex: 0 0 auto;
-  margin-left: auto;          /* anclado a la derecha de la última fila */
+  margin-left: auto; /* anclado a la derecha de la última fila */
   height: 38px;
-  padding: 0 .9rem;
+  padding: 0 0.9rem;
   border-radius: 8px;
   border: 1px solid var(--primary);
   background: ${({ theme }) => theme.colors.primary};
   color: white;
   cursor: pointer;
-  transition: opacity .15s ease;
-  &:hover { opacity: .9; }
-`
+  transition: opacity 0.15s ease;
+  &:hover {
+    opacity: 0.9;
+  }
+`;
 
 const SortWrap = styled.div`
-  display: flex; flex-direction: column; gap: .35rem;
-`
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+`;
 
 export default function SearchToolbar({
-  query, onQueryChange, placeholder = 'Buscar por texto (título, mensaje, tipo, habitación)',
+  query,
+  onQueryChange,
+  placeholder = 'Buscar por texto (título, mensaje, tipo, habitación)',
   filters = [],
   values = {},
   onValuesChange = () => {},
   sortOptions = [],
   sort,
   onSortChange = () => {},
-  onClear = () => {}
+  onClear = () => {},
 }) {
-  const theme = useTheme()
+  const theme = useTheme();
 
   // Variables CSS derivadas del tema (claro/oscuro)
-  const cssVars = useMemo(() => ({
-    '--bg'     : theme.isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(15, 23, 42, 0.06)',
-    '--text'   : theme.colors.text,
-    '--border' : theme.colors.border,
-    '--hint'   : theme.colors.textSecondary || 'rgba(255,255,255,.6)',
-    '--primary': theme.colors.primary,
-    '--invert' : theme.isDark ? 1 : 0,
-  }), [theme])
+  const cssVars = useMemo(
+    () => ({
+      '--bg': theme.isDark
+        ? 'rgba(255, 255, 255, 0.06)'
+        : 'rgba(15, 23, 42, 0.06)',
+      '--text': theme.colors.text,
+      '--border': theme.colors.border,
+      '--hint': theme.colors.textSecondary || 'rgba(255,255,255,.6)',
+      '--primary': theme.colors.primary,
+      '--invert': theme.isDark ? 1 : 0,
+    }),
+    [theme]
+  );
 
   return (
     <Bar style={cssVars}>
@@ -148,24 +175,30 @@ export default function SearchToolbar({
       </Field>
 
       {/* filtros */}
-      {filters.map(f => {
+      {filters.map((f) => {
         if (f.type === 'select') {
           return (
             <Field key={f.key}>
               <span>{f.label}</span>
               <Select
                 value={values[f.key] ?? ''}
-                onChange={e => onValuesChange({ ...values, [f.key]: e.target.value })}
+                onChange={(e) =>
+                  onValuesChange({ ...values, [f.key]: e.target.value })
+                }
                 style={cssVars}
               >
-                {(f.options || []).map(opt => (
-                  <Option key={String(opt.value)} value={opt.value} style={cssVars}>
+                {(f.options || []).map((opt) => (
+                  <Option
+                    key={String(opt.value)}
+                    value={opt.value}
+                    style={cssVars}
+                  >
                     {opt.label}
                   </Option>
                 ))}
               </Select>
             </Field>
-          )
+          );
         }
 
         if (f.type === 'daterange') {
@@ -175,19 +208,23 @@ export default function SearchToolbar({
               <div style={{ display: 'flex', gap: '.5rem' }}>
                 <DateInput
                   value={values[f.fromKey] || ''}
-                  onChange={e => onValuesChange({ ...values, [f.fromKey]: e.target.value })}
+                  onChange={(e) =>
+                    onValuesChange({ ...values, [f.fromKey]: e.target.value })
+                  }
                   style={cssVars}
                   placeholder="Desde"
                 />
                 <DateInput
                   value={values[f.toKey] || ''}
-                  onChange={e => onValuesChange({ ...values, [f.toKey]: e.target.value })}
+                  onChange={(e) =>
+                    onValuesChange({ ...values, [f.toKey]: e.target.value })
+                  }
                   style={cssVars}
                   placeholder="Hasta"
                 />
               </div>
             </Field>
-          )
+          );
         }
 
         if (f.type === 'switch') {
@@ -198,27 +235,30 @@ export default function SearchToolbar({
                 <input
                   type="checkbox"
                   checked={!!values[f.key]}
-                  onChange={e => onValuesChange({ ...values, [f.key]: e.target.checked })}
+                  onChange={(e) =>
+                    onValuesChange({ ...values, [f.key]: e.target.checked })
+                  }
                 />
                 <span>{values[f.key] ? 'Sí' : 'No'}</span>
               </SwitchWrap>
             </Field>
-          )
+          );
         }
 
         if (f.type === 'taglist') {
-          const selected = new Set(values[f.key] || [])
+          const selected = new Set(values[f.key] || []);
           const toggle = (v) => {
-            const next = new Set(selected)
-            if (next.has(v)) next.delete(v); else next.add(v)
-            onValuesChange({ ...values, [f.key]: Array.from(next) })
-          }
+            const next = new Set(selected);
+            if (next.has(v)) next.delete(v);
+            else next.add(v);
+            onValuesChange({ ...values, [f.key]: Array.from(next) });
+          };
           return (
             <Field key={f.key}>
               <span>{f.label}</span>
               <TagList style={cssVars}>
-                {(f.options || []).map(opt => {
-                  const active = selected.has(opt.value)
+                {(f.options || []).map((opt) => {
+                  const active = selected.has(opt.value);
                   return (
                     <button
                       key={String(opt.value)}
@@ -226,19 +266,21 @@ export default function SearchToolbar({
                       onClick={() => toggle(opt.value)}
                       style={{
                         background: active ? 'rgba(59,130,246,.12)' : undefined,
-                        borderColor: active ? 'rgba(59,130,246,.35)' : undefined
+                        borderColor: active
+                          ? 'rgba(59,130,246,.35)'
+                          : undefined,
                       }}
                     >
                       {opt.label}
                     </button>
-                  )
+                  );
                 })}
               </TagList>
             </Field>
-          )
+          );
         }
 
-        return null
+        return null;
       })}
 
       {/* orden */}
@@ -247,10 +289,10 @@ export default function SearchToolbar({
           <span>Orden</span>
           <Select
             value={sort || ''}
-            onChange={e => onSortChange(e.target.value)}
+            onChange={(e) => onSortChange(e.target.value)}
             style={cssVars}
           >
-            {sortOptions.map(o => (
+            {sortOptions.map((o) => (
               <Option key={o.value} value={o.value} style={cssVars}>
                 {o.label}
               </Option>
@@ -260,9 +302,7 @@ export default function SearchToolbar({
       )}
 
       {/* limpiar */}
-      <ClearBtn onClick={onClear}>
-        Limpiar
-      </ClearBtn>
+      <ClearBtn onClick={onClear}>Limpiar</ClearBtn>
     </Bar>
-  )
+  );
 }

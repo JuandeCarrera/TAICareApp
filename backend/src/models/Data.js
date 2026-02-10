@@ -1,15 +1,18 @@
 import { Schema, model } from 'mongoose';
 
-const dataSchema = new Schema({
-  time:      { type: Date, required: true },
-  device_id: { type: Schema.Types.ObjectId, ref: 'Device', required: true },
-  status:    { type: Boolean, required: true },
-  power:     { type: Number, required: true },
-  synthetic: { type: Boolean, required: true }
-}, {
-  timestamps: false,
-  collection: 'data'
-});
+const dataSchema = new Schema(
+  {
+    time: { type: Date, required: true },
+    device_id: { type: Schema.Types.ObjectId, ref: 'Device', required: true },
+    status: { type: Boolean, required: true },
+    power: { type: Number, required: true },
+    synthetic: { type: Boolean, required: true },
+  },
+  {
+    timestamps: false,
+    collection: 'data',
+  }
+);
 
 // TTL de 30 días
 dataSchema.index(

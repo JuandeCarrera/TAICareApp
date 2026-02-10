@@ -1,28 +1,28 @@
-import React from 'react'
-import styled from 'styled-components'
+import React from 'react';
+import styled from 'styled-components';
 
 const Overlay = styled.div`
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.4);
+  background: rgba(0, 0, 0, 0.4);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
-`
+`;
 
 const Dialog = styled.div`
-  position: relative;               /* needed so Close can position absolutely */
+  position: relative; /* needed so Close can position absolutely */
   background: ${({ theme }) => theme.colors.cardBg};
   padding: 2rem;
   border-radius: 8px;
   width: 90%;
   max-width: 400px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   display: flex;
   flex-direction: column;
   gap: 1rem;
-`
+`;
 
 const Close = styled.button`
   background: transparent;
@@ -33,7 +33,7 @@ const Close = styled.button`
   top: 1rem;
   right: 1rem;
   cursor: pointer;
-`
+`;
 
 export const FormGroup = styled.div`
   display: flex;
@@ -55,17 +55,16 @@ export const FormGroup = styled.div`
     background: ${({ theme }) => theme.colors.bg};
     color: ${({ theme }) => theme.colors.fg};
   }
-`
-
+`;
 
 export default function Modal({ isOpen, onClose, children }) {
-  if (!isOpen) return null
+  if (!isOpen) return null;
   return (
     <Overlay onClick={onClose}>
-      <Dialog onClick={e => e.stopPropagation()}>
+      <Dialog onClick={(e) => e.stopPropagation()}>
         <Close onClick={onClose}>&times;</Close>
         {children}
       </Dialog>
     </Overlay>
-  )
+  );
 }

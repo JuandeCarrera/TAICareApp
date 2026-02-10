@@ -5,9 +5,7 @@ async function request(path, { method = 'GET', body, headers, token } = {}) {
     method,
     headers: {
       'Content-Type': 'application/json',
-      ...(token
-        ? { Authorization: `Bearer ${token}` }
-        : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...headers,
     },
     credentials: 'include',
@@ -16,10 +14,14 @@ async function request(path, { method = 'GET', body, headers, token } = {}) {
 
   const ct = res.headers.get('content-type') || '';
   const isJson = ct.includes('application/json');
-  const data = isJson ? await res.json().catch(() => null) : await res.text().catch(() => '');
+  const data = isJson
+    ? await res.json().catch(() => null)
+    : await res.text().catch(() => '');
 
   if (!res.ok) {
-    const msg = (isJson && (data?.message || data?.error)) || `${res.status} ${res.statusText}`;
+    const msg =
+      (isJson && (data?.message || data?.error)) ||
+      `${res.status} ${res.statusText}`;
     throw new Error(msg);
   }
   return isJson ? data : { ok: true, data };

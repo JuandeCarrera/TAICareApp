@@ -27,8 +27,11 @@ router.get('/', async (req, res) => {
       filter.user_id = req.user.sub;
     } else if (req.user?.role === 'cuidador') {
       // alertas de sus pacientes
-      const pats = await User.find({ caregiver_id: req.user.sub, role: 'paciente' }, { _id: 1 }).lean();
-      const ids = pats.map(p => p._id);
+      const pats = await User.find(
+        { caregiver_id: req.user.sub, role: 'paciente' },
+        { _id: 1 }
+      ).lean();
+      const ids = pats.map((p) => p._id);
       // si no tiene pacientes, no hay alertas
       filter.user_id = { $in: ids.length ? ids : ['000000000000000000000000'] };
     } else if (req.user?.role === 'admin') {
@@ -39,13 +42,16 @@ router.get('/', async (req, res) => {
 
     const data = await Alert.find(filter)
       .sort({ timestamp: -1, createdAt: -1 })
-      .populate({ path: 'device_id', select: 'appliance plugmodel room household_id' })
+      .populate({
+        path: 'device_id',
+        select: 'appliance plugmodel room household_id',
+      })
       .populate({ path: 'user_id', select: 'name email' })
       .populate({ path: 'routine_id', select: 'name' })
       .lean();
 
     // Fallback de título por si algunos docs no lo tienen
-    const hydrated = data.map(a => {
+    const hydrated = data.map((a) => {
       if (a.title && a.title.trim()) return a;
       const patient = a.patient_name_snapshot || a.user_id?.name || '';
       const routine = a.routine_name_snapshot || a.routine_id?.name || '';
@@ -78,11 +84,10 @@ router.get('/debug/count', async (_req, res) => {
  */
 router.put('/:id', async (req, res) => {
   try {
-    const a = await Alert.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    );
+    const a = await Alert.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+      runValidators: true,
+    });
     if (!a) return res.sendStatus(404);
     res.json(a);
   } catch (e) {

@@ -4,10 +4,11 @@ import SystemSetting from '../models/SystemSetting.js';
 import User from '../models/User.js';
 import Device from '../models/Device.js';
 import Routine from '../models/Routine.js';
-import { getRoutinesStatusForDate } from './routineChecker.js'
+import { getRoutinesStatusForDate } from './routineChecker.js';
 
 const z2 = (n) => String(n).padStart(2, '0');
-const dayKey = (d) => `${d.getFullYear()}-${z2(d.getMonth()+1)}-${z2(d.getDate())}`;
+const dayKey = (d) =>
+  `${d.getFullYear()}-${z2(d.getMonth() + 1)}-${z2(d.getDate())}`;
 
 export async function alertsEnabled() {
   const s = await SystemSetting.findOne({ key: 'alerts_enabled' }).lean();
@@ -37,7 +38,7 @@ async function contextFromRefs({ user_id, device_id, routine_id }) {
     const rname = routine.name || 'Rutina';
     const uname = user.name || 'Paciente';
     title = `Incumplida — ${rname} — ${uname}`;
-    message = `${uname} no ha completado “${rname}”.`; 
+    message = `${uname} no ha completado “${rname}”.`;
   } else if (user && device) {
     title = `Alerta de ${user.name || 'Paciente'}`;
     message = `Evento en ${device.appliance || device.plugmodel || 'dispositivo'}.`;
@@ -45,7 +46,16 @@ async function contextFromRefs({ user_id, device_id, routine_id }) {
 
   const window_key = undefined;
 
-  return { caregiver_id, household_id, title, message, window_key, user, device, routine };
+  return {
+    caregiver_id,
+    household_id,
+    title,
+    message,
+    window_key,
+    user,
+    device,
+    routine,
+  };
 }
 
 /**
@@ -87,14 +97,21 @@ export async function ensureAlert({
 
   if (routine_id) {
     const found = await Alert.findOne({
-      type, user_id, routine_id, day_key: dk,
+      type,
+      user_id,
+      routine_id,
+      day_key: dk,
     });
     if (found) return found;
     return Alert.create(base);
   }
 
   const existing = await Alert.findOne({
-    type, user_id, device_id, day_key: dk, resolved: false,
+    type,
+    user_id,
+    device_id,
+    day_key: dk,
+    resolved: false,
   });
   if (existing) return existing;
 
@@ -123,8 +140,8 @@ export async function evaluateRulesAndAlert(event) {
       timestamp: event.timestamp || new Date(),
       resolved: false,
       seen: false,
-      title: rule.title,      
-      message: rule.message, 
+      title: rule.title,
+      message: rule.message,
     });
 
     if (alert) created.push(alert);
@@ -152,7 +169,7 @@ export async function processTick({ date = new Date() } = {}) {
           : undefined;
 
         const start = s.occurrence?.expected_start || '';
-        const end   = s.occurrence?.expected_end   || '';
+        const end = s.occurrence?.expected_end || '';
         const title = `Incumplida — ${s.routine?.name || 'Rutina'}`;
         const message = `No se completó la ventana ${start}–${end}.`;
 

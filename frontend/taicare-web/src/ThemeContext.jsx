@@ -8,7 +8,9 @@ export const ThemeContext = createContext();
 export function ThemeProvider({ children }) {
   const [themeName, setThemeName] = useState(
     localStorage.getItem('theme') ||
-    (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+      (window.matchMedia('(prefers-color-scheme: dark)').matches
+        ? 'dark'
+        : 'light')
   );
 
   useEffect(() => {
@@ -16,7 +18,7 @@ export function ThemeProvider({ children }) {
   }, [themeName]);
 
   const toggleTheme = () => {
-    setThemeName(prev => (prev === 'dark' ? 'light' : 'dark'));
+    setThemeName((prev) => (prev === 'dark' ? 'light' : 'dark'));
   };
 
   const theme = themeName === 'dark' ? darkTheme : lightTheme;

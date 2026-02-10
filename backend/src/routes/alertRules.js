@@ -9,7 +9,7 @@ router.get('/', async (req, res) => {
   try {
     const { enabled, type } = req.query;
     const filter = {};
-    if (enabled === 'true')  filter.enabled = true;
+    if (enabled === 'true') filter.enabled = true;
     if (enabled === 'false') filter.enabled = false;
     if (type) filter['condition.kind'] = type; // opcional, según tu schema
 
@@ -27,8 +27,8 @@ router.post('/', async (req, res) => {
     const {
       name,
       enabled = true,
-      kind = 'RoutineMissed',     // UI lo llama "kind"
-      type = 'routine_missed',    // tipo técnico
+      kind = 'RoutineMissed', // UI lo llama "kind"
+      type = 'routine_missed', // tipo técnico
       severity = 'MEDIUM',
     } = req.body || {};
 
@@ -88,11 +88,14 @@ router.put('/:id', async (req, res) => {
       patch.name = String(req.body.name || '').trim();
     }
     if ('severity' in req.body) {
-      patch['condition.severity'] = String(req.body.severity || '').toLowerCase();
+      patch['condition.severity'] = String(
+        req.body.severity || ''
+      ).toLowerCase();
     }
 
     const upd = await AlertRule.findByIdAndUpdate(id, patch, {
-      new: true, runValidators: true
+      new: true,
+      runValidators: true,
     }).lean();
 
     if (!upd) return res.sendStatus(404);

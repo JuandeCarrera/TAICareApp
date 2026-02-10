@@ -1,0 +1,21 @@
+# Historial de Commits - TAICareApp
+
+## 2026-02-10: Fase 1 - Herramientas y Configuración
+**Mensaje del Commit:** `chore: configurar eslint, prettier, nodemon y constantes`
+
+**Cambios:**
+- **Backend:**
+  - Instalado `eslint`, `prettier`, `nodemon`.
+  - Configurado `.prettierrc` y `eslint.config.js`.
+  - Añadidos scripts `dev`, `lint`, `format` en package.json.
+  - Extraídas cadenas mágicas a `src/constants/index.js`.
+  - Actualizados modelos (`User`, `Alert`, `Routine`) para usar constantes.
+  - Arreglados problemas de `EADDRINUSE` usando `nodemon`.
+  - **Corrección:** Permitir que los cuidadores sean dueños temporales de hogares durante la creación.
+- **Frontend:**
+  - Instalado `prettier`, `eslint-plugin-prettier`, `eslint-config-prettier`.
+  - Configurado `.prettierrc` y `eslint.config.js`.
+  - Añadido script `format` en package.json.
+  - Extraídas cadenas mágicas a `src/constants/index.js` (Roles, Estados).
+  - Actualizado `Register.jsx` para usar la constante `ROLES`.
+  - **Corrección:** Actualizado `UsersPage.jsx` para enviar el ID del cuidador como dueño al crear un hogar rápido.

@@ -1,25 +1,33 @@
-import React, { useContext, useEffect, useMemo, useState } from 'react'
-import styled from 'styled-components'
-import { useNavigate } from 'react-router-dom'
-import { AuthContext } from '../contexts/AuthContext.jsx'
-import Header from '../components/Header.jsx'
-import Sidebar from '../components/Sidebar.jsx'
-import Footer from '../components/Footer.jsx'
-import Modal, { FormGroup } from '../components/Modal.jsx'
-import SearchToolbar from '../components/SearchToolbar.jsx' // ← NUEVO
+import React, { useContext, useEffect, useMemo, useState } from 'react';
+import styled from 'styled-components';
+import { useNavigate } from 'react-router-dom';
+import { AuthContext } from '../contexts/AuthContext.jsx';
+import Header from '../components/Header.jsx';
+import Sidebar from '../components/Sidebar.jsx';
+import Footer from '../components/Footer.jsx';
+import Modal, { FormGroup } from '../components/Modal.jsx';
+import SearchToolbar from '../components/SearchToolbar.jsx'; // ← NUEVO
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+const API = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 /* ---------- Estilos base ---------- */
 const AppContainer = styled.div`
-  display: flex; flex-direction: column; height: 100vh; width: 100vw;
-`
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+`;
 const Body = styled.div`
-  flex: 1; display: flex; overflow: hidden;
-`
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+`;
 const Main = styled.main`
-  flex: 1; background: ${({ theme }) => theme.colors.bg}; padding: 2rem; overflow-y: auto;
-`
+  flex: 1;
+  background: ${({ theme }) => theme.colors.bg};
+  padding: 2rem;
+  overflow-y: auto;
+`;
 
 /* ---------- Tarjetas de hogar ---------- */
 const HouseItem = styled.div`
@@ -28,16 +36,22 @@ const HouseItem = styled.div`
   border-radius: 8px;
   margin-bottom: 1rem;
   padding: 1rem;
-`
+`;
 const HouseHeader = styled.div`
-  display: flex; align-items: center; gap: .5rem;
-`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+`;
 const Title = styled.strong`
-  flex: 1; font-size: 1.1rem; color: ${({ theme }) => theme.colors.text};
-`
+  flex: 1;
+  font-size: 1.1rem;
+  color: ${({ theme }) => theme.colors.text};
+`;
 const Actions = styled.div`
-  display: flex; gap: 0.5rem; align-items: center;
-`
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+`;
 const Btn = styled.button`
   font-size: 0.85rem;
   padding: 0.25rem 0.6rem;
@@ -50,98 +64,107 @@ const Btn = styled.button`
   color: ${({ theme, variant }) =>
     variant === 'primary' ? 'white' : theme.colors.text};
   cursor: pointer;
-  transition: background 0.2s, border-color .2s, color .2s;
+  transition:
+    background 0.2s,
+    border-color 0.2s,
+    color 0.2s;
   &:hover {
     background: ${({ theme, variant }) =>
-      variant === 'primary'
-        ? theme.colors.primaryDark
-        : theme.colors.hoverBg};
+      variant === 'primary' ? theme.colors.primaryDark : theme.colors.hoverBg};
   }
-`
+`;
 const ToggleButton = styled.button`
   background: transparent;
   border: 1px solid ${({ theme }) => theme.colors.border};
   border-radius: 6px;
   cursor: pointer;
-  font-size: .95rem;
+  font-size: 0.95rem;
   color: ${({ theme }) => theme.colors.text};
-  padding: .25rem .5rem;
-  &:hover { background: ${({ theme }) => theme.colors.hoverBg}; }
-`
+  padding: 0.25rem 0.5rem;
+  &:hover {
+    background: ${({ theme }) => theme.colors.hoverBg};
+  }
+`;
 const RoomsList = styled.ul`
   margin-top: 0.75rem;
   padding-left: 1.25rem;
   list-style: disc;
-`
+`;
 const RoomItem = styled.li`
-  display: flex; justify-content: space-between; align-items: center;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 0.5rem;
-  padding: .25rem .35rem;
+  padding: 0.25rem 0.35rem;
   border-radius: 6px;
-  &:hover { background: ${({ theme }) => theme.colors.hoverBg}; }
-`
+  &:hover {
+    background: ${({ theme }) => theme.colors.hoverBg};
+  }
+`;
 const Small = styled.small`
-  opacity: .8;
-`
+  opacity: 0.8;
+`;
 const DangerBtn = styled(Btn)`
   border-color: #ef4444;
   color: #fff;
   background: #e04848;
-  &:hover { background: rgba(239, 68, 68, .12); }
-`
+  &:hover {
+    background: rgba(239, 68, 68, 0.12);
+  }
+`;
 const ActionsTop = styled.div`
   margin-bottom: 1rem;
-`
+`;
 
 export default function Hogares() {
-  const { logout } = useContext(AuthContext)
-  const navigate = useNavigate()
+  const { logout } = useContext(AuthContext);
+  const navigate = useNavigate();
 
-  const [households, setHouseholds] = useState([])
-  const [patients, setPatients] = useState([])
-  const [openIds, setOpenIds] = useState({})
+  const [households, setHouseholds] = useState([]);
+  const [patients, setPatients] = useState([]);
+  const [openIds, setOpenIds] = useState({});
 
   // modal state
-  const [showModal, setShowModal] = useState(false)
-  const [mode, setMode] = useState('house') // 'house' | 'editHouse' | 'room' | 'editRoom'
-  const [editRoomOld, setEditRoomOld] = useState('')
+  const [showModal, setShowModal] = useState(false);
+  const [mode, setMode] = useState('house'); // 'house' | 'editHouse' | 'room' | 'editRoom'
+  const [editRoomOld, setEditRoomOld] = useState('');
   const [form, setForm] = useState({
     name: '',
     address: '',
     targetHouseId: '',
     roomName: '',
-    owner: ''
-  })
+    owner: '',
+  });
 
   // filtros
-  const [query, setQuery] = useState('')
-  const [filterOwner, setFilterOwner] = useState('')   // id del paciente (owner)
-  const [filterRoom, setFilterRoom] = useState('')     // nombre habitación exacto
-  const [sortBy, setSortBy] = useState('name_asc')     // name_asc | name_desc | rooms_desc | rooms_asc
+  const [query, setQuery] = useState('');
+  const [filterOwner, setFilterOwner] = useState(''); // id del paciente (owner)
+  const [filterRoom, setFilterRoom] = useState(''); // nombre habitación exacto
+  const [sortBy, setSortBy] = useState('name_asc'); // name_asc | name_desc | rooms_desc | rooms_asc
 
   /* ---------- carga inicial ---------- */
   useEffect(() => {
-    fetchHouseholds()
+    fetchHouseholds();
     fetch(`${API}/users?role=paciente`, { credentials: 'include' })
-      .then(r => (r.ok ? r.json() : []))
-      .then(arr => Array.isArray(arr) ? arr : [])
+      .then((r) => (r.ok ? r.json() : []))
+      .then((arr) => (Array.isArray(arr) ? arr : []))
       .then(setPatients)
-      .catch(() => {})
-  }, [])
+      .catch(() => {});
+  }, []);
 
   async function fetchHouseholds() {
     try {
-      const res = await fetch(`${API}/households`, { credentials: 'include' })
-      if (!res.ok) return
-      const data = await res.json()
+      const res = await fetch(`${API}/households`, { credentials: 'include' });
+      if (!res.ok) return;
+      const data = await res.json();
       // Normaliza rooms para evitar errores
-      const safe = (Array.isArray(data) ? data : []).map(h => ({
+      const safe = (Array.isArray(data) ? data : []).map((h) => ({
         ...h,
-        rooms: Array.isArray(h?.rooms) ? h.rooms.filter(Boolean) : []
-      }))
-      setHouseholds(safe)
+        rooms: Array.isArray(h?.rooms) ? h.rooms.filter(Boolean) : [],
+      }));
+      setHouseholds(safe);
     } catch (e) {
-      console.error('Error cargando hogares:', e)
+      console.error('Error cargando hogares:', e);
     }
   }
 
@@ -149,129 +172,145 @@ export default function Hogares() {
   const ownerOptions = useMemo(() => {
     return [
       { value: '', label: 'Todos' },
-      ...patients.map(p => ({ value: p._id, label: p.name }))
-    ]
-  }, [patients])
+      ...patients.map((p) => ({ value: p._id, label: p.name })),
+    ];
+  }, [patients]);
 
   const roomOptions = useMemo(() => {
-    const set = new Set()
-    households.forEach(h => (Array.isArray(h.rooms) ? h.rooms : []).forEach(r => r && set.add(r)))
-    return [{ value: '', label: 'Todas' }, ...Array.from(set).sort().map(r => ({ value: r, label: r }))]
-  }, [households])
+    const set = new Set();
+    households.forEach((h) =>
+      (Array.isArray(h.rooms) ? h.rooms : []).forEach((r) => r && set.add(r))
+    );
+    return [
+      { value: '', label: 'Todas' },
+      ...Array.from(set)
+        .sort()
+        .map((r) => ({ value: r, label: r })),
+    ];
+  }, [households]);
 
   const handleFiltersChange = (payload) => {
     // payload: { query, selects: { owner, room }, sortBy }
-    setQuery(payload.query ?? '')
-    setFilterOwner(payload.selects?.owner ?? '')
-    setFilterRoom(payload.selects?.room ?? '')
-    setSortBy(payload.sortBy ?? 'name_asc')
-  }
+    setQuery(payload.query ?? '');
+    setFilterOwner(payload.selects?.owner ?? '');
+    setFilterRoom(payload.selects?.room ?? '');
+    setSortBy(payload.sortBy ?? 'name_asc');
+  };
 
   const filtered = useMemo(() => {
-    const q = (query || '').trim().toLowerCase()
+    const q = (query || '').trim().toLowerCase();
 
-    let list = [...households]
+    let list = [...households];
 
     // texto: busca en name, address y rooms
     if (q) {
-      list = list.filter(h => {
-        const name = (h.name || '').toLowerCase()
-        const addr = (h.address || '').toLowerCase()
-        const rooms = (Array.isArray(h.rooms) ? h.rooms : []).join(' • ').toLowerCase()
-        return name.includes(q) || addr.includes(q) || rooms.includes(q)
-      })
+      list = list.filter((h) => {
+        const name = (h.name || '').toLowerCase();
+        const addr = (h.address || '').toLowerCase();
+        const rooms = (Array.isArray(h.rooms) ? h.rooms : [])
+          .join(' • ')
+          .toLowerCase();
+        return name.includes(q) || addr.includes(q) || rooms.includes(q);
+      });
     }
 
-    if (filterOwner) list = list.filter(h => String(h.owner) === String(filterOwner))
-    if (filterRoom) list = list.filter(h => Array.isArray(h.rooms) && h.rooms.includes(filterRoom))
+    if (filterOwner)
+      list = list.filter((h) => String(h.owner) === String(filterOwner));
+    if (filterRoom)
+      list = list.filter(
+        (h) => Array.isArray(h.rooms) && h.rooms.includes(filterRoom)
+      );
 
     // sort
-    list.sort((a,b) => {
-      if (sortBy === 'name_desc') return (a.name || '').localeCompare(b.name || '') * -1
-      if (sortBy === 'rooms_desc') return (b.rooms?.length || 0) - (a.rooms?.length || 0)
-      if (sortBy === 'rooms_asc')  return (a.rooms?.length || 0) - (b.rooms?.length || 0)
+    list.sort((a, b) => {
+      if (sortBy === 'name_desc')
+        return (a.name || '').localeCompare(b.name || '') * -1;
+      if (sortBy === 'rooms_desc')
+        return (b.rooms?.length || 0) - (a.rooms?.length || 0);
+      if (sortBy === 'rooms_asc')
+        return (a.rooms?.length || 0) - (b.rooms?.length || 0);
       // default name_asc
-      return (a.name || '').localeCompare(b.name || '')
-    })
+      return (a.name || '').localeCompare(b.name || '');
+    });
 
-    return list
-  }, [households, query, filterOwner, filterRoom, sortBy])
+    return list;
+  }, [households, query, filterOwner, filterRoom, sortBy]);
 
   /* ---------- helpers UI ---------- */
   function toggleOpen(id) {
-    setOpenIds(prev => ({ ...prev, [id]: !prev[id] }))
+    setOpenIds((prev) => ({ ...prev, [id]: !prev[id] }));
   }
 
   /* ---------- CRUD ---------- */
   function openNewHouse() {
-    setMode('house')
+    setMode('house');
     setForm({
       name: '',
       address: '',
       targetHouseId: '',
       roomName: '',
-      owner: patients[0]?._id || '' // auto-selección opcional
-    })
-    setShowModal(true)
+      owner: patients[0]?._id || '', // auto-selección opcional
+    });
+    setShowModal(true);
   }
 
   function openEditHouse(h) {
-    setMode('editHouse')
+    setMode('editHouse');
     setForm({
       name: h.name || '',
       address: h.address || '',
       targetHouseId: h._id,
       roomName: '',
-      owner: '' // no se edita el owner aquí
-    })
-    setShowModal(true)
+      owner: '', // no se edita el owner aquí
+    });
+    setShowModal(true);
   }
 
   function openNewRoom(h) {
-    setMode('room')
-    setForm(f => ({ ...f, targetHouseId: h._id, roomName: '' }))
-    setShowModal(true)
+    setMode('room');
+    setForm((f) => ({ ...f, targetHouseId: h._id, roomName: '' }));
+    setShowModal(true);
   }
 
   function openEditRoom(h, room) {
-    setMode('editRoom')
-    setEditRoomOld(room)
+    setMode('editRoom');
+    setEditRoomOld(room);
     setForm({
       name: '',
       address: '',
       targetHouseId: h._id,
       roomName: room,
-      owner: ''
-    })
-    setShowModal(true)
+      owner: '',
+    });
+    setShowModal(true);
   }
 
   async function deleteHouse(id) {
-    if (!confirm('¿Borrar esta casa?')) return
+    if (!confirm('¿Borrar esta casa?')) return;
     const res = await fetch(`${API}/households/${id}`, {
       method: 'DELETE',
-      credentials: 'include'
-    })
-    if (res.ok) fetchHouseholds()
+      credentials: 'include',
+    });
+    if (res.ok) fetchHouseholds();
   }
 
   async function deleteRoom(hId, room) {
-    if (!confirm('¿Borrar habitación?')) return
-    const h = households.find(x => x._id === hId)
-    const currentRooms = Array.isArray(h?.rooms) ? h.rooms : []
-    const newRooms = currentRooms.filter(r => r !== room)
+    if (!confirm('¿Borrar habitación?')) return;
+    const h = households.find((x) => x._id === hId);
+    const currentRooms = Array.isArray(h?.rooms) ? h.rooms : [];
+    const newRooms = currentRooms.filter((r) => r !== room);
     await fetch(`${API}/households/${hId}`, {
       method: 'PUT',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ rooms: newRooms })
-    })
-    fetchHouseholds()
+      body: JSON.stringify({ rooms: newRooms }),
+    });
+    fetchHouseholds();
   }
 
   async function handleSave() {
     try {
-      let res
+      let res;
       if (mode === 'house') {
         res = await fetch(`${API}/households`, {
           method: 'POST',
@@ -281,9 +320,9 @@ export default function Hogares() {
             name: form.name,
             address: form.address,
             rooms: [],
-            owner: form.owner
-          })
-        })
+            owner: form.owner,
+          }),
+        });
       } else if (mode === 'editHouse') {
         res = await fetch(`${API}/households/${form.targetHouseId}`, {
           method: 'PUT',
@@ -291,40 +330,42 @@ export default function Hogares() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             name: form.name,
-            address: form.address
-          })
-        })
+            address: form.address,
+          }),
+        });
       } else if (mode === 'room') {
-        const h = households.find(x => x._id === form.targetHouseId)
-        const curr = Array.isArray(h?.rooms) ? h.rooms : []
-        const next = [...curr, form.roomName].filter(Boolean)
+        const h = households.find((x) => x._id === form.targetHouseId);
+        const curr = Array.isArray(h?.rooms) ? h.rooms : [];
+        const next = [...curr, form.roomName].filter(Boolean);
         res = await fetch(`${API}/households/${form.targetHouseId}`, {
           method: 'PUT',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ rooms: next })
-        })
+          body: JSON.stringify({ rooms: next }),
+        });
       } else if (mode === 'editRoom') {
-        const h = households.find(x => x._id === form.targetHouseId)
-        const currentRooms = Array.isArray(h?.rooms) ? h.rooms : []
-        const updated = currentRooms.map(r => (r === editRoomOld ? form.roomName : r))
+        const h = households.find((x) => x._id === form.targetHouseId);
+        const currentRooms = Array.isArray(h?.rooms) ? h.rooms : [];
+        const updated = currentRooms.map((r) =>
+          r === editRoomOld ? form.roomName : r
+        );
         res = await fetch(`${API}/households/${form.targetHouseId}`, {
           method: 'PUT',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ rooms: updated })
-        })
+          body: JSON.stringify({ rooms: updated }),
+        });
       }
 
       if (res?.ok) {
-        setShowModal(false)
-        fetchHouseholds()
+        setShowModal(false);
+        fetchHouseholds();
       } else {
-        const err = await res.json().catch(() => ({}))
-        alert(err.error || 'Error al guardar')
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || 'Error al guardar');
       }
     } catch (e) {
-      alert(e.message)
+      alert(e.message);
     }
   }
 
@@ -334,8 +375,8 @@ export default function Hogares() {
       <Header
         onToggleMenu={() => {}}
         onLogout={() => {
-          logout()
-          navigate('/login')
+          logout();
+          navigate('/login');
         }}
       />
       <Body>
@@ -348,29 +389,35 @@ export default function Hogares() {
               value={{
                 query,
                 selects: { owner: filterOwner, room: filterRoom },
-                sortBy
+                sortBy,
               }}
               onChange={handleFiltersChange}
-              onClear={() => handleFiltersChange({ query: '', selects: { owner: '', room: '' }, sortBy: 'name_asc' })}
+              onClear={() =>
+                handleFiltersChange({
+                  query: '',
+                  selects: { owner: '', room: '' },
+                  sortBy: 'name_asc',
+                })
+              }
               selects={[
                 {
                   key: 'owner',
                   label: 'Paciente',
                   placeholder: 'Todos',
-                  options: ownerOptions
+                  options: ownerOptions,
                 },
                 {
                   key: 'room',
                   label: 'Habitación',
                   placeholder: 'Todas',
-                  options: roomOptions
-                }
+                  options: roomOptions,
+                },
               ]}
               sorts={[
-                { value: 'name_asc',  label: 'Nombre (A→Z)' },
+                { value: 'name_asc', label: 'Nombre (A→Z)' },
                 { value: 'name_desc', label: 'Nombre (Z→A)' },
-                { value: 'rooms_desc',label: 'Más habitaciones' },
-                { value: 'rooms_asc', label: 'Menos habitaciones' }
+                { value: 'rooms_desc', label: 'Más habitaciones' },
+                { value: 'rooms_asc', label: 'Menos habitaciones' },
               ]}
               placeholder="Buscar por nombre, dirección o habitación…"
               style={{ marginBottom: '0.75rem' }}
@@ -383,14 +430,23 @@ export default function Hogares() {
             </Btn>
           </ActionsTop>
 
-          {filtered.map(h => (
+          {filtered.map((h) => (
             <HouseItem key={h._id}>
               <HouseHeader>
                 <Title>{h.name}</Title>
                 <Actions>
-                  <Btn variant="primary" onClick={() => openNewRoom(h)}>+ Habitación</Btn>
-                  <Btn variant="primary" onClick={() => openEditHouse(h)}>✎ Editar</Btn>
-                  <DangerBtn variant="primary" onClick={() => deleteHouse(h._id)}>🗑 Borrar</DangerBtn>
+                  <Btn variant="primary" onClick={() => openNewRoom(h)}>
+                    + Habitación
+                  </Btn>
+                  <Btn variant="primary" onClick={() => openEditHouse(h)}>
+                    ✎ Editar
+                  </Btn>
+                  <DangerBtn
+                    variant="primary"
+                    onClick={() => deleteHouse(h._id)}
+                  >
+                    🗑 Borrar
+                  </DangerBtn>
                   <ToggleButton
                     aria-label="Mostrar habitaciones"
                     onClick={() => toggleOpen(h._id)}
@@ -402,23 +458,37 @@ export default function Hogares() {
 
               <div style={{ marginTop: '.25rem' }}>
                 <Small>
-                  {h.address ? h.address : <span style={{ opacity:.7 }}>Sin dirección</span>}
+                  {h.address ? (
+                    h.address
+                  ) : (
+                    <span style={{ opacity: 0.7 }}>Sin dirección</span>
+                  )}
                 </Small>
               </div>
 
               {openIds[h._id] && (
                 <RoomsList>
-                  {(Array.isArray(h.rooms) ? h.rooms : []).map(room => (
+                  {(Array.isArray(h.rooms) ? h.rooms : []).map((room) => (
                     <RoomItem key={room}>
                       {room}
                       <Actions>
-                        <Btn variant="primary" onClick={() => openEditRoom(h, room)}>✎</Btn>
-                        <DangerBtn variant="primary" onClick={() => deleteRoom(h._id, room)}>🗑</DangerBtn>
+                        <Btn
+                          variant="primary"
+                          onClick={() => openEditRoom(h, room)}
+                        >
+                          ✎
+                        </Btn>
+                        <DangerBtn
+                          variant="primary"
+                          onClick={() => deleteRoom(h._id, room)}
+                        >
+                          🗑
+                        </DangerBtn>
                       </Actions>
                     </RoomItem>
                   ))}
                   {(!h.rooms || h.rooms.length === 0) && (
-                    <li style={{ opacity:.7 }}>Sin habitaciones.</li>
+                    <li style={{ opacity: 0.7 }}>Sin habitaciones.</li>
                   )}
                 </RoomsList>
               )}
@@ -426,7 +496,7 @@ export default function Hogares() {
           ))}
 
           {!filtered.length && (
-            <div style={{ opacity:.7, marginTop:'.5rem' }}>
+            <div style={{ opacity: 0.7, marginTop: '.5rem' }}>
               No se han encontrado hogares con los filtros actuales.
             </div>
           )}
@@ -441,10 +511,10 @@ export default function Hogares() {
           {mode === 'house'
             ? 'Crear casa'
             : mode === 'editHouse'
-            ? 'Editar casa'
-            : mode === 'room'
-            ? 'Añadir habitación'
-            : 'Editar habitación'}
+              ? 'Editar casa'
+              : mode === 'room'
+                ? 'Añadir habitación'
+                : 'Editar habitación'}
         </h2>
 
         {(mode === 'house' || mode === 'editHouse') && (
@@ -454,14 +524,24 @@ export default function Hogares() {
                 <label>Paciente (propietario)</label>
                 <select
                   value={form.owner || ''}
-                  onChange={e => setForm(f => ({ ...f, owner: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, owner: e.target.value }))
+                  }
                 >
                   <option value="">— Selecciona un paciente —</option>
-                  {(patients || []).map(p => (
-                    <option key={p._id} value={p._id}>{p.name}</option>
+                  {(patients || []).map((p) => (
+                    <option key={p._id} value={p._id}>
+                      {p.name}
+                    </option>
                   ))}
                 </select>
-                <small style={{ display: 'block', opacity: .75, marginTop: '.35rem' }}>
+                <small
+                  style={{
+                    display: 'block',
+                    opacity: 0.75,
+                    marginTop: '.35rem',
+                  }}
+                >
                   Este paciente quedará como propietario del hogar.
                 </small>
               </FormGroup>
@@ -471,7 +551,9 @@ export default function Hogares() {
               <label>Nombre</label>
               <input
                 value={form.name || ''}
-                onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, name: e.target.value }))
+                }
                 placeholder="p.ej., Casa Lucía"
               />
             </FormGroup>
@@ -480,7 +562,9 @@ export default function Hogares() {
               <label>Dirección</label>
               <input
                 value={form.address || ''}
-                onChange={e => setForm(f => ({ ...f, address: e.target.value }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, address: e.target.value }))
+                }
                 placeholder="Calle, nº, piso… (opcional)"
               />
             </FormGroup>
@@ -492,25 +576,34 @@ export default function Hogares() {
             <label>Nombre de la habitación</label>
             <input
               value={form.roomName || ''}
-              onChange={e => setForm(f => ({ ...f, roomName: e.target.value }))}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, roomName: e.target.value }))
+              }
               placeholder="p.ej., Salón, Cocina, Dormitorio…"
             />
           </FormGroup>
         )}
 
-        <div style={{ marginTop: '1.25rem', display: 'flex', justifyContent: 'flex-end', gap: '.5rem' }}>
+        <div
+          style={{
+            marginTop: '1.25rem',
+            display: 'flex',
+            justifyContent: 'flex-end',
+            gap: '.5rem',
+          }}
+        >
           <DangerBtn onClick={() => setShowModal(false)}>Cancelar</DangerBtn>
           <Btn
             variant="primary"
             onClick={handleSave}
             disabled={
               mode === 'house'
-                ? !( (form.name || '').trim() && (form.owner || '') )
+                ? !((form.name || '').trim() && (form.owner || ''))
                 : mode === 'editHouse'
-                ? !(form.name || '').trim()
-                : (mode === 'room' || mode === 'editRoom')
-                ? !(form.roomName || '').trim()
-                : true
+                  ? !(form.name || '').trim()
+                  : mode === 'room' || mode === 'editRoom'
+                    ? !(form.roomName || '').trim()
+                    : true
             }
           >
             Guardar
@@ -518,5 +611,5 @@ export default function Hogares() {
         </div>
       </Modal>
     </AppContainer>
-  )
+  );
 }

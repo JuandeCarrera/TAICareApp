@@ -9,7 +9,10 @@ async function fetchJSON(path, { method = 'GET', body } = {}) {
   });
   if (!res.ok) {
     let errText = '';
-    try { const j = await res.json(); errText = j.error || JSON.stringify(j); } catch {}
+    try {
+      const j = await res.json();
+      errText = j.error || JSON.stringify(j);
+    } catch {}
     throw new Error(errText || `HTTP ${res.status}`);
   }
   // 204 No Content
@@ -32,7 +35,10 @@ export const SettingsAPI = {
     return fetchJSON(`/settings/${encodeURIComponent(key)}`);
   },
   async setFlag(key, value) {
-    return fetchJSON(`/settings/${encodeURIComponent(key)}`, { method: 'PUT', body: { value } });
+    return fetchJSON(`/settings/${encodeURIComponent(key)}`, {
+      method: 'PUT',
+      body: { value },
+    });
   },
 };
 
@@ -44,7 +50,10 @@ export const NotifPrefsAPI = {
   },
   async upsertMine(payload) {
     // payload: { channels?: {email, push}, min_severity?: 'LOW'|'MEDIUM'|'HIGH' }
-    return fetchJSON('/notification-prefs/me', { method: 'PUT', body: payload });
+    return fetchJSON('/notification-prefs/me', {
+      method: 'PUT',
+      body: payload,
+    });
   },
 };
 

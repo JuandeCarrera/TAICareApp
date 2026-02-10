@@ -1,8 +1,8 @@
 import { useState, useContext } from 'react';
-import { useNavigate, Link }     from 'react-router-dom';
-import styled                    from 'styled-components';
-import { AuthContext }           from '../contexts/AuthContext.jsx';
-import ThemeToggle               from '../components/ThemeToggle.jsx';
+import { useNavigate, Link } from 'react-router-dom';
+import styled from 'styled-components';
+import { AuthContext } from '../contexts/AuthContext.jsx';
+import ThemeToggle from '../components/ThemeToggle.jsx';
 
 const Wrapper = styled.div`
   width: 100vw;
@@ -26,7 +26,7 @@ const Card = styled.div`
   background: ${({ theme }) => theme.colors.cardBg};
   padding: 2rem;
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 `;
 
 const Title = styled.h2`
@@ -57,7 +57,9 @@ const Button = styled.button`
   border-radius: 6px;
   font-size: 1rem;
   cursor: pointer;
-  &:hover { opacity: 0.9; }
+  &:hover {
+    opacity: 0.9;
+  }
 `;
 
 const Footer = styled.p`
@@ -71,13 +73,13 @@ const Footer = styled.p`
 `;
 
 export default function Login() {
-  const [email,    setEmail]    = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error,    setError]    = useState(null);
-  const { login }               = useContext(AuthContext);
-  const nav                     = useNavigate();
+  const [error, setError] = useState(null);
+  const { login } = useContext(AuthContext);
+  const nav = useNavigate();
 
-  const handleSubmit = async e => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
     try {
@@ -96,20 +98,20 @@ export default function Login() {
 
       <Card>
         <Title>Iniciar sesión</Title>
-        {error && <p style={{ color:'red', textAlign:'center' }}>{error}</p>}
+        {error && <p style={{ color: 'red', textAlign: 'center' }}>{error}</p>}
         <Form onSubmit={handleSubmit}>
           <Input
             type="email"
             placeholder="Correo electrónico"
             value={email}
-            onChange={e => setEmail(e.target.value)}
+            onChange={(e) => setEmail(e.target.value)}
             required
           />
           <Input
             type="password"
             placeholder="Contraseña"
             value={password}
-            onChange={e => setPassword(e.target.value)}
+            onChange={(e) => setPassword(e.target.value)}
             required
           />
           <Button type="submit">Entrar</Button>

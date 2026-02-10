@@ -1,33 +1,33 @@
-import React, { useContext, useState, useEffect, useMemo } from 'react'
-import styled from 'styled-components'
-import { useNavigate } from 'react-router-dom'
-import { AuthContext } from '../contexts/AuthContext.jsx'
-import Header   from '../components/Header.jsx'
-import Sidebar  from '../components/Sidebar.jsx'
-import Footer   from '../components/Footer.jsx'
-import Modal    from '../components/Modal.jsx'
-import { FormGroup } from '../components/Modal.jsx'
-import SearchToolbar from '../components/SearchToolbar.jsx' // ← NUEVO
+import React, { useContext, useState, useEffect, useMemo } from 'react';
+import styled from 'styled-components';
+import { useNavigate } from 'react-router-dom';
+import { AuthContext } from '../contexts/AuthContext.jsx';
+import Header from '../components/Header.jsx';
+import Sidebar from '../components/Sidebar.jsx';
+import Footer from '../components/Footer.jsx';
+import Modal from '../components/Modal.jsx';
+import { FormGroup } from '../components/Modal.jsx';
+import SearchToolbar from '../components/SearchToolbar.jsx'; // ← NUEVO
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+const API = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 const AppContainer = styled.div`
   display: flex;
   flex-direction: column;
   height: 100vh;
   width: 100vw;
-`
+`;
 const Body = styled.div`
   flex: 1;
   display: flex;
   overflow: hidden;
-`
+`;
 const Main = styled.main`
   flex: 1;
   background: ${({ theme }) => theme.colors.bg};
   padding: 2rem;
   overflow-y: auto;
-`
+`;
 const DeviceItem = styled.li`
   display: flex;
   justify-content: space-between;
@@ -36,12 +36,12 @@ const DeviceItem = styled.li`
   background: ${({ theme }) => theme.colors.cardBg};
   border: 1px solid ${({ theme }) => theme.colors.border};
   border-radius: 8px;
-  padding: .65rem .8rem;
-`
+  padding: 0.65rem 0.8rem;
+`;
 const Actions = styled.div`
   display: flex;
   gap: 0.5rem;
-`
+`;
 const Btn = styled.button`
   font-size: 0.85rem;
   padding: 0.25rem 0.6rem;
@@ -57,194 +57,212 @@ const Btn = styled.button`
   transition: background 0.2s;
   &:hover {
     background: ${({ theme, variant }) =>
-      variant === 'primary'
-        ? theme.colors.primaryDark
-        : theme.colors.hoverBg};
+      variant === 'primary' ? theme.colors.primaryDark : theme.colors.hoverBg};
   }
-`
+`;
 const NewButton = styled(Btn).attrs({ variant: 'primary' })`
   margin: 0 0 1rem 0;
-`
+`;
 const DangerBtn = styled(Btn)`
   border-color: #ef4444;
   color: #fff;
   background: #e04848;
-  &:hover { background: rgba(239, 68, 68, .12); }
+  &:hover {
+    background: rgba(239, 68, 68, 0.12);
+  }
 `;
 
 export default function Dispositivos() {
-  const { logout } = useContext(AuthContext)
-  const navigate = useNavigate()
-  const [menuOpen, setMenuOpen] = useState(window.innerWidth >= 768)
+  const { logout } = useContext(AuthContext);
+  const navigate = useNavigate();
+  const [menuOpen, setMenuOpen] = useState(window.innerWidth >= 768);
 
-  const [households, setHouseholds] = useState([])
-  const [rooms,      setRooms]      = useState([])
-  const [devices,    setDevices]    = useState([])
+  const [households, setHouseholds] = useState([]);
+  const [rooms, setRooms] = useState([]);
+  const [devices, setDevices] = useState([]);
 
-  const [showModal,  setShowModal]  = useState(false)
-  const [editId,     setEditId]     = useState(null)
+  const [showModal, setShowModal] = useState(false);
+  const [editId, setEditId] = useState(null);
   const [form, setForm] = useState({
     plugmodel: '',
     household_id: '',
     room: '',
-    appliance: ''
-  })
+    appliance: '',
+  });
 
   /* -------- SearchToolbar state -------- */
-  const [q, setQ] = useState('')
-  const [flt, setFlt] = useState({ householdId: '', room: '' })
-  const [sort, setSort] = useState('recent_desc')
+  const [q, setQ] = useState('');
+  const [flt, setFlt] = useState({ householdId: '', room: '' });
+  const [sort, setSort] = useState('recent_desc');
 
   useEffect(() => {
-    fetchDevices()
-    fetchHouseholds()
-  }, [])
+    fetchDevices();
+    fetchHouseholds();
+  }, []);
 
   async function fetchDevices() {
-    const res = await fetch(`${API}/devices`, { credentials: 'include' })
-    if (!res.ok) return
-    setDevices(await res.json())
+    const res = await fetch(`${API}/devices`, { credentials: 'include' });
+    if (!res.ok) return;
+    setDevices(await res.json());
   }
   async function fetchHouseholds() {
-    const res = await fetch(`${API}/households`, { credentials: 'include' })
-    if (!res.ok) return
-    setHouseholds(await res.json())
+    const res = await fetch(`${API}/households`, { credentials: 'include' });
+    if (!res.ok) return;
+    setHouseholds(await res.json());
   }
 
   useEffect(() => {
-    const hh = households.find(h => h._id === form.household_id)
-    setRooms(hh?.rooms || [])
+    const hh = households.find((h) => h._id === form.household_id);
+    setRooms(hh?.rooms || []);
     if (!hh?.rooms?.includes(form.room)) {
-      setForm(f => ({ ...f, room: '' }))
+      setForm((f) => ({ ...f, room: '' }));
     }
-  }, [form.household_id, households])
+  }, [form.household_id, households]);
 
   const handleLogout = () => {
-    logout()
-    navigate('/login')
-  }
+    logout();
+    navigate('/login');
+  };
 
-  const onChange = e => {
-    const { name, value } = e.target
-    setForm(f => ({ ...f, [name]: value }))
-  }
+  const onChange = (e) => {
+    const { name, value } = e.target;
+    setForm((f) => ({ ...f, [name]: value }));
+  };
 
   const openNew = () => {
-    setEditId(null)
-    setForm({ plugmodel: '', household_id: '', room: '', appliance: '' })
-    setShowModal(true)
-  }
-  const openEdit = d => {
-    setEditId(d._id)
+    setEditId(null);
+    setForm({ plugmodel: '', household_id: '', room: '', appliance: '' });
+    setShowModal(true);
+  };
+  const openEdit = (d) => {
+    setEditId(d._id);
     setForm({
       plugmodel: d.plugmodel,
       household_id: d.household_id,
       room: d.room,
-      appliance: d.appliance
-    })
-    setShowModal(true)
-  }
-  const deleteDevice = async id => {
-    if (!confirm('¿Borrar este dispositivo?')) return
+      appliance: d.appliance,
+    });
+    setShowModal(true);
+  };
+  const deleteDevice = async (id) => {
+    if (!confirm('¿Borrar este dispositivo?')) return;
     const res = await fetch(`${API}/devices/${id}`, {
       method: 'DELETE',
-      credentials: 'include'
-    })
-    if (res.ok) setDevices(ds => ds.filter(d => d._id !== id))
-  }
+      credentials: 'include',
+    });
+    if (res.ok) setDevices((ds) => ds.filter((d) => d._id !== id));
+  };
 
   const handleSave = async () => {
-    const payload = { ...form }
+    const payload = { ...form };
     try {
-      let res
+      let res;
       if (editId) {
         res = await fetch(`${API}/devices/${editId}`, {
           method: 'PUT',
           credentials: 'include',
-          headers: {'Content-Type':'application/json'},
-          body: JSON.stringify(payload)
-        })
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
       } else {
         res = await fetch(`${API}/devices`, {
           method: 'POST',
           credentials: 'include',
-          headers: {'Content-Type':'application/json'},
-          body: JSON.stringify(payload)
-        })
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
       }
-      if (!res.ok) throw new Error('Error al guardar')
-      const saved = await res.json()
+      if (!res.ok) throw new Error('Error al guardar');
+      const saved = await res.json();
       if (editId) {
-        setDevices(ds => ds.map(d => d._id === editId ? saved : d))
+        setDevices((ds) => ds.map((d) => (d._id === editId ? saved : d)));
       } else {
-        setDevices(ds => [...ds, saved])
+        setDevices((ds) => [...ds, saved]);
       }
-      setShowModal(false)
-      setForm({ plugmodel: '', household_id: '', room: '', appliance: '' })
-      setEditId(null)
+      setShowModal(false);
+      setForm({ plugmodel: '', household_id: '', room: '', appliance: '' });
+      setEditId(null);
     } catch (err) {
-      alert(err.message)
+      alert(err.message);
     }
-  }
+  };
 
   /* ---------- Helpers ---------- */
-  const hhName = (id) => households.find(h => h._id === id)?.name || ''
+  const hhName = (id) => households.find((h) => h._id === id)?.name || '';
 
   /* ---------- Options for SearchToolbar ---------- */
-  const householdOptions = useMemo(() => ([
-    { value: '', label: 'Todos' },
-    ...households.map(h => ({ value: h._id, label: h.name }))
-  ]), [households])
+  const householdOptions = useMemo(
+    () => [
+      { value: '', label: 'Todos' },
+      ...households.map((h) => ({ value: h._id, label: h.name })),
+    ],
+    [households]
+  );
 
   const roomOptions = useMemo(() => {
-    const uniqueRooms = Array.from(new Set(devices.map(d => d.room).filter(Boolean))).sort()
-    return [{ value: '', label: 'Todas' }, ...uniqueRooms.map(r => ({ value: r, label: r }))]
-  }, [devices])
+    const uniqueRooms = Array.from(
+      new Set(devices.map((d) => d.room).filter(Boolean))
+    ).sort();
+    return [
+      { value: '', label: 'Todas' },
+      ...uniqueRooms.map((r) => ({ value: r, label: r })),
+    ];
+  }, [devices]);
 
   const sortOptions = [
     { value: 'recent_desc', label: 'Más recientes' },
-    { value: 'recent_asc',  label: 'Más antiguos' },
+    { value: 'recent_asc', label: 'Más antiguos' },
     { value: 'model_alpha', label: 'Modelo (A–Z)' },
-    { value: 'room_alpha',  label: 'Habitación (A–Z)' },
-  ]
+    { value: 'room_alpha', label: 'Habitación (A–Z)' },
+  ];
 
   /* ---------- Filtered + Sorted devices ---------- */
   const filteredDevices = useMemo(() => {
-    let list = [...devices]
-    const qnorm = q.trim().toLowerCase()
+    let list = [...devices];
+    const qnorm = q.trim().toLowerCase();
 
-    if (flt.householdId) list = list.filter(d => String(d.household_id) === String(flt.householdId))
-    if (flt.room)        list = list.filter(d => (d.room || '') === flt.room)
+    if (flt.householdId)
+      list = list.filter(
+        (d) => String(d.household_id) === String(flt.householdId)
+      );
+    if (flt.room) list = list.filter((d) => (d.room || '') === flt.room);
 
     if (qnorm) {
-      list = list.filter(d => {
-        const model = (d.plugmodel || '').toLowerCase()
-        const app   = (d.appliance || '').toLowerCase()
-        const room  = (d.room || '').toLowerCase()
-        const home  = hhName(d.household_id).toLowerCase()
-        return [model, app, room, home].some(t => t.includes(qnorm))
-      })
+      list = list.filter((d) => {
+        const model = (d.plugmodel || '').toLowerCase();
+        const app = (d.appliance || '').toLowerCase();
+        const room = (d.room || '').toLowerCase();
+        const home = hhName(d.household_id).toLowerCase();
+        return [model, app, room, home].some((t) => t.includes(qnorm));
+      });
     }
 
     // sort
     if (sort === 'recent_desc' || sort === 'recent_asc') {
-      list.sort((a,b) => {
-        const ta = new Date(a.updatedAt || a.createdAt || 0).getTime()
-        const tb = new Date(b.updatedAt || b.createdAt || 0).getTime()
-        return sort === 'recent_desc' ? (tb - ta) : (ta - tb)
-      })
+      list.sort((a, b) => {
+        const ta = new Date(a.updatedAt || a.createdAt || 0).getTime();
+        const tb = new Date(b.updatedAt || b.createdAt || 0).getTime();
+        return sort === 'recent_desc' ? tb - ta : ta - tb;
+      });
     } else if (sort === 'model_alpha') {
-      list.sort((a,b) => String(a.plugmodel || '').localeCompare(String(b.plugmodel || '')))
+      list.sort((a, b) =>
+        String(a.plugmodel || '').localeCompare(String(b.plugmodel || ''))
+      );
     } else if (sort === 'room_alpha') {
-      list.sort((a,b) => String(a.room || '').localeCompare(String(b.room || '')))
+      list.sort((a, b) =>
+        String(a.room || '').localeCompare(String(b.room || ''))
+      );
     }
 
-    return list
-  }, [devices, q, flt, sort, households])
+    return list;
+  }, [devices, q, flt, sort, households]);
 
   return (
     <AppContainer>
-      <Header onToggleMenu={() => setMenuOpen(o => !o)} onLogout={handleLogout} />
+      <Header
+        onToggleMenu={() => setMenuOpen((o) => !o)}
+        onLogout={handleLogout}
+      />
       <Body>
         <Sidebar open={menuOpen} />
         <Main>
@@ -257,22 +275,38 @@ export default function Dispositivos() {
               onQueryChange={setQ}
               placeholder="Buscar por modelo, electrodoméstico, habitación u hogar"
               filters={[
-                { type:'select', key:'householdId', label:'Hogar',       options: householdOptions },
-                { type:'select', key:'room',        label:'Habitación',  options: roomOptions },
+                {
+                  type: 'select',
+                  key: 'householdId',
+                  label: 'Hogar',
+                  options: householdOptions,
+                },
+                {
+                  type: 'select',
+                  key: 'room',
+                  label: 'Habitación',
+                  options: roomOptions,
+                },
               ]}
               values={flt}
               onValuesChange={setFlt}
               sortOptions={sortOptions}
               sort={sort}
               onSortChange={setSort}
-              onClear={() => { setQ(''); setFlt({ householdId:'', room:'' }); setSort('recent_desc'); }}
+              onClear={() => {
+                setQ('');
+                setFlt({ householdId: '', room: '' });
+                setSort('recent_desc');
+              }}
             />
           </div>
 
-          <Btn variant="primary" onClick={openNew}>+ Nuevo</Btn>
+          <Btn variant="primary" onClick={openNew}>
+            + Nuevo
+          </Btn>
 
           <ul>
-            {filteredDevices.map(d => (
+            {filteredDevices.map((d) => (
               <DeviceItem key={d._id}>
                 <span>
                   <strong>{d.plugmodel}</strong>
@@ -284,13 +318,17 @@ export default function Dispositivos() {
                   <em>{hhName(d.household_id) || 'Sin hogar'}</em>
                 </span>
                 <Actions>
-                  <Btn variant="primary" onClick={() => openEdit(d)}>✎</Btn>
+                  <Btn variant="primary" onClick={() => openEdit(d)}>
+                    ✎
+                  </Btn>
                   <DangerBtn onClick={() => deleteDevice(d._id)}>🗑</DangerBtn>
                 </Actions>
               </DeviceItem>
             ))}
             {!filteredDevices.length && (
-              <li style={{ opacity:.8 }}>No hay dispositivos que coincidan con el filtro.</li>
+              <li style={{ opacity: 0.8 }}>
+                No hay dispositivos que coincidan con el filtro.
+              </li>
             )}
           </ul>
         </Main>
@@ -301,34 +339,49 @@ export default function Dispositivos() {
         <h2>{editId ? 'Editar dispositivo' : 'Crear dispositivo'}</h2>
         <FormGroup>
           <label>Modelo</label>
-          <input name="plugmodel" value={form.plugmodel} onChange={onChange}/>
+          <input name="plugmodel" value={form.plugmodel} onChange={onChange} />
         </FormGroup>
         <FormGroup>
           <label>Hogar</label>
-          <select name="household_id" value={form.household_id} onChange={onChange}>
+          <select
+            name="household_id"
+            value={form.household_id}
+            onChange={onChange}
+          >
             <option value="">— Selecciona —</option>
-            {households.map(h => (
-              <option key={h._id} value={h._id}>{h.name}</option>
+            {households.map((h) => (
+              <option key={h._id} value={h._id}>
+                {h.name}
+              </option>
             ))}
           </select>
         </FormGroup>
         <FormGroup>
           <label>Habitación</label>
-          <select name="room" value={form.room} onChange={onChange} disabled={!form.household_id}>
+          <select
+            name="room"
+            value={form.room}
+            onChange={onChange}
+            disabled={!form.household_id}
+          >
             <option value="">— Selecciona —</option>
-            {rooms.map(r => (
-              <option key={r} value={r}>{r}</option>
+            {rooms.map((r) => (
+              <option key={r} value={r}>
+                {r}
+              </option>
             ))}
           </select>
         </FormGroup>
         <FormGroup>
           <label>Electrodoméstico</label>
-          <input name="appliance" value={form.appliance} onChange={onChange}/>
+          <input name="appliance" value={form.appliance} onChange={onChange} />
         </FormGroup>
         <FormGroup style={{ textAlign: 'right' }}>
-          <Btn variant="primary" onClick={handleSave}>Guardar</Btn>
+          <Btn variant="primary" onClick={handleSave}>
+            Guardar
+          </Btn>
         </FormGroup>
       </Modal>
     </AppContainer>
-  )
+  );
 }

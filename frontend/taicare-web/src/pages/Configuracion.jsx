@@ -1,30 +1,30 @@
-import React, { useContext, useState } from 'react'
-import styled from 'styled-components'
-import { useNavigate } from 'react-router-dom'
-import { AuthContext } from '../contexts/AuthContext.jsx'
-import Header from '../components/Header.jsx'
-import Sidebar from '../components/Sidebar.jsx'
-import Footer from '../components/Footer.jsx'
+import React, { useContext, useState } from 'react';
+import styled from 'styled-components';
+import { useNavigate } from 'react-router-dom';
+import { AuthContext } from '../contexts/AuthContext.jsx';
+import Header from '../components/Header.jsx';
+import Sidebar from '../components/Sidebar.jsx';
+import Footer from '../components/Footer.jsx';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+const API = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 const AppContainer = styled.div`
   display: flex;
   flex-direction: column;
   height: 100vh;
   width: 100vw;
-`
+`;
 const Body = styled.div`
   flex: 1;
   display: flex;
   overflow: hidden;
-`
+`;
 const Main = styled.main`
   flex: 1;
   background: ${({ theme }) => theme.colors.bg};
   padding: 2rem;
   overflow-y: auto;
-`
+`;
 
 const Section = styled.section`
   width: 480px;
@@ -33,27 +33,27 @@ const Section = styled.section`
   background: ${({ theme }) => theme.colors.cardBg};
   padding: 1.5rem;
   border-radius: 6px;
-`
+`;
 const Field = styled.div`
   margin-bottom: 1rem;
-`
+`;
 const Label = styled.label`
   display: block;
   font-size: 0.9rem;
   margin-bottom: 0.25rem;
-`
+`;
 const Input = styled.input`
   width: 100%;
   padding: 0.5rem;
   border: 1px solid ${({ theme }) => theme.colors.border};
   border-radius: 4px;
   font-size: 1rem;
-`
+`;
 const Actions = styled.div`
   display: flex;
   justify-content: flex-end;
   gap: 0.5rem;
-`
+`;
 const Button = styled.button`
   padding: 0.5rem 1rem;
   border-radius: 4px;
@@ -74,7 +74,7 @@ const Button = styled.button`
   &:hover {
     opacity: 0.9;
   }
-`
+`;
 const DangerBtn = styled(Button)`
   border: 1px solid #ef4444;
   color: #fff;
@@ -82,65 +82,65 @@ const DangerBtn = styled(Button)`
   &:hover {
     background: rgba(239, 68, 68, 0.12);
   }
-`
+`;
 
 export default function Configuracion() {
-  const { user, setUser, logout } = useContext(AuthContext)
-  const navigate = useNavigate()
-  const [menuOpen, setMenuOpen] = useState(window.innerWidth >= 768)
-  const [editing, setEditing] = useState(false)
+  const { user, setUser, logout } = useContext(AuthContext);
+  const navigate = useNavigate();
+  const [menuOpen, setMenuOpen] = useState(window.innerWidth >= 768);
+  const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
     name: user.name,
     email: user.email,
     oldPassword: '',
     newPassword: '',
     confirmNew: '',
-    currentPassword: ''
-  })
-  const [error, setError] = useState('')
+    currentPassword: '',
+  });
+  const [error, setError] = useState('');
 
   const handleLogout = () => {
-    logout()
-    navigate('/login')
-  }
+    logout();
+    navigate('/login');
+  };
 
-  const onChange = e => {
-    const { name, value } = e.target
-    setForm(f => ({ ...f, [name]: value }))
-  }
+  const onChange = (e) => {
+    const { name, value } = e.target;
+    setForm((f) => ({ ...f, [name]: value }));
+  };
 
   const handleEdit = () => {
-    setEditing(true)
-    setError('')
-  }
+    setEditing(true);
+    setError('');
+  };
   const handleCancel = () => {
-    setEditing(false)
+    setEditing(false);
     setForm({
       name: user.name,
       email: user.email,
       oldPassword: '',
       newPassword: '',
       confirmNew: '',
-      currentPassword: ''
-    })
-    setError('')
-  }
+      currentPassword: '',
+    });
+    setError('');
+  };
 
   const handleSave = async () => {
-    setError('')
+    setError('');
     if (form.newPassword) {
       if (form.newPassword !== form.confirmNew) {
-        setError('Las nuevas contraseñas no coinciden')
-        return
+        setError('Las nuevas contraseñas no coinciden');
+        return;
       }
       if (!form.oldPassword) {
-        setError('Introduce tu contraseña actual para cambiarla')
-        return
+        setError('Introduce tu contraseña actual para cambiarla');
+        return;
       }
     }
     if (!form.currentPassword) {
-      setError('Introduce tu contraseña para confirmar cambios')
-      return
+      setError('Introduce tu contraseña para confirmar cambios');
+      return;
     }
 
     try {
@@ -148,11 +148,11 @@ export default function Configuracion() {
         method: 'PUT',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: form.name, email: form.email })
-      })
+        body: JSON.stringify({ name: form.name, email: form.email }),
+      });
       if (!res1.ok) {
-        const { error } = await res1.json()
-        throw new Error(error || 'Error actualizando perfil')
+        const { error } = await res1.json();
+        throw new Error(error || 'Error actualizando perfil');
       }
 
       if (form.newPassword) {
@@ -163,33 +163,33 @@ export default function Configuracion() {
           body: JSON.stringify({
             oldPassword: form.oldPassword,
             newPassword: form.newPassword,
-            currentPassword: form.currentPassword
-          })
-        })
+            currentPassword: form.currentPassword,
+          }),
+        });
         if (!res2.ok) {
-          const { error } = await res2.json()
-          throw new Error(error || 'Error cambiando contraseña')
+          const { error } = await res2.json();
+          throw new Error(error || 'Error cambiando contraseña');
         }
       }
 
-      setUser({ ...user, name: form.name, email: form.email })
-      setEditing(false)
-      setForm(f => ({
+      setUser({ ...user, name: form.name, email: form.email });
+      setEditing(false);
+      setForm((f) => ({
         ...f,
         oldPassword: '',
         newPassword: '',
         confirmNew: '',
-        currentPassword: ''
-      }))
+        currentPassword: '',
+      }));
     } catch (e) {
-      setError(e.message)
+      setError(e.message);
     }
-  }
+  };
 
   return (
     <AppContainer>
       <Header
-        onToggleMenu={() => setMenuOpen(o => !o)}
+        onToggleMenu={() => setMenuOpen((o) => !o)}
         onLogout={handleLogout}
       />
       <Body>
@@ -200,8 +200,12 @@ export default function Configuracion() {
           <Section>
             {!editing ? (
               <>
-                <p><strong>Nombre:</strong> {user.name}</p>
-                <p><strong>Email:</strong> {user.email}</p>
+                <p>
+                  <strong>Nombre:</strong> {user.name}
+                </p>
+                <p>
+                  <strong>Email:</strong> {user.email}
+                </p>
                 <Actions>
                   <Button variant="primary" onClick={handleEdit}>
                     Editar perfil
@@ -270,10 +274,9 @@ export default function Configuracion() {
             </Field>
           </Section>
           */}
-
         </Main>
       </Body>
       <Footer />
     </AppContainer>
-  )
+  );
 }

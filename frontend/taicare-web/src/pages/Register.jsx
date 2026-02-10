@@ -3,7 +3,9 @@ import { useNavigate, Link } from 'react-router-dom';
 import styled from 'styled-components';
 import { AuthContext } from '../contexts/AuthContext.jsx';
 import ThemeToggle from '../components/ThemeToggle.jsx';
-import { FiEye, FiEyeOff } from 'react-icons/fi'; 
+import { FiEye, FiEyeOff } from 'react-icons/fi';
+
+import { ROLES } from '../constants/index.js';
 
 const Wrapper = styled.div`
   width: 100vw;
@@ -27,7 +29,7 @@ const Card = styled.div`
   background: ${({ theme }) => theme.colors.cardBg};
   padding: 2rem;
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 `;
 
 const Title = styled.h2`
@@ -76,7 +78,9 @@ const Button = styled.button`
   border-radius: 6px;
   font-size: 1rem;
   cursor: pointer;
-  &:hover { opacity: 0.9; }
+  &:hover {
+    opacity: 0.9;
+  }
 `;
 
 const Footer = styled.p`
@@ -91,23 +95,23 @@ const Footer = styled.p`
 `;
 
 export default function Register() {
-  const [name, setName]               = useState('');
-  const [email, setEmail]             = useState('');
-  const [password, setPassword]       = useState('');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [confirmPassword, setConfirm] = useState('');
-  const [error, setError]             = useState(null);
-  const [showPwd, setShowPwd]         = useState(false);
-  const [showConfirm, setShowConf]    = useState(false);
+  const [error, setError] = useState(null);
+  const [showPwd, setShowPwd] = useState(false);
+  const [showConfirm, setShowConf] = useState(false);
 
   const { register } = useContext(AuthContext);
-  const nav          = useNavigate();
+  const nav = useNavigate();
 
-  const validatePassword = pwd => {
+  const validatePassword = (pwd) => {
     // mínimo 8, con mayúscula, minúscula y número
     return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(pwd);
   };
 
-  const handleSubmit = async e => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
 
@@ -116,12 +120,14 @@ export default function Register() {
       return;
     }
     if (!validatePassword(password)) {
-      setError('La contraseña debe tener al menos 8 caracteres, incluir mayúsculas, minúsculas y números.');
+      setError(
+        'La contraseña debe tener al menos 8 caracteres, incluir mayúsculas, minúsculas y números.'
+      );
       return;
     }
 
     try {
-      await register({ name, email, password, role: 'cuidador' });
+      await register({ name, email, password, role: ROLES.CAREGIVER });
       nav('/');
     } catch (err) {
       setError(err.message);
@@ -142,7 +148,7 @@ export default function Register() {
             type="text"
             placeholder="Nombre completo"
             value={name}
-            onChange={e => setName(e.target.value)}
+            onChange={(e) => setName(e.target.value)}
             required
           />
 
@@ -150,7 +156,7 @@ export default function Register() {
             type="email"
             placeholder="Correo electrónico"
             value={email}
-            onChange={e => setEmail(e.target.value)}
+            onChange={(e) => setEmail(e.target.value)}
             required
           />
 
@@ -159,11 +165,14 @@ export default function Register() {
               type={showPwd ? 'text' : 'password'}
               placeholder="Contraseña"
               value={password}
-              onChange={e => setPassword(e.target.value)}
+              onChange={(e) => setPassword(e.target.value)}
               required
             />
-            <EyeButton type="button" onClick={() => setShowPwd(prev => !prev)}>
-              {showPwd ? <FiEyeOff size={20}/> : <FiEye size={20}/>}
+            <EyeButton
+              type="button"
+              onClick={() => setShowPwd((prev) => !prev)}
+            >
+              {showPwd ? <FiEyeOff size={20} /> : <FiEye size={20} />}
             </EyeButton>
           </PasswordWrapper>
 
@@ -172,11 +181,14 @@ export default function Register() {
               type={showConfirm ? 'text' : 'password'}
               placeholder="Repetir contraseña"
               value={confirmPassword}
-              onChange={e => setConfirm(e.target.value)}
+              onChange={(e) => setConfirm(e.target.value)}
               required
             />
-            <EyeButton type="button" onClick={() => setShowConf(prev => !prev)}>
-              {showConfirm ? <FiEyeOff size={20}/> : <FiEye size={20}/>}
+            <EyeButton
+              type="button"
+              onClick={() => setShowConf((prev) => !prev)}
+            >
+              {showConfirm ? <FiEyeOff size={20} /> : <FiEye size={20} />}
             </EyeButton>
           </PasswordWrapper>
 

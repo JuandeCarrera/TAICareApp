@@ -2,64 +2,97 @@ import React, { useContext, useEffect, useMemo, useState } from 'react';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../contexts/AuthContext.jsx';
-import Header   from '../components/Header.jsx';
-import Sidebar  from '../components/Sidebar.jsx';
-import Footer   from '../components/Footer.jsx';
+import Header from '../components/Header.jsx';
+import Sidebar from '../components/Sidebar.jsx';
+import Footer from '../components/Footer.jsx';
 import SearchToolbar from '../components/SearchToolbar.jsx';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 const AppContainer = styled.div`
-  display: flex; flex-direction: column; height: 100vh; width: 100vw;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
 `;
 const Body = styled.div`
-  flex: 1; display: flex; overflow: hidden;
+  flex: 1;
+  display: flex;
+  overflow: hidden;
 `;
 const Main = styled.main`
-  flex: 1; background: ${({ theme }) => theme.colors.bg}; padding: 2rem; overflow-y: auto;
+  flex: 1;
+  background: ${({ theme }) => theme.colors.bg};
+  padding: 2rem;
+  overflow-y: auto;
 `;
 const TopBar = styled.div`
-  display:flex; justify-content:space-between; align-items:center; gap:.75rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
 `;
 const List = styled.ul`
-  padding: 0; list-style: none; margin-top: 1rem;
+  padding: 0;
+  list-style: none;
+  margin-top: 1rem;
 `;
 const AlertItem = styled.li`
-  display: flex; align-items: center; justify-content: space-between;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   background: ${({ theme }) => theme.colors.cardBg};
   border: 1px solid ${({ theme }) => theme.colors.border};
   border-radius: 8px;
-  padding: 0.75rem 1rem; margin-bottom: 0.6rem;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.6rem;
 `;
 const Left = styled.div`
-  display: flex; align-items: start; gap: .75rem;
+  display: flex;
+  align-items: start;
+  gap: 0.75rem;
 `;
 const Dot = styled.span`
-  display: inline-block; width: 8px; height: 8px; border-radius: 50%;
-  background: red; margin-top: .6rem;
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: red;
+  margin-top: 0.6rem;
 `;
 const Actions = styled.div`
-  display: flex; gap: 0.5rem;
+  display: flex;
+  gap: 0.5rem;
 `;
 const Btn = styled.button`
-  font-size: 0.85rem; padding: 0.25rem 0.6rem; border-radius: 6px;
+  font-size: 0.85rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 6px;
   border: 1px solid
-    ${({ theme, variant }) => variant === 'primary' ? theme.colors.primary : theme.colors.border};
-  background: ${({ theme, variant }) => variant === 'primary' ? theme.colors.primary : theme.colors.cardBg};
-  color: ${({ theme, variant }) => variant === 'primary' ? 'white' : theme.colors.text};
-  cursor: pointer; transition: background 0.2s;
+    ${({ theme, variant }) =>
+      variant === 'primary' ? theme.colors.primary : theme.colors.border};
+  background: ${({ theme, variant }) =>
+    variant === 'primary' ? theme.colors.primary : theme.colors.cardBg};
+  color: ${({ theme, variant }) =>
+    variant === 'primary' ? 'white' : theme.colors.text};
+  cursor: pointer;
+  transition: background 0.2s;
   &:hover {
-    background: ${({ theme, variant }) => variant === 'primary' ? theme.colors.primaryDark : theme.colors.hoverBg};
+    background: ${({ theme, variant }) =>
+      variant === 'primary' ? theme.colors.primaryDark : theme.colors.hoverBg};
   }
 `;
 const Meta = styled.div`
-  font-size: .85rem; opacity: .85;
+  font-size: 0.85rem;
+  opacity: 0.85;
 `;
 const DangerBtn = styled(Btn)`
   border-color: #ef4444;
   color: #fff;
   background: #e04848;
-  &:hover { background: rgba(239, 68, 68, .12); }
+  &:hover {
+    background: rgba(239, 68, 68, 0.12);
+  }
 `;
 
 export default function Alertas() {
@@ -76,12 +109,12 @@ export default function Alertas() {
   // búsqueda / filtros / orden
   const [query, setQuery] = useState('');
   const [filterValues, setFilterValues] = useState({
-    resolved: '',       // '', 'true', 'false'
-    types: [],          // múltiple (lo dejamos oculto por ahora)
-    patient: '',        // user_id
-    dateFrom: '',       // yyyy-mm-dd
-    dateTo: '',         // yyyy-mm-dd
-    onlyUnseen: false
+    resolved: '', // '', 'true', 'false'
+    types: [], // múltiple (lo dejamos oculto por ahora)
+    patient: '', // user_id
+    dateFrom: '', // yyyy-mm-dd
+    dateTo: '', // yyyy-mm-dd
+    onlyUnseen: false,
   });
   const [sort, setSort] = useState('timestamp:desc');
 
@@ -99,10 +132,10 @@ export default function Alertas() {
       ]);
 
       if (!aRes.ok) {
-        const t = await aRes.text().catch(()=> '');
+        const t = await aRes.text().catch(() => '');
         throw new Error(`GET /alerts → HTTP ${aRes.status} ${t}`);
       }
-      const a = await aRes.json().catch(()=>[]);
+      const a = await aRes.json().catch(() => []);
       console.log('[Alertas] /alerts →', a);
 
       const p = pRes.ok ? await pRes.json() : [];
@@ -118,7 +151,10 @@ export default function Alertas() {
     }
   }
 
-  const handleLogout = () => { logout(); navigate('/login'); };
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
 
   // helpers
   const fmtDateTime = (d) => {
@@ -128,23 +164,30 @@ export default function Alertas() {
     return dd.toLocaleString();
   };
   const includesText = (str, q) =>
-    String(str || '').toLowerCase().includes(String(q || '').toLowerCase());
+    String(str || '')
+      .toLowerCase()
+      .includes(String(q || '').toLowerCase());
 
   // opciones para filtros dinámicos (tipos, pacientes)
   const typeOptions = useMemo(() => {
-    const uniq = Array.from(new Set((alerts || []).map(a => a?.type).filter(Boolean)));
-    return uniq.map(v => ({ value: v, label: v }));
+    const uniq = Array.from(
+      new Set((alerts || []).map((a) => a?.type).filter(Boolean))
+    );
+    return uniq.map((v) => ({ value: v, label: v }));
   }, [alerts]);
 
   const patientOptions = useMemo(() => {
-    return (patients || []).map(u => ({ value: u._id, label: u.name || u.email || u._id }));
+    return (patients || []).map((u) => ({
+      value: u._id,
+      label: u.name || u.email || u._id,
+    }));
   }, [patients]);
 
   const sortOptions = [
     { value: 'timestamp:desc', label: 'Más recientes' },
-    { value: 'timestamp:asc',  label: 'Más antiguas' },
-    { value: 'type:asc',       label: 'Tipo (A–Z)' },
-    { value: 'type:desc',      label: 'Tipo (Z–A)' },
+    { value: 'timestamp:asc', label: 'Más antiguas' },
+    { value: 'type:asc', label: 'Tipo (A–Z)' },
+    { value: 'type:desc', label: 'Tipo (Z–A)' },
   ];
 
   // fallback helpers para mostrar nombre paciente, dispositivo y título
@@ -153,7 +196,9 @@ export default function Alertas() {
   }
   function deviceLabel(a) {
     if (a?.device_id && typeof a.device_id === 'object') {
-      return a.device_id.appliance || a.device_id.plugmodel || a.device_id.room || '';
+      return (
+        a.device_id.appliance || a.device_id.plugmodel || a.device_id.room || ''
+      );
     }
     return '';
   }
@@ -173,46 +218,49 @@ export default function Alertas() {
     let arr = Array.isArray(alerts) ? [...alerts] : [];
 
     if (query.trim()) {
-      arr = arr.filter(a =>
-        includesText(safeTitle(a), query) ||
-        includesText(a.message, query) ||
-        includesText(a.type, query) ||
-        includesText(a.device_id?.appliance, query) ||
-        includesText(a.device_id?.room, query) ||
-        includesText(patientLabel(a), query)
+      arr = arr.filter(
+        (a) =>
+          includesText(safeTitle(a), query) ||
+          includesText(a.message, query) ||
+          includesText(a.type, query) ||
+          includesText(a.device_id?.appliance, query) ||
+          includesText(a.device_id?.room, query) ||
+          includesText(patientLabel(a), query)
       );
     }
 
     if (filterValues.resolved === 'true') {
-      arr = arr.filter(a => a.resolved === true);
+      arr = arr.filter((a) => a.resolved === true);
     } else if (filterValues.resolved === 'false') {
-      arr = arr.filter(a => a.resolved === false);
+      arr = arr.filter((a) => a.resolved === false);
     }
 
     if (filterValues.onlyUnseen) {
-      arr = arr.filter(a => !a.seen);
+      arr = arr.filter((a) => !a.seen);
     }
 
     if (Array.isArray(filterValues.types) && filterValues.types.length) {
       const set = new Set(filterValues.types);
-      arr = arr.filter(a => a.type && set.has(a.type));
+      arr = arr.filter((a) => a.type && set.has(a.type));
     }
 
     if (filterValues.patient) {
       const pid = String(filterValues.patient);
-      arr = arr.filter(a => String(a.user_id?._id || a.user_id || '') === pid);
+      arr = arr.filter(
+        (a) => String(a.user_id?._id || a.user_id || '') === pid
+      );
     }
 
     if (filterValues.dateFrom) {
       const from = new Date(filterValues.dateFrom + 'T00:00:00Z').getTime();
-      arr = arr.filter(a => {
+      arr = arr.filter((a) => {
         const t = new Date(a.timestamp || a.createdAt).getTime();
         return !isNaN(t) && t >= from;
       });
     }
     if (filterValues.dateTo) {
       const to = new Date(filterValues.dateTo + 'T23:59:59Z').getTime();
-      arr = arr.filter(a => {
+      arr = arr.filter((a) => {
         const t = new Date(a.timestamp || a.createdAt).getTime();
         return !isNaN(t) && t <= to;
       });
@@ -229,10 +277,11 @@ export default function Alertas() {
         a = String(x.type || '');
         b = String(y.type || '');
       } else {
-        a = 0; b = 0;
+        a = 0;
+        b = 0;
       }
       if (a < b) return -1 * mul;
-      if (a > b) return  1 * mul;
+      if (a > b) return 1 * mul;
       return 0;
     });
 
@@ -244,33 +293,35 @@ export default function Alertas() {
     await fetch(`${API}/alerts/${id}`, {
       method: 'PUT',
       credentials: 'include',
-      headers: { 'Content-Type':'application/json' },
-      body: JSON.stringify({ seen: true })
-    }).catch(()=>{});
-    setAlerts(as => as.map(a => a._id === id ? { ...a, seen: true } : a));
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ seen: true }),
+    }).catch(() => {});
+    setAlerts((as) => as.map((a) => (a._id === id ? { ...a, seen: true } : a)));
   }
 
   async function deleteAlert(id) {
     if (!confirm('¿Borrar esta alerta?')) return;
     const res = await fetch(`${API}/alerts/${id}`, {
       method: 'DELETE',
-      credentials: 'include'
+      credentials: 'include',
     });
-    if (res.ok) setAlerts(as => as.filter(a => a._id !== id));
+    if (res.ok) setAlerts((as) => as.filter((a) => a._id !== id));
   }
 
   return (
     <AppContainer>
       <Header
-        onToggleMenu={() => setMenuOpen(o => !o)}
+        onToggleMenu={() => setMenuOpen((o) => !o)}
         onLogout={handleLogout}
       />
       <Body>
-        <Sidebar open={menuOpen}/>
+        <Sidebar open={menuOpen} />
         <Main>
           <TopBar>
             <h1>Alertas</h1>
-            <Btn variant="primary" onClick={loadData}>Recargar</Btn>
+            <Btn variant="primary" onClick={loadData}>
+              Recargar
+            </Btn>
           </TopBar>
 
           <SearchToolbar
@@ -285,16 +336,22 @@ export default function Alertas() {
                 options: [
                   { value: '', label: 'Todas' },
                   { value: 'false', label: 'Pendientes' },
-                  { value: 'true',  label: 'Resueltas' },
-                ]
+                  { value: 'true', label: 'Resueltas' },
+                ],
               },
               {
                 key: 'patient',
                 label: 'Paciente',
                 type: 'select',
-                options: [{ value: '', label: 'Todos' }, ...patientOptions]
+                options: [{ value: '', label: 'Todos' }, ...patientOptions],
               },
-              { key: 'date', label: 'Fecha', type: 'daterange', fromKey: 'dateFrom', toKey: 'dateTo' },
+              {
+                key: 'date',
+                label: 'Fecha',
+                type: 'daterange',
+                fromKey: 'dateFrom',
+                toKey: 'dateTo',
+              },
             ]}
             values={filterValues}
             onValuesChange={setFilterValues}
@@ -303,30 +360,37 @@ export default function Alertas() {
             onSortChange={setSort}
             onClear={() => {
               setQuery('');
-              setFilterValues({ resolved: '', types: [], patient: '', dateFrom:'', dateTo:'', onlyUnseen:false });
+              setFilterValues({
+                resolved: '',
+                types: [],
+                patient: '',
+                dateFrom: '',
+                dateTo: '',
+                onlyUnseen: false,
+              });
               setSort('timestamp:desc');
             }}
           />
 
           {loading ? (
-            <p style={{ opacity:.8, marginTop: 12 }}>Cargando…</p>
+            <p style={{ opacity: 0.8, marginTop: 12 }}>Cargando…</p>
           ) : loadError ? (
-            <p style={{ color:'#f55', marginTop: 12 }}>
-              {loadError}
-            </p>
+            <p style={{ color: '#f55', marginTop: 12 }}>{loadError}</p>
           ) : visible.length === 0 ? (
-            <p style={{ opacity:.7, marginTop: 12 }}>
+            <p style={{ opacity: 0.7, marginTop: 12 }}>
               No hay alertas para mostrar.
-              {alerts.length > 0 && ' (las existentes podrían no pasar los filtros o tener campos vacíos)'}
+              {alerts.length > 0 &&
+                ' (las existentes podrían no pasar los filtros o tener campos vacíos)'}
             </p>
           ) : (
             <>
-              <p style={{ opacity:.7, margin: '8px 0 12px' }}>
-                {visible.length} alerta{visible.length !== 1 ? 's' : ''} encontradas
+              <p style={{ opacity: 0.7, margin: '8px 0 12px' }}>
+                {visible.length} alerta{visible.length !== 1 ? 's' : ''}{' '}
+                encontradas
               </p>
 
               <List>
-                {visible.map(a => (
+                {visible.map((a) => (
                   <AlertItem key={a._id}>
                     <Left>
                       {!a.seen && <Dot />}
@@ -348,9 +412,20 @@ export default function Alertas() {
                     </Left>
                     <Actions>
                       {!a.seen && (
-                        <Btn variant="primary" onClick={() => markSeen(a._id)} title="Marcar como vista">✓</Btn>
+                        <Btn
+                          variant="primary"
+                          onClick={() => markSeen(a._id)}
+                          title="Marcar como vista"
+                        >
+                          ✓
+                        </Btn>
                       )}
-                      <DangerBtn onClick={() => deleteAlert(a._id)} title="Eliminar">🗑</DangerBtn>
+                      <DangerBtn
+                        onClick={() => deleteAlert(a._id)}
+                        title="Eliminar"
+                      >
+                        🗑
+                      </DangerBtn>
                     </Actions>
                   </AlertItem>
                 ))}
@@ -359,7 +434,7 @@ export default function Alertas() {
           )}
         </Main>
       </Body>
-      <Footer/>
+      <Footer />
     </AppContainer>
   );
 }
