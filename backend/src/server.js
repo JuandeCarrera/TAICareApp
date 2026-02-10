@@ -55,6 +55,9 @@ app.use('/notification-prefs', notificationPrefsRouter);
 app.use('/settings', systemSettingsRouter);
 app.use('/jobs', jobsRouter);
 
+import { errorHandler } from './middleware/errorHandler.js';
+app.use(errorHandler);
+
 // Arranque
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () =>

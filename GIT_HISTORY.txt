@@ -19,3 +19,15 @@
   - Extraídas cadenas mágicas a `src/constants/index.js` (Roles, Estados).
   - Actualizado `Register.jsx` para usar la constante `ROLES`.
   - **Corrección:** Actualizado `UsersPage.jsx` para enviar el ID del cuidador como dueño al crear un hogar rápido.
+
+## 2026-02-10: Fase 2 - Arquitectura Backend (Refactorización)
+**Mensaje del Commit:** `refactor: implementar patrón controller-service en households y manejo global de errores`
+
+**Cambios:**
+- **Backend:**
+  - Creado `src/middleware/errorHandler.js` para manejo centralizado de errores.
+  - Registrado `errorHandler` en `server.js`.
+  - Creado `src/services/householdService.js` con toda la lógica de negocio de hogares.
+  - Creado `src/controllers/householdController.js` para manejar peticiones HTTP.
+  - Refactorizado `src/routes/households.js` para usar el controlador, eliminando lógica inline.
+
