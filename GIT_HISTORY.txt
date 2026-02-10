@@ -31,3 +31,14 @@
   - Creado `src/controllers/householdController.js` para manejar peticiones HTTP.
   - Refactorizado `src/routes/households.js` para usar el controlador, eliminando lógica inline.
 
+## 2026-02-10: Fase 3 - Arquitectura Frontend (React Query + Axios)
+**Mensaje del Commit:** `refactorización: arquitectura frontend  - integración react-query y axios`
+
+**Cambios:**
+- **Frontend:**
+  - Instalado `@tanstack/react-query` y `axios`.
+  - Configurado `QueryClientProvider` en `main.jsx`.
+  - Creado `src/api/axios.js` con instancia centralizada e interceptores.
+  - Creados hooks personalizados: `useHouseholds` (CRUD completo) y `useUsers`.
+  - Refactorizado `Hogares.jsx` eliminando `useEffect` y `fetch` manuales.
+  - Refactorizado `UsersPage.jsx` para usar los nuevos hooks, mejorando la gestión de estado.

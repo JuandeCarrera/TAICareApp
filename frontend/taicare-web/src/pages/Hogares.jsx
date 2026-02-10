@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useMemo, useState } from 'react';
+import React, { useContext, useMemo, useState } from 'react';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../contexts/AuthContext.jsx';
@@ -6,9 +6,15 @@ import Header from '../components/Header.jsx';
 import Sidebar from '../components/Sidebar.jsx';
 import Footer from '../components/Footer.jsx';
 import Modal, { FormGroup } from '../components/Modal.jsx';
-import SearchToolbar from '../components/SearchToolbar.jsx'; // ← NUEVO
-
-const API = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+import SearchToolbar from '../components/SearchToolbar.jsx';
+import {
+  useHouseholds,
+  useCreateHousehold,
+  useUpdateHousehold,
+  useDeleteHousehold,
+  useAddRoom,
+} from '../hooks/useHouseholds';
+import { useUsers } from '../hooks/useUsers';
 
 /* ---------- Estilos base ---------- */
 const AppContainer = styled.div`
@@ -58,7 +64,7 @@ const Btn = styled.button`
   border-radius: 6px;
   border: 1px solid
     ${({ theme, variant }) =>
-      variant === 'primary' ? theme.colors.primary : theme.colors.border};
+    variant === 'primary' ? theme.colors.primary : theme.colors.border};
   background: ${({ theme, variant }) =>
     variant === 'primary' ? theme.colors.primary : theme.colors.cardBg};
   color: ${({ theme, variant }) =>
@@ -70,7 +76,7 @@ const Btn = styled.button`
     color 0.2s;
   &:hover {
     background: ${({ theme, variant }) =>
-      variant === 'primary' ? theme.colors.primaryDark : theme.colors.hoverBg};
+    variant === 'primary' ? theme.colors.primaryDark : theme.colors.hoverBg};
   }
 `;
 const ToggleButton = styled.button`
@@ -120,8 +126,16 @@ export default function Hogares() {
   const { logout } = useContext(AuthContext);
   const navigate = useNavigate();
 
-  const [households, setHouseholds] = useState([]);
-  const [patients, setPatients] = useState([]);
+  // Queries
+  const { data: households = [], isLoading: loadingHouseholds } = useHouseholds();
+  const { data: patients = [] } = useUsers({ role: 'paciente' });
+
+  // Mutations
+  const createMutation = useCreateHousehold();
+  const updateMutation = useUpdateHousehold();
+  const deleteMutation = useDeleteHousehold();
+  const addRoomMutation = useAddRoom();
+
   const [openIds, setOpenIds] = useState({});
 
   // modal state
@@ -141,32 +155,6 @@ export default function Hogares() {
   const [filterOwner, setFilterOwner] = useState(''); // id del paciente (owner)
   const [filterRoom, setFilterRoom] = useState(''); // nombre habitación exacto
   const [sortBy, setSortBy] = useState('name_asc'); // name_asc | name_desc | rooms_desc | rooms_asc
-
-  /* ---------- carga inicial ---------- */
-  useEffect(() => {
-    fetchHouseholds();
-    fetch(`${API}/users?role=paciente`, { credentials: 'include' })
-      .then((r) => (r.ok ? r.json() : []))
-      .then((arr) => (Array.isArray(arr) ? arr : []))
-      .then(setPatients)
-      .catch(() => {});
-  }, []);
-
-  async function fetchHouseholds() {
-    try {
-      const res = await fetch(`${API}/households`, { credentials: 'include' });
-      if (!res.ok) return;
-      const data = await res.json();
-      // Normaliza rooms para evitar errores
-      const safe = (Array.isArray(data) ? data : []).map((h) => ({
-        ...h,
-        rooms: Array.isArray(h?.rooms) ? h.rooms.filter(Boolean) : [],
-      }));
-      setHouseholds(safe);
-    } catch (e) {
-      console.error('Error cargando hogares:', e);
-    }
-  }
 
   /* ---------- barra de búsqueda & filtros ---------- */
   const ownerOptions = useMemo(() => {
@@ -287,11 +275,11 @@ export default function Hogares() {
 
   async function deleteHouse(id) {
     if (!confirm('¿Borrar esta casa?')) return;
-    const res = await fetch(`${API}/households/${id}`, {
-      method: 'DELETE',
-      credentials: 'include',
-    });
-    if (res.ok) fetchHouseholds();
+    try {
+      await deleteMutation.mutateAsync(id);
+    } catch (e) {
+      alert('Error al borrar');
+    }
   }
 
   async function deleteRoom(hId, room) {
@@ -299,49 +287,33 @@ export default function Hogares() {
     const h = households.find((x) => x._id === hId);
     const currentRooms = Array.isArray(h?.rooms) ? h.rooms : [];
     const newRooms = currentRooms.filter((r) => r !== room);
-    await fetch(`${API}/households/${hId}`, {
-      method: 'PUT',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ rooms: newRooms }),
-    });
-    fetchHouseholds();
+
+    try {
+      await updateMutation.mutateAsync({ id: hId, rooms: newRooms });
+    } catch (e) {
+      alert('Error al borrar habitación');
+    }
   }
 
   async function handleSave() {
     try {
-      let res;
       if (mode === 'house') {
-        res = await fetch(`${API}/households`, {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: form.name,
-            address: form.address,
-            rooms: [],
-            owner: form.owner,
-          }),
+        await createMutation.mutateAsync({
+          name: form.name,
+          address: form.address,
+          rooms: [],
+          owner: form.owner,
         });
       } else if (mode === 'editHouse') {
-        res = await fetch(`${API}/households/${form.targetHouseId}`, {
-          method: 'PUT',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: form.name,
-            address: form.address,
-          }),
+        await updateMutation.mutateAsync({
+          id: form.targetHouseId,
+          name: form.name,
+          address: form.address,
         });
       } else if (mode === 'room') {
-        const h = households.find((x) => x._id === form.targetHouseId);
-        const curr = Array.isArray(h?.rooms) ? h.rooms : [];
-        const next = [...curr, form.roomName].filter(Boolean);
-        res = await fetch(`${API}/households/${form.targetHouseId}`, {
-          method: 'PUT',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ rooms: next }),
+        await addRoomMutation.mutateAsync({
+          id: form.targetHouseId,
+          room: form.roomName,
         });
       } else if (mode === 'editRoom') {
         const h = households.find((x) => x._id === form.targetHouseId);
@@ -349,23 +321,17 @@ export default function Hogares() {
         const updated = currentRooms.map((r) =>
           r === editRoomOld ? form.roomName : r
         );
-        res = await fetch(`${API}/households/${form.targetHouseId}`, {
-          method: 'PUT',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ rooms: updated }),
+        await updateMutation.mutateAsync({
+          id: form.targetHouseId,
+          rooms: updated
         });
       }
 
-      if (res?.ok) {
-        setShowModal(false);
-        fetchHouseholds();
-      } else {
-        const err = await res.json().catch(() => ({}));
-        alert(err.error || 'Error al guardar');
-      }
+      setShowModal(false);
     } catch (e) {
-      alert(e.message);
+      // Axios error handling often puts message in e.response.data
+      const msg = e.response?.data?.error || e.message || 'Error al guardar';
+      alert(msg);
     }
   }
 
@@ -373,7 +339,7 @@ export default function Hogares() {
   return (
     <AppContainer>
       <Header
-        onToggleMenu={() => {}}
+        onToggleMenu={() => { }}
         onLogout={() => {
           logout();
           navigate('/login');
@@ -430,79 +396,85 @@ export default function Hogares() {
             </Btn>
           </ActionsTop>
 
-          {filtered.map((h) => (
-            <HouseItem key={h._id}>
-              <HouseHeader>
-                <Title>{h.name}</Title>
-                <Actions>
-                  <Btn variant="primary" onClick={() => openNewRoom(h)}>
-                    + Habitación
-                  </Btn>
-                  <Btn variant="primary" onClick={() => openEditHouse(h)}>
-                    ✎ Editar
-                  </Btn>
-                  <DangerBtn
-                    variant="primary"
-                    onClick={() => deleteHouse(h._id)}
-                  >
-                    🗑 Borrar
-                  </DangerBtn>
-                  <ToggleButton
-                    aria-label="Mostrar habitaciones"
-                    onClick={() => toggleOpen(h._id)}
-                  >
-                    {openIds[h._id] ? '▲' : '▼'}
-                  </ToggleButton>
-                </Actions>
-              </HouseHeader>
+          {loadingHouseholds ? (
+            <p>Cargando hogares...</p>
+          ) : (
+            <>
+              {filtered.map((h) => (
+                <HouseItem key={h._id}>
+                  <HouseHeader>
+                    <Title>{h.name}</Title>
+                    <Actions>
+                      <Btn variant="primary" onClick={() => openNewRoom(h)}>
+                        + Habitación
+                      </Btn>
+                      <Btn variant="primary" onClick={() => openEditHouse(h)}>
+                        ✎ Editar
+                      </Btn>
+                      <DangerBtn
+                        variant="primary"
+                        onClick={() => deleteHouse(h._id)}
+                      >
+                        🗑 Borrar
+                      </DangerBtn>
+                      <ToggleButton
+                        aria-label="Mostrar habitaciones"
+                        onClick={() => toggleOpen(h._id)}
+                      >
+                        {openIds[h._id] ? '▲' : '▼'}
+                      </ToggleButton>
+                    </Actions>
+                  </HouseHeader>
 
-              <div style={{ marginTop: '.25rem' }}>
-                <Small>
-                  {h.address ? (
-                    h.address
-                  ) : (
-                    <span style={{ opacity: 0.7 }}>Sin dirección</span>
-                  )}
-                </Small>
-              </div>
+                  <div style={{ marginTop: '.25rem' }}>
+                    <Small>
+                      {h.address ? (
+                        h.address
+                      ) : (
+                        <span style={{ opacity: 0.7 }}>Sin dirección</span>
+                      )}
+                    </Small>
+                  </div>
 
-              {openIds[h._id] && (
-                <RoomsList>
-                  {(Array.isArray(h.rooms) ? h.rooms : []).map((room) => (
-                    <RoomItem key={room}>
-                      {room}
-                      <Actions>
-                        <Btn
-                          variant="primary"
-                          onClick={() => openEditRoom(h, room)}
-                        >
-                          ✎
-                        </Btn>
-                        <DangerBtn
-                          variant="primary"
-                          onClick={() => deleteRoom(h._id, room)}
-                        >
-                          🗑
-                        </DangerBtn>
-                      </Actions>
-                    </RoomItem>
-                  ))}
-                  {(!h.rooms || h.rooms.length === 0) && (
-                    <li style={{ opacity: 0.7 }}>Sin habitaciones.</li>
+                  {openIds[h._id] && (
+                    <RoomsList>
+                      {(Array.isArray(h.rooms) ? h.rooms : []).map((room) => (
+                        <RoomItem key={room}>
+                          {room}
+                          <Actions>
+                            <Btn
+                              variant="primary"
+                              onClick={() => openEditRoom(h, room)}
+                            >
+                              ✎
+                            </Btn>
+                            <DangerBtn
+                              variant="primary"
+                              onClick={() => deleteRoom(h._id, room)}
+                            >
+                              🗑
+                            </DangerBtn>
+                          </Actions>
+                        </RoomItem>
+                      ))}
+                      {(!h.rooms || h.rooms.length === 0) && (
+                        <li style={{ opacity: 0.7 }}>Sin habitaciones.</li>
+                      )}
+                    </RoomsList>
                   )}
-                </RoomsList>
+                </HouseItem>
+              ))}
+
+              {!filtered.length && (
+                <div style={{ opacity: 0.7, marginTop: '.5rem' }}>
+                  No se han encontrado hogares con los filtros actuales.
+                </div>
               )}
-            </HouseItem>
-          ))}
-
-          {!filtered.length && (
-            <div style={{ opacity: 0.7, marginTop: '.5rem' }}>
-              No se han encontrado hogares con los filtros actuales.
-            </div>
+            </>
           )}
+
         </Main>
       </Body>
-
       <Footer />
 
       {/* ---------- MODAL ---------- */}
