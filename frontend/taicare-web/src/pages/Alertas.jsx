@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useMemo, useState } from 'react';
+import React, { useContext, useMemo, useState } from 'react';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../contexts/AuthContext.jsx';
@@ -6,8 +6,8 @@ import Header from '../components/Header.jsx';
 import Sidebar from '../components/Sidebar.jsx';
 import Footer from '../components/Footer.jsx';
 import SearchToolbar from '../components/SearchToolbar.jsx';
-
-const API = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+import { useAlerts, useMarkAlertAsRead, useDeleteAlert } from '../hooks/useAlerts';
+import { useUsers } from '../hooks/useUsers';
 
 const AppContainer = styled.div`
   display: flex;
@@ -70,7 +70,7 @@ const Btn = styled.button`
   border-radius: 6px;
   border: 1px solid
     ${({ theme, variant }) =>
-      variant === 'primary' ? theme.colors.primary : theme.colors.border};
+    variant === 'primary' ? theme.colors.primary : theme.colors.border};
   background: ${({ theme, variant }) =>
     variant === 'primary' ? theme.colors.primary : theme.colors.cardBg};
   color: ${({ theme, variant }) =>
@@ -79,7 +79,7 @@ const Btn = styled.button`
   transition: background 0.2s;
   &:hover {
     background: ${({ theme, variant }) =>
-      variant === 'primary' ? theme.colors.primaryDark : theme.colors.hoverBg};
+    variant === 'primary' ? theme.colors.primaryDark : theme.colors.hoverBg};
   }
 `;
 const Meta = styled.div`
@@ -100,56 +100,24 @@ export default function Alertas() {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(window.innerWidth >= 768);
 
-  // datos
-  const [alerts, setAlerts] = useState([]);
-  const [patients, setPatients] = useState([]); // filtro por paciente
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState('');
+  // --- Hooks ---
+  const { data: alerts = [], isLoading: loadingAlerts, error: alertsError, refetch } = useAlerts();
+  const { data: patients = [] } = useUsers({ role: 'paciente' });
+
+  const markReadMutation = useMarkAlertAsRead();
+  const deleteMutation = useDeleteAlert();
 
   // búsqueda / filtros / orden
   const [query, setQuery] = useState('');
   const [filterValues, setFilterValues] = useState({
     resolved: '', // '', 'true', 'false'
-    types: [], // múltiple (lo dejamos oculto por ahora)
+    types: [], // múltiple
     patient: '', // user_id
     dateFrom: '', // yyyy-mm-dd
     dateTo: '', // yyyy-mm-dd
     onlyUnseen: false,
   });
   const [sort, setSort] = useState('timestamp:desc');
-
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  async function loadData() {
-    try {
-      setLoadError('');
-      setLoading(true);
-      const [aRes, pRes] = await Promise.all([
-        fetch(`${API}/alerts`, { credentials: 'include' }),
-        fetch(`${API}/users?role=paciente`, { credentials: 'include' }),
-      ]);
-
-      if (!aRes.ok) {
-        const t = await aRes.text().catch(() => '');
-        throw new Error(`GET /alerts → HTTP ${aRes.status} ${t}`);
-      }
-      const a = await aRes.json().catch(() => []);
-      console.log('[Alertas] /alerts →', a);
-
-      const p = pRes.ok ? await pRes.json() : [];
-
-      setAlerts(Array.isArray(a) ? a : []);
-      setPatients(Array.isArray(p) ? p : []);
-    } catch (err) {
-      console.error(err);
-      setLoadError(err?.message || 'No se pudieron cargar las alertas');
-      setAlerts([]);
-    } finally {
-      setLoading(false);
-    }
-  }
 
   const handleLogout = () => {
     logout();
@@ -190,7 +158,7 @@ export default function Alertas() {
     { value: 'type:desc', label: 'Tipo (Z–A)' },
   ];
 
-  // fallback helpers para mostrar nombre paciente, dispositivo y título
+  // fallback helpers
   function patientLabel(a) {
     return a?.user_id?.name || a?.patient_name_snapshot || a?.user_id || '';
   }
@@ -236,7 +204,8 @@ export default function Alertas() {
     }
 
     if (filterValues.onlyUnseen) {
-      arr = arr.filter((a) => !a.seen);
+      arr = arr.filter((a) => (a.seen === false || a.seen === 'false' || a.read === false));
+      // Nota: El backend a veces usa 'seen' o 'read'. Ajustar según modelo real.
     }
 
     if (Array.isArray(filterValues.types) && filterValues.types.length) {
@@ -290,22 +259,12 @@ export default function Alertas() {
 
   // acciones
   async function markSeen(id) {
-    await fetch(`${API}/alerts/${id}`, {
-      method: 'PUT',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ seen: true }),
-    }).catch(() => {});
-    setAlerts((as) => as.map((a) => (a._id === id ? { ...a, seen: true } : a)));
+    markReadMutation.mutate(id);
   }
 
   async function deleteAlert(id) {
     if (!confirm('¿Borrar esta alerta?')) return;
-    const res = await fetch(`${API}/alerts/${id}`, {
-      method: 'DELETE',
-      credentials: 'include',
-    });
-    if (res.ok) setAlerts((as) => as.filter((a) => a._id !== id));
+    deleteMutation.mutate(id);
   }
 
   return (
@@ -319,7 +278,7 @@ export default function Alertas() {
         <Main>
           <TopBar>
             <h1>Alertas</h1>
-            <Btn variant="primary" onClick={loadData}>
+            <Btn variant="primary" onClick={() => refetch()}>
               Recargar
             </Btn>
           </TopBar>
@@ -327,7 +286,7 @@ export default function Alertas() {
           <SearchToolbar
             query={query}
             onQueryChange={setQuery}
-            placeholder="Buscar por texto (título, mensaje, tipo, habitación, electrodoméstico)…"
+            placeholder="Buscar por texto..."
             filters={[
               {
                 key: 'resolved',
@@ -372,15 +331,13 @@ export default function Alertas() {
             }}
           />
 
-          {loading ? (
+          {loadingAlerts ? (
             <p style={{ opacity: 0.8, marginTop: 12 }}>Cargando…</p>
-          ) : loadError ? (
-            <p style={{ color: '#f55', marginTop: 12 }}>{loadError}</p>
+          ) : alertsError ? (
+            <p style={{ color: '#f55', marginTop: 12 }}>Error al cargar alertas</p>
           ) : visible.length === 0 ? (
             <p style={{ opacity: 0.7, marginTop: 12 }}>
               No hay alertas para mostrar.
-              {alerts.length > 0 &&
-                ' (las existentes podrían no pasar los filtros o tener campos vacíos)'}
             </p>
           ) : (
             <>
@@ -393,7 +350,8 @@ export default function Alertas() {
                 {visible.map((a) => (
                   <AlertItem key={a._id}>
                     <Left>
-                      {!a.seen && <Dot />}
+                      {/* Usamos !a.read porque el backend suele usar 'read', pero UI previa usaba 'seen' */}
+                      {(a.seen === false || a.read === false) && <Dot />}
                       <div>
                         <p style={{ margin: 0 }}>
                           <strong>{safeTitle(a)}</strong>
@@ -406,12 +364,11 @@ export default function Alertas() {
                           {patientLabel(a) ? ` · ${patientLabel(a)}` : ''}
                           {a.type ? ` · ${a.type}` : ''}
                           {a.device_id?.room ? ` · ${a.device_id.room}` : ''}
-                          {deviceLabel(a) ? ` · ${deviceLabel(a)}` : ''}
                         </Meta>
                       </div>
                     </Left>
                     <Actions>
-                      {!a.seen && (
+                      {(a.seen === false || a.read === false) && (
                         <Btn
                           variant="primary"
                           onClick={() => markSeen(a._id)}

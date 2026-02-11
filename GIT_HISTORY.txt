@@ -42,3 +42,30 @@
   - Creados hooks personalizados: `useHouseholds` (CRUD completo) y `useUsers`.
   - Refactorizado `Hogares.jsx` eliminando `useEffect` y `fetch` manuales.
   - Refactorizado `UsersPage.jsx` para usar los nuevos hooks, mejorando la gestión de estado.
+
+## 2026-02-10: Fase 4 - Modernización Frontend (Alertas, Rutinas, Dispositivos)
+**Mensaje del Commit:** `refactor: modernizar alertas, rutinas y dispositivos con react-query`
+
+**Cambios:**
+- **Frontend:**
+  - Creados hooks personalizados: `useAlerts`, `useRoutines`, `useDevices`.
+  - Añadidas mutaciones `create`/`update`/`delete` a `useUsers`.
+  - Refactorizado `Alertas.jsx` para eliminar `fetch` manual.
+  - Refactorizado `Rutinas.jsx` con React Query y gestión de estado optimizada.
+  - Refactorizado `Dispositivos.jsx` para usar los nuevos hooks.
+  - Completada la refactorización de `UsersPage.jsx` eliminando código legacy.
+  - Verificada la build de producción (`npm run build`).
+
+## Feedback y Pulido
+** `fix: userspage multi-hogar, darkmode inputs y wizard rutinas`
+
+**Cambios:**
+- **Frontend:**
+  - `UsersPage.jsx`:
+    - Ahora muestra múltiples hogares si el paciente pertenece a varios.
+    - Filtrado estricto de rutinas/alertas por ID de paciente.
+  - `SearchToolbar.jsx`:
+    - Corregida visibilidad de `<option>` en modo oscuro (fondo sólido).
+  - `Rutinas.jsx`:
+    - Mejorada maquetación del Paso 3 (horarios).
+    - Implementado resumen en el Paso 4 antes de guardar.

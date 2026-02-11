@@ -63,7 +63,7 @@ const Select = styled.select`
 
 // Forzamos colores del menú de opciones (Chromium/Firefox lo respetan)
 const Option = styled.option`
-  background: var(--bg);
+  background-color: var(--option-bg);
   color: var(--text);
 `;
 
@@ -138,11 +138,11 @@ export default function SearchToolbar({
   placeholder = 'Buscar por texto (título, mensaje, tipo, habitación)',
   filters = [],
   values = {},
-  onValuesChange = () => {},
+  onValuesChange = () => { },
   sortOptions = [],
   sort,
-  onSortChange = () => {},
-  onClear = () => {},
+  onSortChange = () => { },
+  onClear = () => { },
 }) {
   const theme = useTheme();
 
@@ -152,6 +152,7 @@ export default function SearchToolbar({
       '--bg': theme.isDark
         ? 'rgba(255, 255, 255, 0.06)'
         : 'rgba(15, 23, 42, 0.06)',
+      '--option-bg': theme.colors.cardBg, // Solid background for options
       '--text': theme.colors.text,
       '--border': theme.colors.border,
       '--hint': theme.colors.textSecondary || 'rgba(255,255,255,.6)',

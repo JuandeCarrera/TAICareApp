@@ -1,15 +1,19 @@
-import React, { useContext, useState, useEffect, useMemo } from 'react';
+import React, { useContext, useState, useMemo, useEffect } from 'react';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../contexts/AuthContext.jsx';
 import Header from '../components/Header.jsx';
 import Sidebar from '../components/Sidebar.jsx';
 import Footer from '../components/Footer.jsx';
-import Modal from '../components/Modal.jsx';
-import { FormGroup } from '../components/Modal.jsx';
-import SearchToolbar from '../components/SearchToolbar.jsx'; // ← NUEVO
-
-const API = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+import Modal, { FormGroup } from '../components/Modal.jsx';
+import SearchToolbar from '../components/SearchToolbar.jsx';
+import {
+  useDevices,
+  useCreateDevice,
+  useUpdateDevice,
+  useDeleteDevice,
+} from '../hooks/useDevices';
+import { useHouseholds } from '../hooks/useHouseholds';
 
 const AppContainer = styled.div`
   display: flex;
@@ -48,7 +52,7 @@ const Btn = styled.button`
   border-radius: 4px;
   border: 1px solid
     ${({ theme, variant }) =>
-      variant === 'primary' ? theme.colors.primary : theme.colors.border};
+    variant === 'primary' ? theme.colors.primary : theme.colors.border};
   background: ${({ theme, variant }) =>
     variant === 'primary' ? theme.colors.primary : theme.colors.cardBg};
   color: ${({ theme, variant }) =>
@@ -57,11 +61,8 @@ const Btn = styled.button`
   transition: background 0.2s;
   &:hover {
     background: ${({ theme, variant }) =>
-      variant === 'primary' ? theme.colors.primaryDark : theme.colors.hoverBg};
+    variant === 'primary' ? theme.colors.primaryDark : theme.colors.hoverBg};
   }
-`;
-const NewButton = styled(Btn).attrs({ variant: 'primary' })`
-  margin: 0 0 1rem 0;
 `;
 const DangerBtn = styled(Btn)`
   border-color: #ef4444;
@@ -77,9 +78,14 @@ export default function Dispositivos() {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(window.innerWidth >= 768);
 
-  const [households, setHouseholds] = useState([]);
+  const { data: households = [] } = useHouseholds();
+  const { data: devices = [], isLoading: loadingDevices } = useDevices();
+
+  const createDeviceMutation = useCreateDevice();
+  const updateDeviceMutation = useUpdateDevice();
+  const deleteDeviceMutation = useDeleteDevice();
+
   const [rooms, setRooms] = useState([]);
-  const [devices, setDevices] = useState([]);
 
   const [showModal, setShowModal] = useState(false);
   const [editId, setEditId] = useState(null);
@@ -96,28 +102,12 @@ export default function Dispositivos() {
   const [sort, setSort] = useState('recent_desc');
 
   useEffect(() => {
-    fetchDevices();
-    fetchHouseholds();
-  }, []);
-
-  async function fetchDevices() {
-    const res = await fetch(`${API}/devices`, { credentials: 'include' });
-    if (!res.ok) return;
-    setDevices(await res.json());
-  }
-  async function fetchHouseholds() {
-    const res = await fetch(`${API}/households`, { credentials: 'include' });
-    if (!res.ok) return;
-    setHouseholds(await res.json());
-  }
-
-  useEffect(() => {
     const hh = households.find((h) => h._id === form.household_id);
     setRooms(hh?.rooms || []);
     if (!hh?.rooms?.includes(form.room)) {
       setForm((f) => ({ ...f, room: '' }));
     }
-  }, [form.household_id, households]);
+  }, [form.household_id, households, form.room]);
 
   const handleLogout = () => {
     logout();
@@ -144,46 +134,28 @@ export default function Dispositivos() {
     });
     setShowModal(true);
   };
-  const deleteDevice = async (id) => {
+  const handleDelete = async (id) => {
     if (!confirm('¿Borrar este dispositivo?')) return;
-    const res = await fetch(`${API}/devices/${id}`, {
-      method: 'DELETE',
-      credentials: 'include',
-    });
-    if (res.ok) setDevices((ds) => ds.filter((d) => d._id !== id));
+    try {
+      await deleteDeviceMutation.mutateAsync(id);
+    } catch (e) {
+      alert(e.message || 'Error al borrar dispositivo');
+    }
   };
 
   const handleSave = async () => {
     const payload = { ...form };
     try {
-      let res;
       if (editId) {
-        res = await fetch(`${API}/devices/${editId}`, {
-          method: 'PUT',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
+        await updateDeviceMutation.mutateAsync({ id: editId, ...payload });
       } else {
-        res = await fetch(`${API}/devices`, {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-      }
-      if (!res.ok) throw new Error('Error al guardar');
-      const saved = await res.json();
-      if (editId) {
-        setDevices((ds) => ds.map((d) => (d._id === editId ? saved : d)));
-      } else {
-        setDevices((ds) => [...ds, saved]);
+        await createDeviceMutation.mutateAsync(payload);
       }
       setShowModal(false);
       setForm({ plugmodel: '', household_id: '', room: '', appliance: '' });
       setEditId(null);
     } catch (err) {
-      alert(err.message);
+      alert(err.message || 'Error al guardar dispositivo');
     }
   };
 
@@ -301,12 +273,13 @@ export default function Dispositivos() {
             />
           </div>
 
-          <Btn variant="primary" onClick={openNew}>
+          <Btn variant="primary" style={{ marginBottom: '1rem' }} onClick={openNew}>
             + Nuevo
           </Btn>
 
           <ul>
-            {filteredDevices.map((d) => (
+            {loadingDevices && <p>Cargando dispositivos...</p>}
+            {!loadingDevices && filteredDevices.map((d) => (
               <DeviceItem key={d._id}>
                 <span>
                   <strong>{d.plugmodel}</strong>
@@ -321,11 +294,11 @@ export default function Dispositivos() {
                   <Btn variant="primary" onClick={() => openEdit(d)}>
                     ✎
                   </Btn>
-                  <DangerBtn onClick={() => deleteDevice(d._id)}>🗑</DangerBtn>
+                  <DangerBtn onClick={() => handleDelete(d._id)}>🗑</DangerBtn>
                 </Actions>
               </DeviceItem>
             ))}
-            {!filteredDevices.length && (
+            {!loadingDevices && !filteredDevices.length && (
               <li style={{ opacity: 0.8 }}>
                 No hay dispositivos que coincidan con el filtro.
               </li>

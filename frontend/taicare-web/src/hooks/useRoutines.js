@@ -1,56 +1,54 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../api/axios';
 
-export function useUsers(queryParams = {}) {
+export function useRoutines({ userId } = {}) {
     return useQuery({
-        queryKey: ['users', queryParams],
+        queryKey: ['routines', { userId }],
         queryFn: async () => {
             const params = new URLSearchParams();
-            Object.entries(queryParams).forEach(([k, v]) => {
-                if (v !== undefined && v !== null) params.append(k, v);
-            });
+            if (userId) params.append('user_id', userId);
 
-            const { data } = await api.get(`/users?${params.toString()}`);
+            const { data } = await api.get(`/routines?${params.toString()}`);
             return Array.isArray(data) ? data : [];
         },
         enabled: true,
     });
 }
 
-export function useCreateUser() {
+export function useCreateRoutine() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: async (payload) => {
-            const { data } = await api.post('/users', payload);
+            const { data } = await api.post('/routines', payload);
             return data;
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['users'] });
+            queryClient.invalidateQueries({ queryKey: ['routines'] });
         },
     });
 }
 
-export function useUpdateUser() {
+export function useUpdateRoutine() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: async ({ id, ...payload }) => {
-            const { data } = await api.put(`/users/${id}`, payload);
+            const { data } = await api.put(`/routines/${id}`, payload);
             return data;
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['users'] });
+            queryClient.invalidateQueries({ queryKey: ['routines'] });
         },
     });
 }
 
-export function useDeleteUser() {
+export function useDeleteRoutine() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: async (id) => {
-            await api.delete(`/users/${id}`);
+            await api.delete(`/routines/${id}`);
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['users'] });
+            queryClient.invalidateQueries({ queryKey: ['routines'] });
         },
     });
 }

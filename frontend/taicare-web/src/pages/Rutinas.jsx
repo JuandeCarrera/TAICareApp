@@ -7,6 +7,15 @@ import Sidebar from '../components/Sidebar.jsx';
 import Footer from '../components/Footer.jsx';
 import Modal, { FormGroup } from '../components/Modal.jsx';
 import SearchToolbar from '../components/SearchToolbar.jsx';
+import {
+  useRoutines,
+  useCreateRoutine,
+  useUpdateRoutine,
+  useDeleteRoutine,
+} from '../hooks/useRoutines';
+import { useUsers } from '../hooks/useUsers';
+import { useHouseholds } from '../hooks/useHouseholds';
+import { useDevices } from '../hooks/useDevices';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -46,7 +55,7 @@ const Btn = styled.button`
   cursor: pointer;
   border: 1px solid
     ${({ theme, variant }) =>
-      variant === 'primary' ? theme.colors.primary : theme.colors.border};
+    variant === 'primary' ? theme.colors.primary : theme.colors.border};
   background: ${({ theme, variant }) =>
     variant === 'primary' ? theme.colors.primary : theme.colors.cardBg};
   color: ${({ theme, variant }) =>
@@ -54,7 +63,7 @@ const Btn = styled.button`
   transition: background 0.2s;
   &:hover {
     background: ${({ theme, variant }) =>
-      variant === 'primary' ? theme.colors.primaryDark : theme.colors.hoverBg};
+    variant === 'primary' ? theme.colors.primaryDark : theme.colors.hoverBg};
   }
 `;
 const DangerBtn = styled(Btn)`
@@ -267,7 +276,7 @@ const Chip = styled.button`
 
   &:hover {
     background: ${({ theme, $active }) =>
-      $active ? theme.colors.primaryDark : theme.colors.hoverBg};
+    $active ? theme.colors.primaryDark : theme.colors.hoverBg};
   }
 `;
 const DayBtn = styled.button`
@@ -287,7 +296,7 @@ const DayBtn = styled.button`
 
   &:hover {
     background: ${({ theme, active }) =>
-      active ? theme.colors.primaryDark : theme.colors.hoverBg};
+    active ? theme.colors.primaryDark : theme.colors.hoverBg};
   }
 
   appearance: none;
@@ -342,12 +351,15 @@ export default function Rutinas() {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(window.innerWidth >= 768);
 
-  const [routines, setRoutines] = useState([]);
+  // --- HOOKS ---
+  const { data: routines = [], isLoading: loadingRoutines } = useRoutines();
+  const { data: patients = [] } = useUsers({ role: 'paciente' });
+  const { data: households = [] } = useHouseholds();
+  const { data: devices = [] } = useDevices();
 
-  // data
-  const [patients, setPatients] = useState([]);
-  const [households, setHouseholds] = useState([]);
-  const [devices, setDevices] = useState([]);
+  const createRoutineMutation = useCreateRoutine();
+  const updateRoutineMutation = useUpdateRoutine();
+  const deleteRoutineMutation = useDeleteRoutine();
 
   // presets
   const [presets, setPresets] = useState(loadPresets());
@@ -396,30 +408,6 @@ export default function Rutinas() {
     occurrences: [],
   });
 
-  /* ---------- fetch ---------- */
-  useEffect(() => {
-    setMenuOpen(window.innerWidth >= 768);
-    loadInitial();
-  }, []);
-  async function loadInitial() {
-    fetch(`${API}/routines`, { credentials: 'include' })
-      .then((r) => (r.ok ? r.json() : []))
-      .then(setRoutines)
-      .catch(() => {});
-    fetch(`${API}/users?role=paciente`, { credentials: 'include' })
-      .then((r) => (r.ok ? r.json() : []))
-      .then(setPatients)
-      .catch(() => {});
-    fetch(`${API}/households`, { credentials: 'include' })
-      .then((r) => (r.ok ? r.json() : []))
-      .then(setHouseholds)
-      .catch(() => {});
-    fetch(`${API}/devices`, { credentials: 'include' })
-      .then((r) => (r.ok ? r.json() : []))
-      .then(setDevices)
-      .catch(() => {});
-  }
-
   /* ---------- helpers relación paciente↔casa ---------- */
   function householdHasPatient(h, patientId) {
     if (!h || !patientId) return false;
@@ -448,11 +436,6 @@ export default function Rutinas() {
     if (!form.user_id) return [];
     return households.filter((h) => householdHasPatient(h, form.user_id));
   }, [households, form.user_id]);
-
-  const selectedHouse = useMemo(() => {
-    if (!form.household_id) return null;
-    return households.find((h) => idEq(h._id, form.household_id)) || null;
-  }, [households, form.household_id]);
 
   /* ---------- Paciente → Casa ---------- */
   useEffect(() => {
@@ -649,21 +632,10 @@ export default function Rutinas() {
       occurrences,
     };
     try {
-      const res = await fetch(`${API}/routines`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || 'No se pudo guardar la rutina');
-      }
-      const list = await fetch(`${API}/routines`, { credentials: 'include' });
-      setRoutines(list.ok ? await list.json() : []);
+      await createRoutineMutation.mutateAsync(payload);
       setOpen(false);
     } catch (e) {
-      alert(e.message);
+      alert(e.message || 'Error al guardar rutina');
     }
   }
 
@@ -791,15 +763,15 @@ export default function Rutinas() {
     setEditId(r._id);
     const occs = Array.isArray(r.occurrences)
       ? r.occurrences.map((o) => ({
-          start: o.start || '14:00',
-          end: o.end || '15:00',
-          days: Array.isArray(o.days) ? [...o.days] : [],
-          device_ids: Array.isArray(o.device_ids)
-            ? o.device_ids.map((d) =>
-                typeof d === 'object' ? d?._id || d?.id : d
-              )
-            : [],
-        }))
+        start: o.start || '14:00',
+        end: o.end || '15:00',
+        days: Array.isArray(o.days) ? [...o.days] : [],
+        device_ids: Array.isArray(o.device_ids)
+          ? o.device_ids.map((d) =>
+            typeof d === 'object' ? d?._id || d?.id : d
+          )
+          : [],
+      }))
       : [];
     setEditData({
       name: r.name || '',
@@ -871,23 +843,14 @@ export default function Rutinas() {
           days: o.days,
           device_ids: o.device_ids,
         })),
+        id: editId,
       };
-      const res = await fetch(`${API}/routines/${editId}`, {
-        method: 'PUT',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || 'No se pudo editar la rutina');
-      }
-      const r = await fetch(`${API}/routines`, { credentials: 'include' });
-      setRoutines(r.ok ? await r.json() : []);
+
+      await updateRoutineMutation.mutateAsync(payload);
       setEditOpen(false);
       setEditId(null);
     } catch (e) {
-      alert(e.message);
+      alert(e.message || 'Error al editar rutina');
     }
   }
 
@@ -1027,7 +990,6 @@ export default function Rutinas() {
         {/* Dispositivos */}
         <FormGroup>
           <label>Dispositivos</label>
-
           {/* Filtros */}
           <Card style={{ marginTop: '.25rem' }}>
             <div
@@ -1133,20 +1095,11 @@ export default function Rutinas() {
   async function confirmDelete() {
     try {
       if (!deleteId) return;
-      const res = await fetch(`${API}/routines/${deleteId}`, {
-        method: 'DELETE',
-        credentials: 'include',
-      });
-      if (!res.ok && res.status !== 204) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || 'No se pudo borrar la rutina');
-      }
-      const r = await fetch(`${API}/routines`, { credentials: 'include' });
-      setRoutines(r.ok ? await r.json() : []);
+      await deleteRoutineMutation.mutateAsync(deleteId);
       setDeleteOpen(false);
       setDeleteId(null);
     } catch (e) {
-      alert(e.message);
+      alert(e.message || 'Error al borrar rutina');
     }
   }
 
@@ -1241,7 +1194,8 @@ export default function Rutinas() {
 
           {/* Lista */}
           <List>
-            {filteredSorted.map((r) => {
+            {loadingRoutines && <p>Cargando rutinas...</p>}
+            {!loadingRoutines && filteredSorted.map((r) => {
               const patient = getPatientName(r.user_id);
               const occ = Array.isArray(r.occurrences) ? r.occurrences : [];
               const times = summarizeTimes(occ);
@@ -1288,7 +1242,7 @@ export default function Rutinas() {
                 </RoutineCard>
               );
             })}
-            {!filteredSorted.length && (
+            {!loadingRoutines && !filteredSorted.length && (
               <Muted>No hay rutinas que coincidan con el filtro.</Muted>
             )}
           </List>
@@ -1324,7 +1278,8 @@ export default function Rutinas() {
             </ModalHeader>
 
             <ModalContent>
-              {/* PASO 1 */}
+              {/* PASO 1, 2, 3 ... (Misma lógica de renderizado, usando los estados locales y datos de hooks) */}
+
               {step === 1 && (
                 <>
                   <FormGroup>
@@ -1356,13 +1311,7 @@ export default function Rutinas() {
                       ))}
                     </select>
                     {touched.user_id && errors.user_id && (
-                      <div
-                        style={{
-                          color: '#e04848',
-                          fontSize: '.85rem',
-                          marginTop: 4,
-                        }}
-                      >
+                      <div style={{ color: '#e04848', fontSize: '.85rem', marginTop: 4 }}>
                         {errors.user_id}
                       </div>
                     )}
@@ -1370,137 +1319,63 @@ export default function Rutinas() {
 
                   <FormGroup>
                     <label>Casa</label>
-
                     {!form.user_id ? (
-                      <select disabled>
-                        <option>— Selecciona un paciente —</option>
-                      </select>
+                      <select disabled><option>— Selecciona un paciente —</option></select>
                     ) : availableHouseholds.length === 0 ? (
                       <>
-                        <select disabled>
-                          <option>— Sin casa asignada —</option>
-                        </select>
-                        {errors.household_id && (
-                          <div
-                            style={{
-                              color: '#e04848',
-                              fontSize: '.85rem',
-                              marginTop: 4,
-                            }}
-                          >
-                            {errors.household_id}
-                          </div>
-                        )}
+                        <select disabled><option>— Sin casa asignada —</option></select>
+                        {errors.household_id && <div style={{ color: '#e04848', fontSize: '.85rem', marginTop: 4 }}>{errors.household_id}</div>}
                       </>
                     ) : availableHouseholds.length === 1 ? (
                       <>
-                        <input
-                          value={
-                            availableHouseholds[0].name ||
-                            availableHouseholds[0]._id
-                          }
-                          readOnly
-                          disabled
-                        />
-                        <Small>
-                          La casa queda fijada a la única casa del paciente.
-                        </Small>
+                        <input value={availableHouseholds[0].name || availableHouseholds[0]._id} readOnly disabled />
+                        <Small>La casa queda fijada a la única casa del paciente.</Small>
                       </>
                     ) : (
                       <>
                         <select
                           value={form.household_id}
                           onChange={(e) => {
-                            setForm((f) => ({
-                              ...f,
-                              household_id: e.target.value,
-                            }));
+                            setForm((f) => ({ ...f, household_id: e.target.value }));
                             setTouched((t) => ({ ...t, household_id: true }));
                             setErrors({});
                           }}
                         >
                           <option value="">— Selecciona —</option>
                           {availableHouseholds.map((h) => (
-                            <option key={h._id} value={h._id}>
-                              {h.name || h._id}
-                            </option>
+                            <option key={h._id} value={h._id}>{h.name || h._id}</option>
                           ))}
                         </select>
-                        <Small>
-                          Este paciente está asociado a varias casas. Elige en
-                          cuál crear la rutina.
-                        </Small>
+                        <Small>Este paciente está asociado a varias casas. Elige en cuál crear la rutina.</Small>
                         {touched.household_id && errors.household_id && (
-                          <div
-                            style={{
-                              color: '#e04848',
-                              fontSize: '.85rem',
-                              marginTop: 4,
-                            }}
-                          >
-                            {errors.household_id}
-                          </div>
+                          <div style={{ color: '#e04848', fontSize: '.85rem', marginTop: 4 }}>{errors.household_id}</div>
                         )}
                       </>
                     )}
                   </FormGroup>
 
                   <StepFooter>
-                    <DangerBtn onClick={() => setOpen(false)}>
-                      Cancelar
-                    </DangerBtn>
-                    <Btn
-                      variant="primary"
-                      onClick={() => {
-                        if (validateStep1()) setStep(2);
-                      }}
-                    >
-                      Siguiente
-                    </Btn>
+                    <DangerBtn onClick={() => setOpen(false)}>Cancelar</DangerBtn>
+                    <Btn variant="primary" onClick={() => { if (validateStep1()) setStep(2); }}>Siguiente</Btn>
                   </StepFooter>
                 </>
               )}
 
-              {/* PASO 2 */}
               {step === 2 && (
                 <>
                   <Card>
-                    <div
-                      style={{
-                        display: 'flex',
-                        gap: '.75rem',
-                        flexWrap: 'wrap',
-                        alignItems: 'end',
-                      }}
-                    >
+                    <div style={{ display: 'flex', gap: '.75rem', flexWrap: 'wrap', alignItems: 'end' }}>
                       <div style={{ minWidth: 220 }}>
-                        <label style={{ display: 'block', marginBottom: 6 }}>
-                          Habitación
-                        </label>
-                        <select
-                          value={roomFilter}
-                          onChange={(e) => setRoomFilter(e.target.value)}
-                        >
+                        <label style={{ display: 'block', marginBottom: 6 }}>Habitación</label>
+                        <select value={roomFilter} onChange={(e) => setRoomFilter(e.target.value)}>
                           <option value="ALL">Todas</option>
-                          {roomNames.map((r) => (
-                            <option key={r} value={r}>
-                              {r}
-                            </option>
-                          ))}
+                          {roomNames.map((r) => <option key={r} value={r}>{r}</option>)}
                         </select>
                       </div>
-
                       <div style={{ flex: 1, minWidth: 260 }}>
-                        <label style={{ display: 'block', marginBottom: 6 }}>
-                          Buscar dispositivo
-                        </label>
-                        <input
-                          value={deviceQuery}
-                          onChange={(e) => setDeviceQuery(e.target.value)}
-                          placeholder="Buscar por electrodoméstico o modelo (p.ej. Televisión, nevera, HS110...)"
-                        />
+                        <label style={{ display: 'block', marginBottom: 6 }}>Buscar dispositivo</label>
+                        <input value={deviceQuery} onChange={(e) => setDeviceQuery(e.target.value)} placeholder="Buscar por electrodoméstico o modelo..." />
                       </div>
-
                       <div style={{ display: 'flex', gap: '.5rem' }}>
                         <DangerBtn
                           onClick={() => {
@@ -1509,10 +1384,7 @@ export default function Rutinas() {
                             setSelectedDevices(next);
                           }}
                           disabled={!visibleDevices.length}
-                        >
-                          Quitar visibles
-                        </DangerBtn>
-
+                        >Quitar visibles</DangerBtn>
                         <Btn
                           variant="primary"
                           onClick={() => {
@@ -1522,405 +1394,132 @@ export default function Rutinas() {
                             ensureBlocksFor([...next]);
                           }}
                           disabled={!visibleDevices.length}
-                        >
-                          Seleccionar visibles
-                        </Btn>
+                        >Seleccionar visibles</Btn>
                       </div>
                     </div>
                   </Card>
-
                   <ScrollCard style={{ marginTop: '.75rem' }}>
                     <strong>Dispositivos</strong>
                     <div style={{ marginTop: '.5rem' }}>
-                      {!visibleDevices.length && (
-                        <Small>No hay dispositivos que coincidan.</Small>
-                      )}
-
+                      {!visibleDevices.length && <Small>No hay dispositivos que coincidan.</Small>}
                       {visibleDevices.map((d) => (
                         <DeviceRow key={d._id}>
-                          <input
-                            type="checkbox"
-                            checked={selectedDevices.has(d._id)}
-                            onChange={() => toggleDevice(d)}
-                          />
+                          <input type="checkbox" checked={selectedDevices.has(d._id)} onChange={() => toggleDevice(d)} />
                           <span className="devText">
-                            {d.appliance || 'Dispositivo'}{' '}
-                            <Small>({d.plugmodel})</Small>
-                            {d.room ? (
-                              <Small style={{ marginLeft: 8 }}>
-                                — {d.room}
-                              </Small>
-                            ) : null}
+                            {d.appliance || 'Dispositivo'} <Small>({d.plugmodel})</Small>
+                            {d.room ? <Small style={{ marginLeft: 8 }}>— {d.room}</Small> : null}
                           </span>
                         </DeviceRow>
                       ))}
                     </div>
                   </ScrollCard>
-
                   <StepFooter>
                     <DangerBtn onClick={() => setStep(1)}>Atrás</DangerBtn>
-                    <Btn
-                      variant="primary"
-                      onClick={() => {
-                        if (selectedDevices.size) {
-                          ensureBlocksFor([...selectedDevices]);
-                          setStep(3);
-                        }
-                      }}
-                      disabled={!selectedDevices.size}
-                    >
-                      Siguiente
-                    </Btn>
+                    <Btn variant="primary" onClick={() => { if (selectedDevices.size) { ensureBlocksFor([...selectedDevices]); setStep(3); } }} disabled={!selectedDevices.size}>Siguiente</Btn>
                   </StepFooter>
                 </>
               )}
 
-              {/* PASO 3 */}
               {step === 3 && (
                 <>
-                  <Card>
-                    <div
-                      style={{
-                        display: 'flex',
-                        flexWrap: 'wrap',
-                        gap: '.75rem',
-                        alignItems: 'center',
-                      }}
-                    >
-                      <div>
-                        <strong>Aplicar a</strong>
+                  <Card style={{ marginBottom: '1rem' }}>
+                    <div style={{ fontWeight: 'bold', marginBottom: '.5rem', borderBottom: '1px solid #333', paddingBottom: '.25rem' }}>
+                      Definir franja horaria
+                    </div>
+                    <div style={{ display: 'flex', gap: '.75rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                      <div style={{ flex: 1, minWidth: 200 }}>
+                        <label style={{ display: 'block', marginBottom: 4, fontSize: '.85rem' }}>Aplicar a dispositivo(s)</label>
+                        <select style={{ width: '100%', padding: '.4rem', borderRadius: 6, border: '1px solid #ccc' }} value={target} onChange={e => setTarget(e.target.value)}>
+                          <option value="ALL">Todos los seleccionados</option>
+                          {[...selectedDevices].map(id => {
+                            const d = devices.find(x => idEq(x._id, id));
+                            return <option key={id} value={id}>{d?.appliance || id} ({d?.room})</option>
+                          })}
+                        </select>
                       </div>
-                      <select
-                        value={target}
-                        onChange={(e) => setTarget(e.target.value)}
-                      >
-                        <option value="ALL">Todos los seleccionados</option>
-                        {[...selectedDevices].map((id) => {
-                          const d = devices.find((x) => idEq(x._id, id));
-                          return (
-                            <option key={id} value={id}>
-                              {d?.appliance || d?.plugmodel || id}
-                            </option>
-                          );
+                      <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}>
+                        <div>
+                          <label style={{ display: 'block', marginBottom: 4, fontSize: '.85rem' }}>Inicio</label>
+                          <select style={{ padding: '.4rem', borderRadius: 6, border: '1px solid #ccc' }} value={builder.start} onChange={e => setBuilder(b => ({ ...b, start: e.target.value }))}>
+                            {slots48.map(t => <option key={t} value={t}>{t}</option>)}
+                          </select>
+                        </div>
+                        <span style={{ paddingTop: 20 }}>—</span>
+                        <div>
+                          <label style={{ display: 'block', marginBottom: 4, fontSize: '.85rem' }}>Fin</label>
+                          <select style={{ padding: '.4rem', borderRadius: 6, border: '1px solid #ccc' }} value={builder.end} onChange={e => setBuilder(b => ({ ...b, end: e.target.value }))}>
+                            {endOptionsFor(builder.start).map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ marginTop: '.75rem' }}>
+                      <label style={{ display: 'block', marginBottom: 4, fontSize: '.85rem' }}>Días de la semana</label>
+                      <div style={{ display: 'flex', gap: '.25rem', flexWrap: 'wrap' }}>
+                        {DAY_SHORT.map((d, i) => {
+                          const full = DAY_NAMES[i];
+                          const active = builder.days.includes(full);
+                          return <Chip key={full} $active={active} onClick={() => toggleBuilderDay(full)}>{d}</Chip>
                         })}
-                      </select>
-
-                      <span style={{ opacity: 0.75 }}>·</span>
-
-                      <div>
-                        <strong>Preset</strong>
-                      </div>
-                      <select
-                        style={{ minWidth: 220 }}
-                        value={builderPresetId}
-                        onChange={(e) => setBuilderPresetId(e.target.value)}
-                      >
-                        <option value="">— Selecciona —</option>
-                        {presets.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.name} ({p.start}–{p.end},{' '}
-                            {p.days.map((d) => ES_DAYS[d]).join(', ')})
-                          </option>
-                        ))}
-                      </select>
-                      <Btn
-                        variant="primary"
-                        onClick={() => {
-                          const p = presets.find(
-                            (x) => x.id === builderPresetId
-                          );
-                          if (p)
-                            setBuilder({
-                              start: p.start,
-                              end: p.end,
-                              days: [...p.days],
-                            });
-                        }}
-                        disabled={!builderPresetId}
-                      >
-                        Cargar preset
-                      </Btn>
-                    </div>
-
-                    <div
-                      style={{
-                        display: 'grid',
-                        gridTemplateColumns: '1fr',
-                        gap: '.75rem',
-                        marginTop: '.75rem',
-                      }}
-                    >
-                      {/* Inicio / Fin */}
-                      <div>
-                        <label style={{ display: 'block', marginBottom: 6 }}>
-                          Inicio / Fin
-                        </label>
-                        <div
-                          style={{
-                            display: 'flex',
-                            gap: '.5rem',
-                            alignItems: 'center',
-                            flexWrap: 'wrap',
-                          }}
-                        >
-                          <select
-                            value={builder.start}
-                            onChange={(e) => {
-                              const start = e.target.value;
-                              const ends = endOptionsFor(start);
-                              const valid = ends.some(
-                                (o) => o.value === builder.end
-                              );
-                              setBuilder((b) => ({
-                                ...b,
-                                start,
-                                end: valid ? b.end : ends[0]?.value || b.end,
-                              }));
-                            }}
-                          >
-                            {slots48.map((t) => (
-                              <option key={t} value={t}>
-                                {t}
-                              </option>
-                            ))}
-                          </select>
-                          <span>—</span>
-                          <select
-                            value={builder.end}
-                            onChange={(e) =>
-                              setBuilder((b) => ({ ...b, end: e.target.value }))
-                            }
-                          >
-                            {endOptionsFor(builder.start).map((opt) => (
-                              <option key={opt.value} value={opt.value}>
-                                {opt.label}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <Small>
-                          El fin debe ser ≥ +30 min y puede cruzar medianoche.
-                        </Small>
-                      </div>
-
-                      {/* Días */}
-                      <div>
-                        <label style={{ display: 'block', marginBottom: 6 }}>
-                          Días
-                        </label>
-                        <div
-                          style={{
-                            display: 'flex',
-                            flexWrap: 'wrap',
-                            gap: '.35rem',
-                          }}
-                        >
-                          {DAY_NAMES.map((d, idx) => (
-                            <DayBtn
-                              key={d}
-                              type="button"
-                              $active={builder.days.includes(d)}
-                              onClick={() => toggleBuilderDay(d)}
-                            >
-                              {DAY_SHORT[idx]}
-                            </DayBtn>
-                          ))}
-                        </div>
                       </div>
                     </div>
 
-                    <div
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'flex-end',
-                        marginTop: '.75rem',
-                      }}
-                    >
-                      <Btn variant="primary" onClick={applyBuilder}>
-                        Añadir franja a la selección
-                      </Btn>
+                    <div style={{ marginTop: '1rem', textAlign: 'right' }}>
+                      <Btn variant="primary" onClick={applyBuilder}>+ Añadir franja</Btn>
                     </div>
                   </Card>
 
-                  {/* Bloques por dispositivo */}
-                  <ScrollCard style={{ marginTop: '.75rem' }}>
-                    <strong>Horarios por dispositivo</strong>
-                    <div
-                      style={{
-                        display: 'grid',
-                        gap: '.5rem',
-                        marginTop: '.5rem',
-                      }}
-                    >
-                      {[...selectedDevices].map((id) => {
-                        const dev = devices.find((x) => idEq(x._id, id));
-                        const blocks = scheduleBlocks[id] || [];
-                        return (
-                          <Card key={id}>
-                            <div
-                              style={{
-                                fontWeight: 600,
-                                marginBottom: '.35rem',
-                              }}
-                            >
-                              {dev?.appliance || dev?.plugmodel || id}
-                            </div>
-                            {!blocks.length && <Small>— sin franjas —</Small>}
+                  <ScrollCard style={{ maxHeight: '40vh' }}>
+                    {[...selectedDevices].map(devId => {
+                      if (target !== 'ALL' && target !== devId) return null;
+                      const d = devices.find(x => idEq(x._id, devId));
+                      const blocks = scheduleBlocks[devId] || [];
+                      return (
+                        <div key={devId} style={{ marginBottom: '1rem', borderBottom: '1px solid #eee', paddingBottom: '.5rem' }}>
+                          <strong>{d?.appliance} ({d?.room})</strong>
+                          {!blocks.length && <div style={{ opacity: .6, fontSize: '.9rem' }}>Sin franjas asignadas.</div>}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '.25rem', marginTop: '.25rem' }}>
                             {blocks.map((b, i) => (
-                              <div
-                                key={`${id}-${i}`}
-                                style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: 8,
-                                  flexWrap: 'wrap',
-                                  marginBottom: 6,
-                                }}
-                              >
-                                <TimePill>
-                                  {b.start}–{b.end}
-                                  {idxOf(b.end) <= idxOf(b.start)
-                                    ? ' (+1)'
-                                    : ''}
-                                </TimePill>
-                                <div
-                                  style={{
-                                    display: 'flex',
-                                    gap: 6,
-                                    flexWrap: 'wrap',
-                                  }}
-                                >
-                                  {(b.days || []).map((dn) => (
-                                    <Tag key={`${id}-${i}-${dn}`}>
-                                      {ES_DAYS[dn]}
-                                    </Tag>
-                                  ))}
+                              <div key={i} style={{ display: 'flex', gap: '.5rem', alignItems: 'center', background: 'rgba(0,0,0,0.05)', padding: '.25rem .5rem', borderRadius: 4 }}>
+                                <span style={{ fontWeight: 600 }}>{b.start} - {b.end}</span>
+                                <div style={{ display: 'flex', gap: 2 }}>
+                                  {b.days.map(day => <span key={day} style={{ fontSize: '.75rem', background: 'rgba(0,0,0,0.1)', padding: '0 .3rem', borderRadius: 4 }}>{ES_DAYS[day]?.slice(0, 3)}</span>)}
                                 </div>
-                                <Btn
-                                  style={{
-                                    borderColor: '#e04848',
-                                    background: '#e04848',
-                                    color: '#fff',
-                                  }}
-                                  onClick={() => removeBlock(id, i)}
-                                >
-                                  Eliminar
-                                </Btn>
+                                <DangerBtn style={{ padding: '.1rem .3rem', fontSize: '.7rem', marginLeft: 'auto' }} onClick={() => removeBlock(devId, i)}>x</DangerBtn>
                               </div>
                             ))}
-                          </Card>
-                        );
-                      })}
-                    </div>
+                          </div>
+                        </div>
+                      )
+                    })}
                   </ScrollCard>
 
                   <StepFooter>
                     <DangerBtn onClick={() => setStep(2)}>Atrás</DangerBtn>
-                    <Btn variant="primary" onClick={() => setStep(4)}>
-                      Siguiente
-                    </Btn>
+                    <Btn variant="primary" onClick={() => setStep(4)}>Siguiente</Btn>
                   </StepFooter>
                 </>
               )}
 
-              {/* PASO 4 */}
               {step === 4 && (
-                <>
-                  <div style={{ marginBottom: '.75rem' }}>
-                    <strong>Resumen</strong>
-                    <div style={{ marginTop: '.5rem' }}>
-                      <div>
-                        <Small>Nombre:</Small>{' '}
-                        {form.name || <em>(sin nombre)</em>}
-                      </div>
-                      <div>
-                        <Small>Paciente:</Small>{' '}
-                        {patients.find((p) => idEq(p._id, form.user_id))
-                          ?.name || form.user_id}
-                      </div>
-                      <div>
-                        <Small>Casa:</Small>{' '}
-                        {selectedHouse?.name || '(ninguna)'}
-                      </div>
-
-                      <div style={{ marginTop: '.75rem' }}>
-                        <Small>Horarios por dispositivo</Small>
-                        <div
-                          style={{
-                            display: 'grid',
-                            gap: '.5rem',
-                            marginTop: '.35rem',
-                          }}
-                        >
-                          {[...selectedDevices].map((id) => {
-                            const dev = devices.find((x) => idEq(x._id, id));
-                            const blocks = scheduleBlocks[id] || [];
-                            return (
-                              <Card key={id}>
-                                <div
-                                  style={{
-                                    fontWeight: 600,
-                                    marginBottom: '.35rem',
-                                  }}
-                                >
-                                  {dev?.appliance || dev?.plugmodel || id}
-                                </div>
-                                {!blocks.length && (
-                                  <Small>— sin franjas —</Small>
-                                )}
-                                {blocks.map((b, i) => (
-                                  <div
-                                    key={`${id}-sum-${i}`}
-                                    style={{
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      gap: 8,
-                                      flexWrap: 'wrap',
-                                      marginBottom: 6,
-                                    }}
-                                  >
-                                    <TimePill>
-                                      {b.start}–{b.end}
-                                      {idxOf(b.end) <= idxOf(b.start)
-                                        ? ' (+1)'
-                                        : ''}
-                                    </TimePill>
-                                    <div
-                                      style={{
-                                        display: 'flex',
-                                        gap: 6,
-                                        flexWrap: 'wrap',
-                                      }}
-                                    >
-                                      {(b.days || []).map((dn) => (
-                                        <Tag key={`${id}-sum-${i}-${dn}`}>
-                                          {ES_DAYS[dn]}
-                                        </Tag>
-                                      ))}
-                                    </div>
-                                  </div>
-                                ))}
-                              </Card>
-                            );
-                          })}
-                        </div>
-                      </div>
+                <div style={{ textAlign: 'center', padding: '2rem 0' }}>
+                  <h3>Resumen de la Rutina</h3>
+                  <Card style={{ maxWidth: 400, margin: '1rem auto', textAlign: 'left' }}>
+                    <p><strong>Nombre:</strong> {form.name || '(Sin nombre)'}</p>
+                    <p><strong>Paciente:</strong> {getPatientName(form.user_id)}</p>
+                    <p><strong>Casa:</strong> {households.find(h => idEq(h._id, form.household_id))?.name || form.household_id}</p>
+                    <div style={{ marginTop: '.5rem', borderTop: '1px solid #eee', paddingTop: '.5rem' }}>
+                      <strong>Dispositivos configurados:</strong> {Object.keys(scheduleBlocks).filter(k => scheduleBlocks[k]?.length).length}
                     </div>
-                  </div>
-
-                  <StepFooter>
+                  </Card>
+                  <StepFooter style={{ justifyContent: 'center' }}>
                     <DangerBtn onClick={() => setStep(3)}>Atrás</DangerBtn>
-                    <div style={{ display: 'flex', gap: '.5rem' }}>
-                      <DangerBtn onClick={() => setOpen(false)}>
-                        Cancelar
-                      </DangerBtn>
-                      <Btn variant="primary" onClick={saveRoutine}>
-                        Guardar
-                      </Btn>
-                    </div>
+                    <Btn variant="primary" onClick={saveRoutine}>Confirmar y Guardar</Btn>
                   </StepFooter>
-                </>
+                </div>
               )}
+
             </ModalContent>
           </ModalBody>
         </Wizard>
@@ -1928,277 +1527,98 @@ export default function Rutinas() {
 
       {/* ---------- MODAL EDITAR ---------- */}
       <Modal isOpen={editOpen} onClose={() => setEditOpen(false)}>
-        <Wizard>
-          <ModalBody>
-            <ModalHeader>
-              <CompactHeader>
-                <div>
-                  <h2>Editar rutina</h2>
-                  <StepSub>Modifica nombre y franjas (occurrences)</StepSub>
-                </div>
-                <StepBadge>Editar</StepBadge>
-                <Progress aria-hidden="true">
-                  <ProgressFill style={{ width: `100%` }} />
-                </Progress>
-              </CompactHeader>
-            </ModalHeader>
+        <h2>Editar rutina</h2>
+        <FormGroup>
+          <label>Nombre</label>
+          <input value={editData.name} onChange={e => setEditData({ ...editData, name: e.target.value })} />
+        </FormGroup>
+        <div style={{ maxHeight: '60vh', overflow: 'auto', paddingRight: 4 }}>
+          {editData.occurrences.map((o, idx) => (
+            <div key={idx} style={{ marginBottom: '1rem' }}>
+              <EditOccurrenceCard
+                idx={idx}
+                o={o}
+                devices={devices}
+                slots48={slots48}
+                idxOf={idxOf}
+                updateOccurrence={updateOccurrence}
+                toggleOccDay={toggleOccDay}
+                toggleOccDevice={toggleOccDevice}
+                removeOccurrence={removeOccurrence}
+              />
+            </div>
+          ))}
+          {!editData.occurrences.length && <p>No hay franjas de tiempo definidas.</p>}
+        </div>
+        <Btn onClick={addOccurrence} style={{ marginTop: '.5rem', width: '100%' }}>+ Añadir franja</Btn>
 
-            <ModalContent>
-              <Card>
-                <FormGroup>
-                  <label>Nombre (opcional)</label>
-                  <input
-                    value={editData.name}
-                    onChange={(e) =>
-                      setEditData((ed) => ({ ...ed, name: e.target.value }))
-                    }
-                    placeholder="p.ej. Comida"
-                  />
-                </FormGroup>
-
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginTop: '.5rem',
-                  }}
-                >
-                  <strong>Franjas (occurrences)</strong>
-                  <Btn variant="primary" onClick={addOccurrence}>
-                    + Añadir franja
-                  </Btn>
-                </div>
-                <Small>
-                  Puedes crear varias franjas con distintos días y dispositivos.
-                </Small>
-              </Card>
-
-              <div
-                style={{ display: 'grid', gap: '.75rem', marginTop: '.75rem' }}
-              >
-                {editData.occurrences.map((o, idx) => (
-                  <EditOccurrenceCard
-                    key={idx}
-                    idx={idx}
-                    o={o}
-                    devices={devices}
-                    slots48={slots48}
-                    idxOf={idxOf}
-                    updateOccurrence={updateOccurrence}
-                    toggleOccDay={toggleOccDay}
-                    toggleOccDevice={toggleOccDevice}
-                    removeOccurrence={removeOccurrence}
-                  />
-                ))}
-              </div>
-            </ModalContent>
-
-            <StepFooter>
-              <DangerBtn onClick={() => setEditOpen(false)}>Cancelar</DangerBtn>
-              <Btn variant="primary" onClick={saveEdit}>
-                Guardar cambios
-              </Btn>
-            </StepFooter>
-          </ModalBody>
-        </Wizard>
+        <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end', gap: '.5rem' }}>
+          <DangerBtn onClick={() => setEditOpen(false)}>Cancelar</DangerBtn>
+          <Btn variant="primary" onClick={saveEdit}>Guardar Cambios</Btn>
+        </div>
       </Modal>
 
-      {/* ---------- MODAL PRESET ---------- */}
+      {/* ---------- MODAL PRESETS ---------- */}
       <Modal isOpen={presetOpen} onClose={() => setPresetOpen(false)}>
-        <h2>Presets de horario</h2>
-
-        <div
-          style={{
-            display: 'flex',
-            gap: '.5rem',
-            alignItems: 'center',
-            marginBottom: '.5rem',
-          }}
-        >
-          <Chip
-            as="button"
-            type="button"
-            $active={presetTab === 'create'}
-            onClick={() => setPresetTab('create')}
-          >
-            Nuevo preset
-          </Chip>
-          <Chip
-            as="button"
-            type="button"
-            $active={presetTab === 'list'}
-            onClick={() => setPresetTab('list')}
-          >
-            Mis presets
-          </Chip>
+        <h2>Gestionar Presets</h2>
+        <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', borderBottom: '1px solid #eee' }}>
+          <Btn variant={presetTab === 'create' ? 'primary' : ''} onClick={() => setPresetTab('create')} style={{ borderRadius: '4px 4px 0 0' }}>Crear nuevo</Btn>
+          <Btn variant={presetTab === 'list' ? 'primary' : ''} onClick={() => setPresetTab('list')} style={{ borderRadius: '4px 4px 0 0' }}>Mis presets</Btn>
         </div>
 
         {presetTab === 'create' && (
-          <Card style={{ marginBottom: '.75rem' }}>
-            <strong>Nuevo preset</strong>
-
-            <FormGroup style={{ marginTop: '.5rem' }}>
-              <label>Nombre</label>
-              <input
-                value={presetForm.name}
-                onChange={(e) =>
-                  setPresetForm((f) => ({ ...f, name: e.target.value }))
-                }
-                placeholder="p.ej. Deporte"
-              />
-            </FormGroup>
-
+          <>
             <FormGroup>
-              <label>Inicio / Fin</label>
-              <div
-                style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}
-              >
-                <select
-                  value={presetForm.start}
-                  onChange={(e) => {
-                    const start = e.target.value;
-                    const ends = endOptionsFor(start);
-                    const valid = ends.some((o) => o.value === presetForm.end);
-                    setPresetForm((f) => ({
-                      ...f,
-                      start,
-                      end: valid ? f.end : ends[0]?.value || f.end,
-                    }));
-                  }}
-                >
-                  {slots48.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
-                    </option>
-                  ))}
-                </select>
+              <label>Nombre del preset</label>
+              <input value={presetForm.name} onChange={e => setPresetForm(f => ({ ...f, name: e.target.value }))} placeholder="p.ej. Tarde estándar" />
+            </FormGroup>
+            <FormGroup>
+              <label>Horario por defecto</label>
+              <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}>
+                <select value={presetForm.start} onChange={e => setPresetForm(f => ({ ...f, start: e.target.value }))}>{slots48.map(t => <option key={t} value={t}>{t}</option>)}</select>
                 <span>—</span>
-                <select
-                  value={presetForm.end}
-                  onChange={(e) =>
-                    setPresetForm((f) => ({ ...f, end: e.target.value }))
-                  }
-                >
-                  {endOptionsFor(presetForm.start).map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
+                <select value={presetForm.end} onChange={e => setPresetForm(f => ({ ...f, end: e.target.value }))}>{endOptionsFor(presetForm.start).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}</select>
               </div>
-              <Small>
-                El fin debe ser ≥ +30 min y ≤ el mismo horario del día
-                siguiente.
-              </Small>
             </FormGroup>
-
             <FormGroup>
-              <label>Días</label>
-              <div
-                style={{
-                  display: 'flex',
-                  flexWrap: 'wrap',
-                  gap: '.35rem',
-                  marginTop: '.25rem',
-                }}
-              >
-                {DAY_NAMES.map((d, idx) => (
-                  <DayBtn
-                    key={d}
-                    type="button"
-                    active={presetForm.days.includes(d)}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      togglePresetDay(d);
-                    }}
-                  >
-                    {DAY_SHORT[idx]}
-                  </DayBtn>
-                ))}
+              <label>Días por defecto</label>
+              <div style={{ display: 'flex', gap: '.25rem' }}>
+                {DAY_SHORT.map((d, i) => {
+                  const full = DAY_NAMES[i];
+                  return <Chip key={full} $active={presetForm.days.includes(full)} onClick={() => togglePresetDay(full)}>{d}</Chip>
+                })}
               </div>
             </FormGroup>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <Btn variant="primary" onClick={addPreset}>
-                Guardar preset
-              </Btn>
-            </div>
-          </Card>
+            <Btn variant="primary" onClick={addPreset} style={{ width: '100%', marginTop: '1rem' }}>Guardar Preset</Btn>
+          </>
         )}
 
         {presetTab === 'list' && (
-          <Card>
-            <strong>Mis presets</strong>
-            <div style={{ marginTop: '.5rem' }}>
-              {presets.length === 0 && (
-                <Muted>Aún no has creado presets.</Muted>
-              )}
-              {presets.map((p) => (
-                <div
-                  key={p.id}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '.35rem .5rem',
-                    border: '1px solid var(--border)',
-                    borderRadius: 6,
-                    marginBottom: '.35rem',
-                  }}
-                >
-                  <div>
-                    <strong>{p.name}</strong>{' '}
-                    <Small>
-                      ({p.start}–{p.end},{' '}
-                      {p.days.map((d) => ES_DAYS[d]).join(', ')})
-                    </Small>
-                  </div>
-                  <Btn
-                    style={{
-                      borderColor: '#e04848',
-                      background: '#e04848',
-                      color: '#fff',
-                    }}
-                    onClick={() => deletePreset(p.id)}
-                  >
-                    Borrar
-                  </Btn>
+          <ul style={{ listStyle: 'none', padding: 0 }}>
+            {presets.map(p => (
+              <li key={p.id} style={{ border: '1px solid #eee', padding: '.5rem', borderRadius: 6, marginBottom: '.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <strong>{p.name}</strong>
+                  <div style={{ fontSize: '.85rem', opacity: .8 }}>{p.start}-{p.end}, {p.days.length} días</div>
                 </div>
-              ))}
-            </div>
-          </Card>
+                <DangerBtn style={{ fontSize: '.8rem', padding: '.2rem .5rem' }} onClick={() => deletePreset(p.id)}>Borrar</DangerBtn>
+              </li>
+            ))}
+            {!presets.length && <p>No tienes presets guardados.</p>}
+          </ul>
         )}
+        <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end' }}>
+          <Btn onClick={() => setPresetOpen(false)}>Cerrar</Btn>
+        </div>
       </Modal>
 
-      {/* ---------- MODAL BORRAR ---------- */}
+      {/* ---------- MODAL DELETE ---------- */}
       <Modal isOpen={deleteOpen} onClose={() => setDeleteOpen(false)}>
-        <h2>Eliminar rutina</h2>
-        <p>
-          ¿Seguro que quieres borrar esta rutina? Esta acción no se puede
-          deshacer.
-        </p>
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'flex-end',
-            gap: '.5rem',
-            marginTop: '.75rem',
-          }}
-        >
-          <Btn variant="primary" onClick={() => setDeleteOpen(false)}>
-            Cancelar
-          </Btn>
-          <Btn
-            style={{
-              borderColor: '#e04848',
-              background: '#e04848',
-              color: '#fff',
-            }}
-            onClick={confirmDelete}
-          >
-            Borrar
-          </Btn>
+        <h2>¿Borrar rutina?</h2>
+        <p>Esta acción no se puede deshacer.</p>
+        <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end', gap: '.5rem' }}>
+          <Btn onClick={() => setDeleteOpen(false)}>Cancelar</Btn>
+          <DangerBtn onClick={confirmDelete}>Sí, Borrar</DangerBtn>
         </div>
       </Modal>
     </AppContainer>
