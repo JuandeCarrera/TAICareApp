@@ -5,6 +5,7 @@ import Header from '../components/Header.jsx';
 import Sidebar from '../components/Sidebar.jsx';
 import Footer from '../components/Footer.jsx';
 import { AuthContext } from '../contexts/AuthContext.jsx';
+import { useIsMobile } from '../hooks/useIsMobile';
 import { RulesAPI } from '../services/alertsApi.js';
 
 const App = styled.div`
@@ -44,14 +45,14 @@ const Btn = styled.button`
   cursor: pointer;
   border: 1px solid
     ${({ theme, variant }) =>
-      variant === 'primary' ? theme.colors.primary : theme.colors.border};
+    variant === 'primary' ? theme.colors.primary : theme.colors.border};
   background: ${({ theme, variant }) =>
     variant === 'primary' ? theme.colors.primary : theme.colors.cardBg};
   color: ${({ theme, variant }) =>
     variant === 'primary' ? '#fff' : theme.colors.text};
   &:hover {
     background: ${({ theme, variant }) =>
-      variant === 'primary' ? theme.colors.primaryDark : theme.colors.hoverBg};
+    variant === 'primary' ? theme.colors.primaryDark : theme.colors.hoverBg};
   }
 `;
 const Input = styled.input`
@@ -65,7 +66,11 @@ const Input = styled.input`
 export default function ReglasAlertas() {
   const { logout } = useContext(AuthContext);
   const navigate = useNavigate();
-  const [menuOpen, setMenuOpen] = useState(window.innerWidth >= 768);
+  const isMobile = useIsMobile();
+  const [menuOpen, setMenuOpen] = useState(!isMobile);
+  useEffect(() => {
+    setMenuOpen(!isMobile);
+  }, [isMobile]);
 
   const [rules, setRules] = useState([]);
   const [form, setForm] = useState({
@@ -119,7 +124,7 @@ export default function ReglasAlertas() {
         }}
       />
       <Body>
-        <Sidebar open={menuOpen} />
+        <Sidebar open={menuOpen} onClose={() => setMenuOpen(false)} />
         <Main>
           <h1>Reglas de alertas</h1>
 

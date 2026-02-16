@@ -17,7 +17,9 @@ const Dialog = styled.div`
   padding: 2rem;
   border-radius: 8px;
   width: 90%;
-  max-width: 400px;
+  max-width: ${({ maxWidth }) => maxWidth || '400px'};
+  max-height: 90vh;
+  overflow-y: auto;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   display: flex;
   flex-direction: column;
@@ -57,11 +59,11 @@ export const FormGroup = styled.div`
   }
 `;
 
-export default function Modal({ isOpen, onClose, children }) {
+export default function Modal({ isOpen, onClose, children, maxWidth }) {
   if (!isOpen) return null;
   return (
     <Overlay onClick={onClose}>
-      <Dialog onClick={(e) => e.stopPropagation()}>
+      <Dialog onClick={(e) => e.stopPropagation()} maxWidth={maxWidth}>
         <Close onClick={onClose}>&times;</Close>
         {children}
       </Dialog>

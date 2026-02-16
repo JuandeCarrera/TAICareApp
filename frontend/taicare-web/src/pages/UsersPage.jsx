@@ -12,10 +12,16 @@ import {
   useUpdateUser,
   useDeleteUser,
 } from '../hooks/useUsers';
-import { useHouseholds, useCreateHousehold, useUpdateHousehold, useAddRoom } from '../hooks/useHouseholds';
+import {
+  useHouseholds,
+  useCreateHousehold,
+  useUpdateHousehold,
+  useAddRoom,
+} from '../hooks/useHouseholds';
 import { useDevices } from '../hooks/useDevices';
 import { useRoutines } from '../hooks/useRoutines';
 import { useAlerts } from '../hooks/useAlerts';
+import { useIsMobile } from '../hooks/useIsMobile';
 import api from '../api/axios';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3000';
@@ -155,14 +161,14 @@ const Btn = styled.button`
     variant === 'primary' ? '#fff' : theme.colors.text};
   border: 1px solid
     ${({ theme, variant }) =>
-    variant === 'primary' ? theme.colors.primary : theme.colors.border};
+      variant === 'primary' ? theme.colors.primary : theme.colors.border};
   padding: 0.4rem 0.8rem;
   border-radius: 6px;
   cursor: pointer;
   font-size: 0.9rem;
   &:hover {
     background: ${({ theme, variant }) =>
-    variant === 'primary' ? theme.colors.primaryDark : theme.colors.hoverBg};
+      variant === 'primary' ? theme.colors.primaryDark : theme.colors.hoverBg};
   }
 `;
 const DangerBtn = styled(Btn)`
@@ -182,7 +188,11 @@ export default function UsersPage() {
   const caregiverId = user?.role === 'cuidador' ? user._id : null;
 
   // React Query Hooks
-  const { data: users = [] } = useUsers(caregiverId ? { caregiver_id: caregiverId, role: 'paciente' } : { role: 'paciente' });
+  const { data: users = [] } = useUsers(
+    caregiverId
+      ? { caregiver_id: caregiverId, role: 'paciente' }
+      : { role: 'paciente' }
+  );
   const { data: households = [] } = useHouseholds();
   const { data: allDevices = [] } = useDevices();
 
@@ -216,8 +226,12 @@ export default function UsersPage() {
     [patients, selectedId]
   );
 
-  const { data: patientRoutines = [] } = useRoutines(selectedId ? { userId: selectedId } : { userId: 'SKIP' });
-  const { data: patientAlerts = [] } = useAlerts(selectedId ? { userId: selectedId } : { userId: 'SKIP' });
+  const { data: patientRoutines = [] } = useRoutines(
+    selectedId ? { userId: selectedId } : { userId: 'SKIP' }
+  );
+  const { data: patientAlerts = [] } = useAlerts(
+    selectedId ? { userId: selectedId } : { userId: 'SKIP' }
+  );
 
   // Unread counts logic (simplified, without hooks for N+1 perf)
   const [unread, setUnread] = useState({});
@@ -233,34 +247,45 @@ export default function UsersPage() {
         try {
           const { data } = await api.get(`/alerts?user_id=${p._id}&unread=1`);
           const arr = Array.isArray(data) ? data : [];
-          const valid = arr.filter(a => String(a.user_id) === String(p._id) || (a.user_id && a.user_id._id === p._id));
+          const valid = arr.filter(
+            (a) =>
+              String(a.user_id) === String(p._id) ||
+              (a.user_id && a.user_id._id === p._id)
+          );
           counts[p._id] = valid.length;
         } catch {
           counts[p._id] = 0;
         }
       }
-      setUnread(prev => ({ ...prev, ...counts }));
-    }
+      setUnread((prev) => ({ ...prev, ...counts }));
+    };
 
     loadUnreads();
   }, [patients]); // Runs when patients list changes
 
   const selectedHouses = useMemo(() => {
     if (!selectedPatient) return [];
-    return households.filter(h =>
-      (h.owner === selectedPatient._id) ||
-      (h.owner && h.owner._id === selectedPatient._id) ||
-      (Array.isArray(h.members) && h.members.some(m => (m._id || m) === selectedPatient._id)) ||
-      (Array.isArray(h.users) && h.users.some(u => (u._id || u) === selectedPatient._id))
+    return households.filter(
+      (h) =>
+        h.owner === selectedPatient._id ||
+        (h.owner && h.owner._id === selectedPatient._id) ||
+        (Array.isArray(h.members) &&
+          h.members.some((m) => (m._id || m) === selectedPatient._id)) ||
+        (Array.isArray(h.users) &&
+          h.users.some((u) => (u._id || u) === selectedPatient._id)) ||
+        (selectedPatient.household_id &&
+          (selectedPatient.household_id === h._id ||
+            selectedPatient.household_id._id === h._id))
     );
   }, [selectedPatient, households]);
 
   const selectedDevices = useMemo(() => {
     if (!selectedHouses.length) return [];
-    const houseIds = selectedHouses.map(h => h._id);
-    return allDevices.filter(d =>
-      houseIds.includes(d.household_id) ||
-      (d.household_id && houseIds.includes(d.household_id._id))
+    const houseIds = selectedHouses.map((h) => h._id);
+    return allDevices.filter(
+      (d) =>
+        houseIds.includes(d.household_id) ||
+        (d.household_id && houseIds.includes(d.household_id._id))
     );
   }, [selectedHouses, allDevices]);
 
@@ -295,7 +320,6 @@ export default function UsersPage() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmData, setConfirmData] = useState({ id: null, name: '' });
 
-
   /* --- Handlers --- */
   const handleLogout = () => {
     logout();
@@ -322,18 +346,26 @@ export default function UsersPage() {
       name: p.name || '',
       email: p.email || '',
       role: p.role || 'paciente',
-      household_id: (p.household_id && (p.household_id._id || p.household_id)) || '',
+      household_id:
+        (p.household_id && (p.household_id._id || p.household_id)) || '',
       history: p.history || '',
-      caregiver_id: (p.caregiver_id && (p.caregiver_id._id || p.caregiver_id)) || caregiverId || '',
+      caregiver_id:
+        (p.caregiver_id && (p.caregiver_id._id || p.caregiver_id)) ||
+        caregiverId ||
+        '',
     });
-    const hName = households.find(h => h._id === ((p.household_id && (p.household_id._id || p.household_id))))?.name || '';
+    const hName =
+      households.find(
+        (h) =>
+          h._id === (p.household_id && (p.household_id._id || p.household_id))
+      )?.name || '';
     setHhQuery(hName);
     setShowEditModal(true);
   };
 
   const openEditHistory = (p) => {
     setEditId(p._id);
-    setForm(prev => ({ ...prev, history: p.history || '' }));
+    setForm((prev) => ({ ...prev, history: p.history || '' }));
     setShowHistoryModal(true);
   };
 
@@ -367,12 +399,15 @@ export default function UsersPage() {
   const saveHistoryOnly = async () => {
     try {
       if (!editId) return;
-      await updateUserMutation.mutateAsync({ id: editId, history: form.history });
+      await updateUserMutation.mutateAsync({
+        id: editId,
+        history: form.history,
+      });
       setShowHistoryModal(false);
     } catch (e) {
       alert(e.message || 'Error al guardar');
     }
-  }
+  };
 
   const handleDeleteUser = async () => {
     try {
@@ -383,7 +418,7 @@ export default function UsersPage() {
     } catch (e) {
       alert(e.message || 'Error al borrar');
     }
-  }
+  };
 
   async function addNewHousehold(name) {
     if (!name?.trim()) return;
@@ -424,17 +459,17 @@ export default function UsersPage() {
         await updateHouseholdMutation.mutateAsync({
           id: hid,
           name: houseForm.name,
-          address: houseForm.address
+          address: houseForm.address,
         });
       } else if (houseMode === 'room') {
         await addRoomMutation.mutateAsync({
           id: hid,
-          room: houseForm.roomName
+          room: houseForm.roomName,
         });
       }
       // Device creation is handled separately via useDevices? Or implicit?
-      // The old code handled it weirdly. We will skip device creation inside HouseModal for now 
-      // or assume it used a separate call. 
+      // The old code handled it weirdly. We will skip device creation inside HouseModal for now
+      // or assume it used a separate call.
       // If we want to support device creation here, we need useCreateDevice.
 
       setHouseMode('view');
@@ -443,139 +478,332 @@ export default function UsersPage() {
     }
   }
 
+  const isMobile = useIsMobile();
 
   return (
     <AppContainer>
-      <Header onToggleMenu={() => setMenuOpen((o) => !o)} onLogout={handleLogout} />
+      <Header
+        onToggleMenu={() => setMenuOpen((o) => !o)}
+        onLogout={handleLogout}
+      />
       <Body>
-        <Sidebar open={menuOpen} />
+        <Sidebar open={menuOpen} onClose={() => setMenuOpen(false)} />
         <Main>
           {/* COLUMNA IZQ: LISTA */}
-          <PanelList>
-            <ListHeader>
-              <h3>Pacientes</h3>
-              <Btn variant="primary" onClick={openNew}>+ Nuevo</Btn>
-            </ListHeader>
-            <div style={{ padding: '0.5rem 1rem' }}>
-              <SearchInput
-                placeholder="Buscar paciente..."
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-              />
-            </div>
-            <PatientList>
-              {patients.map((p) => {
-                const isSel = p._id === selectedId;
-                const ur = unread[p._id] || 0;
-                return (
-                  <PatientItem
-                    key={p._id}
-                    selected={isSel}
-                    onClick={() => setSelectedId(p._id)}
+          {(!isMobile || !selectedId) && (
+            <PanelList style={{ width: isMobile ? '100%' : '380px' }}>
+              <ListHeader>
+                <h3>Pacientes</h3>
+                <Btn variant="primary" onClick={openNew}>
+                  + Nuevo
+                </Btn>
+              </ListHeader>
+              <div style={{ padding: '0.5rem 1rem' }}>
+                <SearchInput
+                  placeholder="Buscar paciente..."
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                />
+              </div>
+              <PatientList>
+                {patients.map((p) => {
+                  const isSel = p._id === selectedId;
+                  const ur = unread[p._id] || 0;
+                  return (
+                    <PatientItem
+                      key={p._id}
+                      selected={isSel}
+                      onClick={() => setSelectedId(p._id)}
+                    >
+                      <Avatar>
+                        {p.name ? p.name.substring(0, 1).toUpperCase() : 'U'}
+                      </Avatar>
+                      <Info>
+                        <Name>{p.name}</Name>
+                        <Sub>{p.email}</Sub>
+                      </Info>
+                      {ur > 0 && <Badge>{ur}</Badge>}
+                    </PatientItem>
+                  );
+                })}
+                {!patients.length && (
+                  <div
+                    style={{
+                      padding: '2rem',
+                      textAlign: 'center',
+                      opacity: 0.6,
+                    }}
                   >
-                    <Avatar>{p.name ? p.name.substring(0, 1).toUpperCase() : 'U'}</Avatar>
-                    <Info>
-                      <Name>{p.name}</Name>
-                      <Sub>{p.email}</Sub>
-                    </Info>
-                    {ur > 0 && <Badge>{ur}</Badge>}
-                  </PatientItem>
-                );
-              })}
-              {!patients.length && (
-                <div style={{ padding: '2rem', textAlign: 'center', opacity: 0.6 }}>
-                  No hay pacientes.
-                </div>
-              )}
-            </PatientList>
-          </PanelList>
+                    No hay pacientes.
+                  </div>
+                )}
+              </PatientList>
+            </PanelList>
+          )}
 
           {/* COLUMNA DER: DETALLE */}
-          <PanelDetail>
-            {!selectedPatient ? (
-              <div style={{ opacity: 0.5, marginTop: '4rem', textAlign: 'center' }}>
-                <h2>Selecciona un paciente</h2>
-              </div>
-            ) : (
-              <>
-                <DetailHeader>
-                  <div>
-                    <h1 style={{ marginBottom: '0.25rem' }}>{selectedPatient.name}</h1>
-                    <div style={{ opacity: 0.8 }}>{selectedPatient.email}</div>
-                    {selectedHouses.length > 0 ? (
-                      <div style={{ marginTop: '0.5rem', display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
-                        {selectedHouses.map(h => (
-                          <span
-                            key={h._id}
-                            style={{ fontSize: '0.9rem', color: '#6d28d9', fontWeight: 600, cursor: 'pointer', background: '#f3e8ff', padding: '2px 8px', borderRadius: 4 }}
-                            onClick={() => openHouseModal(h)}
-                          >
-                            🏠 {h.name}
-                          </span>
-                        ))}
+          {(!isMobile || selectedId) && (
+            <PanelDetail>
+              {isMobile && selectedId && (
+                <div style={{ marginBottom: '1rem' }}>
+                  <Btn onClick={() => setSelectedId(null)}>
+                    ← Volver a la lista
+                  </Btn>
+                </div>
+              )}
+              {!selectedPatient ? (
+                <div
+                  style={{
+                    opacity: 0.5,
+                    marginTop: '4rem',
+                    textAlign: 'center',
+                  }}
+                >
+                  <h2>Selecciona un paciente</h2>
+                </div>
+              ) : (
+                <>
+                  <DetailHeader>
+                    <div style={{ width: '100%' }}>
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'flex-start',
+                        }}
+                      >
+                        <div>
+                          <h1 style={{ marginBottom: '0.25rem' }}>
+                            {selectedPatient.name}
+                          </h1>
+                          <div style={{ opacity: 0.8 }}>
+                            {selectedPatient.email}
+                          </div>
+                        </div>
+                        {!isMobile && (
+                          <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <Btn
+                              variant="primary"
+                              onClick={() => openEditHistory(selectedPatient)}
+                            >
+                              Historia
+                            </Btn>
+                            <Btn
+                              variant="primary"
+                              onClick={() => openEditPatient(selectedPatient)}
+                            >
+                              Editar
+                            </Btn>
+                            <DangerBtn
+                              onClick={() => {
+                                setConfirmData({
+                                  id: selectedPatient._id,
+                                  name: selectedPatient.name,
+                                });
+                                setConfirmOpen(true);
+                              }}
+                            >
+                              Borrar
+                            </DangerBtn>
+                          </div>
+                        )}
                       </div>
-                    ) : (
-                      <div style={{ marginTop: '0.5rem', fontSize: '0.85rem', opacity: 0.6 }}>Sin hogar asignado</div>
+
+                      {isMobile && (
+                        <div
+                          style={{
+                            display: 'flex',
+                            gap: '0.5rem',
+                            marginTop: '1rem',
+                            flexWrap: 'wrap',
+                          }}
+                        >
+                          <Btn
+                            variant="primary"
+                            onClick={() => openEditHistory(selectedPatient)}
+                          >
+                            Historia
+                          </Btn>
+                          <Btn
+                            variant="primary"
+                            onClick={() => openEditPatient(selectedPatient)}
+                          >
+                            Editar
+                          </Btn>
+                          <DangerBtn
+                            onClick={() => {
+                              setConfirmData({
+                                id: selectedPatient._id,
+                                name: selectedPatient.name,
+                              });
+                              setConfirmOpen(true);
+                            }}
+                          >
+                            Borrar
+                          </DangerBtn>
+                        </div>
+                      )}
+
+                      {selectedHouses.length > 0 ? (
+                        <div
+                          style={{
+                            marginTop: '0.5rem',
+                            display: 'flex',
+                            gap: '.5rem',
+                            flexWrap: 'wrap',
+                          }}
+                        >
+                          {selectedHouses.map((h) => (
+                            <span
+                              key={h._id}
+                              style={{
+                                fontSize: '0.9rem',
+                                color: '#6d28d9',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                background: '#f3e8ff',
+                                padding: '2px 8px',
+                                borderRadius: 4,
+                              }}
+                              onClick={() => openHouseModal(h)}
+                            >
+                              🏠 {h.name}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <div
+                          style={{
+                            marginTop: '0.5rem',
+                            fontSize: '0.85rem',
+                            opacity: 0.6,
+                          }}
+                        >
+                          Sin hogar asignado
+                        </div>
+                      )}
+                    </div>
+                  </DetailHeader>
+
+                  <SectionTitle>Datos médicos / Historia</SectionTitle>
+                  <Card style={{ minHeight: 80, whiteSpace: 'pre-wrap' }}>
+                    {selectedPatient.history || (
+                      <span style={{ opacity: 0.5 }}>
+                        Sin historia clínica registrada.
+                      </span>
                     )}
-                  </div>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <Btn onClick={() => openEditHistory(selectedPatient)}>Historia Clínica</Btn>
-                    <Btn variant="primary" onClick={() => openEditPatient(selectedPatient)}>Editar datos</Btn>
-                    <DangerBtn onClick={() => { setConfirmData({ id: selectedPatient._id, name: selectedPatient.name }); setConfirmOpen(true); }}>Borrar</DangerBtn>
-                  </div>
-                </DetailHeader>
-
-                <SectionTitle>Datos médicos / Historia</SectionTitle>
-                <Card style={{ minHeight: 80, whiteSpace: 'pre-wrap' }}>
-                  {selectedPatient.history || <span style={{ opacity: 0.5 }}>Sin historia clínica registrada.</span>}
-                </Card>
-
-                <SectionTitle>Estado General (Rutinas y Alertas)</SectionTitle>
-                <CardGrid>
-                  {/* Rutinas */}
-                  <Card>
-                    <h4>Rutinas ({patientRoutines.filter(r => (r.user_id?._id || r.user_id) === selectedPatient._id).length})</h4>
-                    <ul style={{ paddingLeft: '1.25rem', marginTop: '0.5rem' }}>
-                      {patientRoutines
-                        .filter(r => (r.user_id?._id || r.user_id) === selectedPatient._id)
-                        .slice(0, 5).map((r) => (
-                          <li key={r._id} style={{ marginBottom: 4 }}>
-                            {r.name || 'Rutina sin nombre'}
-                          </li>
-                        ))}
-                    </ul>
-                    {!patientRoutines.filter(r => (r.user_id?._id || r.user_id) === selectedPatient._id).length && <div style={{ fontSize: '0.9rem', opacity: 0.7 }}>Sin rutinas</div>}
                   </Card>
-                  {/* Alertas */}
-                  <Card>
-                    <h4>Alertas recientes ({patientAlerts.filter(a => (a.user_id?._id || a.user_id) === selectedPatient._id).length})</h4>
-                    <ul style={{ paddingLeft: '1.25rem', marginTop: '0.5rem' }}>
-                      {patientAlerts
-                        .filter(a => (a.user_id?._id || a.user_id) === selectedPatient._id)
-                        .slice(0, 5).map((a) => (
-                          <li key={a._id} style={{ marginBottom: 4, color: a.priority === 'high' ? 'red' : 'inherit' }}>
-                            {a.message}
-                          </li>
-                        ))}
-                    </ul>
-                    {!patientAlerts.filter(a => (a.user_id?._id || a.user_id) === selectedPatient._id).length && <div style={{ fontSize: '0.9rem', opacity: 0.7 }}>Sin alertas</div>}
-                  </Card>
-                </CardGrid>
 
-                <SectionTitle>Dispositivos en su(s) hogar(es)</SectionTitle>
-                <CardGrid>
-                  {selectedDevices.map(d => (
-                    <Card key={d._id}>
-                      <strong>{d.plugmodel}</strong>
-                      <div style={{ fontSize: '.9rem' }}>{d.appliance}</div>
-                      <div style={{ fontSize: '.8rem', opacity: .7 }}>{d.room}</div>
+                  <SectionTitle>
+                    Estado General (Rutinas y Alertas)
+                  </SectionTitle>
+                  <CardGrid>
+                    {/* Rutinas */}
+                    <Card>
+                      <h4>
+                        Rutinas (
+                        {
+                          patientRoutines.filter(
+                            (r) =>
+                              (r.user_id?._id || r.user_id) ===
+                              selectedPatient._id
+                          ).length
+                        }
+                        )
+                      </h4>
+                      <ul
+                        style={{ paddingLeft: '1.25rem', marginTop: '0.5rem' }}
+                      >
+                        {patientRoutines
+                          .filter(
+                            (r) =>
+                              (r.user_id?._id || r.user_id) ===
+                              selectedPatient._id
+                          )
+                          .slice(0, 5)
+                          .map((r) => (
+                            <li key={r._id} style={{ marginBottom: 4 }}>
+                              {r.name || 'Rutina sin nombre'}
+                            </li>
+                          ))}
+                      </ul>
+                      {!patientRoutines.filter(
+                        (r) =>
+                          (r.user_id?._id || r.user_id) === selectedPatient._id
+                      ).length && (
+                        <div style={{ fontSize: '0.9rem', opacity: 0.7 }}>
+                          Sin rutinas
+                        </div>
+                      )}
                     </Card>
-                  ))}
-                  {!selectedDevices.length && <div style={{ opacity: 0.7 }}>No hay dispositivos asignados a su hogar.</div>}
-                </CardGrid>
-              </>
-            )}
-          </PanelDetail>
+                    {/* Alertas */}
+                    <Card>
+                      <h4>
+                        Alertas recientes (
+                        {
+                          patientAlerts.filter(
+                            (a) =>
+                              (a.user_id?._id || a.user_id) ===
+                              selectedPatient._id
+                          ).length
+                        }
+                        )
+                      </h4>
+                      <ul
+                        style={{ paddingLeft: '1.25rem', marginTop: '0.5rem' }}
+                      >
+                        {patientAlerts
+                          .filter(
+                            (a) =>
+                              (a.user_id?._id || a.user_id) ===
+                              selectedPatient._id
+                          )
+                          .slice(0, 5)
+                          .map((a) => (
+                            <li
+                              key={a._id}
+                              style={{
+                                marginBottom: 4,
+                                color:
+                                  a.priority === 'high' ? 'red' : 'inherit',
+                              }}
+                            >
+                              {a.message}
+                            </li>
+                          ))}
+                      </ul>
+                      {!patientAlerts.filter(
+                        (a) =>
+                          (a.user_id?._id || a.user_id) === selectedPatient._id
+                      ).length && (
+                        <div style={{ fontSize: '0.9rem', opacity: 0.7 }}>
+                          Sin alertas
+                        </div>
+                      )}
+                    </Card>
+                  </CardGrid>
+
+                  <SectionTitle>Dispositivos en su(s) hogar(es)</SectionTitle>
+                  <CardGrid>
+                    {selectedDevices.map((d) => (
+                      <Card key={d._id}>
+                        <strong>{d.plugmodel}</strong>
+                        <div style={{ fontSize: '.9rem' }}>{d.appliance}</div>
+                        <div style={{ fontSize: '.8rem', opacity: 0.7 }}>
+                          {d.room}
+                        </div>
+                      </Card>
+                    ))}
+                    {!selectedDevices.length && (
+                      <div style={{ opacity: 0.7 }}>
+                        No hay dispositivos asignados a su hogar.
+                      </div>
+                    )}
+                  </CardGrid>
+                </>
+              )}
+            </PanelDetail>
+          )}
         </Main>
       </Body>
       <Footer />
@@ -594,7 +822,12 @@ export default function UsersPage() {
         {!editId && (
           <FormGroup>
             <label>Historia inicial (opcional)</label>
-            <textarea name="history" value={form.history} onChange={onChange} rows={3} />
+            <textarea
+              name="history"
+              value={form.history}
+              onChange={onChange}
+              rows={3}
+            />
           </FormGroup>
         )}
         <FormGroup>
@@ -607,18 +840,44 @@ export default function UsersPage() {
               style={{ flex: 1, cursor: 'pointer' }}
               onClick={() => setHhOpen(!hhOpen)}
             />
-            {form.household_id && <Btn onClick={() => { setForm(f => ({ ...f, household_id: '' })); setHhQuery(''); }}>X</Btn>}
+            {form.household_id && (
+              <DangerBtn
+                onClick={() => {
+                  setForm((f) => ({ ...f, household_id: '' }));
+                  setHhQuery('');
+                }}
+              >
+                X
+              </DangerBtn>
+            )}
           </div>
           {hhOpen && (
-            <div style={{ border: '1px solid #ccc', marginTop: 4, padding: 8, borderRadius: 4 }}>
-              <div style={{ marginBottom: 8, fontWeight: 'bold', fontSize: '.9rem' }}>Seleccionar existente:</div>
-              <div style={{ maxHeight: 150, overflow: 'auto', marginBottom: 8 }}>
-                {households.map(h => (
+            <div
+              style={{
+                border: '1px solid #ccc',
+                marginTop: 4,
+                padding: 8,
+                borderRadius: 4,
+              }}
+            >
+              <div
+                style={{
+                  marginBottom: 8,
+                  fontWeight: 'bold',
+                  fontSize: '.9rem',
+                }}
+              >
+                Seleccionar existente:
+              </div>
+              <div
+                style={{ maxHeight: 150, overflow: 'auto', marginBottom: 8 }}
+              >
+                {households.map((h) => (
                   <div
                     key={h._id}
                     style={{ padding: 4, cursor: 'pointer' }}
                     onClick={() => {
-                      setForm(f => ({ ...f, household_id: h._id }));
+                      setForm((f) => ({ ...f, household_id: h._id }));
                       setHhQuery(h.name);
                       setHhOpen(false);
                     }}
@@ -628,13 +887,20 @@ export default function UsersPage() {
                 ))}
               </div>
               <div style={{ borderTop: '1px solid #eee', paddingTop: 8 }}>
-                <div style={{ fontSize: '.9rem', marginBottom: 4 }}>O crear nuevo:</div>
+                <div style={{ fontSize: '.9rem', marginBottom: 4 }}>
+                  O crear nuevo:
+                </div>
                 <div style={{ display: 'flex', gap: 4 }}>
                   <input id="newHhName" placeholder="Nombre casa" />
-                  <Btn variant="primary" onClick={() => {
-                    const val = document.getElementById('newHhName').value;
-                    addNewHousehold(val);
-                  }}>Crear</Btn>
+                  <Btn
+                    variant="primary"
+                    onClick={() => {
+                      const val = document.getElementById('newHhName').value;
+                      addNewHousehold(val);
+                    }}
+                  >
+                    Crear
+                  </Btn>
                 </div>
               </div>
             </div>
@@ -642,12 +908,17 @@ export default function UsersPage() {
         </FormGroup>
 
         <div style={{ textAlign: 'right', marginTop: '1rem' }}>
-          <Btn variant="primary" onClick={savePatient}>Guardar</Btn>
+          <Btn variant="primary" onClick={savePatient}>
+            Guardar
+          </Btn>
         </div>
       </Modal>
 
       {/* --- MODAL HISTORIA --- */}
-      <Modal isOpen={showHistoryModal} onClose={() => setShowHistoryModal(false)}>
+      <Modal
+        isOpen={showHistoryModal}
+        onClose={() => setShowHistoryModal(false)}
+      >
         <h2>Historia Clínica</h2>
         <textarea
           style={{ width: '100%', height: '300px', padding: '0.5rem' }}
@@ -655,15 +926,27 @@ export default function UsersPage() {
           onChange={(e) => setForm({ ...form, history: e.target.value })}
         />
         <div style={{ textAlign: 'right', marginTop: '1rem' }}>
-          <Btn variant="primary" onClick={saveHistoryOnly}>Guardar Cambios</Btn>
+          <Btn variant="primary" onClick={saveHistoryOnly}>
+            Guardar Cambios
+          </Btn>
         </div>
       </Modal>
 
       {/* --- MODAL CONFIRM DELETE --- */}
       <Modal isOpen={confirmOpen} onClose={() => setConfirmOpen(false)}>
         <h2>¿Borrar paciente?</h2>
-        <p>Se eliminará a <strong>{confirmData.name}</strong>.</p>
-        <div style={{ textAlign: 'right', marginTop: '1rem', display: 'flex', gap: '.5rem', justifyContent: 'flex-end' }}>
+        <p>
+          Se eliminará a <strong>{confirmData.name}</strong>.
+        </p>
+        <div
+          style={{
+            textAlign: 'right',
+            marginTop: '1rem',
+            display: 'flex',
+            gap: '.5rem',
+            justifyContent: 'flex-end',
+          }}
+        >
           <Btn onClick={() => setConfirmOpen(false)}>Cancelar</Btn>
           <DangerBtn onClick={handleDeleteUser}>Confirmar</DangerBtn>
         </div>
@@ -674,8 +957,12 @@ export default function UsersPage() {
         {houseMode === 'view' && (
           <>
             <h2>Detalle Hogar</h2>
-            <p><strong>Nombre:</strong> {houseForm.name}</p>
-            <p><strong>Dirección:</strong> {houseForm.address}</p>
+            <p>
+              <strong>Nombre:</strong> {houseForm.name}
+            </p>
+            <p>
+              <strong>Dirección:</strong> {houseForm.address}
+            </p>
             <div style={{ marginTop: '1.5rem', display: 'flex', gap: '.5rem' }}>
               <Btn onClick={() => setHouseMode('editHouse')}>Editar Datos</Btn>
               <Btn onClick={() => setHouseMode('room')}>+ Añadir Sala</Btn>
@@ -687,14 +974,26 @@ export default function UsersPage() {
             <h2>Editar Hogar</h2>
             <FormGroup>
               <label>Nombre</label>
-              <input value={houseForm.name} onChange={e => setHouseForm({ ...houseForm, name: e.target.value })} />
+              <input
+                value={houseForm.name}
+                onChange={(e) =>
+                  setHouseForm({ ...houseForm, name: e.target.value })
+                }
+              />
             </FormGroup>
             <FormGroup>
               <label>Dirección</label>
-              <input value={houseForm.address} onChange={e => setHouseForm({ ...houseForm, address: e.target.value })} />
+              <input
+                value={houseForm.address}
+                onChange={(e) =>
+                  setHouseForm({ ...houseForm, address: e.target.value })
+                }
+              />
             </FormGroup>
             <div style={{ textAlign: 'right' }}>
-              <Btn variant="primary" onClick={saveHouseModal}>Guardar</Btn>
+              <Btn variant="primary" onClick={saveHouseModal}>
+                Guardar
+              </Btn>
             </div>
           </>
         )}
@@ -703,15 +1002,21 @@ export default function UsersPage() {
             <h2>Añadir Sala</h2>
             <FormGroup>
               <label>Nombre Sala</label>
-              <input value={houseForm.roomName} onChange={e => setHouseForm({ ...houseForm, roomName: e.target.value })} />
+              <input
+                value={houseForm.roomName}
+                onChange={(e) =>
+                  setHouseForm({ ...houseForm, roomName: e.target.value })
+                }
+              />
             </FormGroup>
             <div style={{ textAlign: 'right' }}>
-              <Btn variant="primary" onClick={saveHouseModal}>Añadir</Btn>
+              <Btn variant="primary" onClick={saveHouseModal}>
+                Añadir
+              </Btn>
             </div>
           </>
         )}
       </Modal>
-
     </AppContainer>
   );
 }

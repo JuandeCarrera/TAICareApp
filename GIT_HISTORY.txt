@@ -69,3 +69,33 @@
   - `Rutinas.jsx`:
     - Mejorada maquetaci√≥n del Paso 3 (horarios).
     - Implementado resumen en el Paso 4 antes de guardar.
+
+## 2026-02-12: Fase 6 - Estandarizaci√≥n del Backend
+**Mensaje del Commit:** `refactor: patr√≥n controller-service en users, alerts, routines, devices`
+
+**Cambios:**
+- **Backend:**
+  - Completada la migraci√≥n a la arquitectura Controller-Service en todos los m√≥dulos principales (`Users`, `Alerts`, `Routines`, `Devices`).
+  - Creados servicios (`*Service.js`) para l√≥gica de negocio y controladores (`*Controller.js`) para manejo de peticiones.
+  - Limpieza de archivos de rutas (`routes/*.js`) delegando l√≥gica al controlador.
+
+## 2026-02-12: Bug Fix - Asignaci√≥n de Hogares
+**Mensaje del Commit:** `fix: sync user-household y filtro frontend`
+
+**Cambios:**
+- **Frontend (`UsersPage.jsx`)**: Corregido filtro para mostrar hogar si `user.household_id` coincide, aunque no est√© en `household.users`.
+- **Backend (`userService.js`)**: Implementada sincronizaci√≥n autom√°tica. Al crear/editar un usuario con `household_id`, se actualiza el array `users` del Hogar correspondiente.
+
+## 2026-02-13: Fase 7 - DiseÒo Responsive y Mejoras de UI
+**Mensaje del Commit:** `feat: mobile responsiveness, sincronizaciÛn sidebar y mejoras modales`
+
+**Cambios:**
+- **Global:**
+  - Implementado hook `useIsMobile`.
+  - Sidebar ahora funciona como overlay en mÛviles (<768px).
+  - PatrÛn Maestro-Detalle para listas en mÛvil (Usuarios, Dispositivos).
+- **Correcciones UI:**
+  - SincronizaciÛn del estado del men˙ lateral en todas las p·ginas (`Rutinas`, `Datos`, etc.).
+  - AÒadido prop `maxWidth` a Modales y ajustado ancho en Rutinas (800px/600px).
+  - Limitada altura de modales para evitar cortes en pantallas pequeÒas.
+  - Limpieza de cÛdigo (`lint`) general.

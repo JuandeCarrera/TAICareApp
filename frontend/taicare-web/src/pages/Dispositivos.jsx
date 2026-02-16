@@ -1,4 +1,10 @@
-import React, { useContext, useState, useMemo, useEffect } from 'react';
+import React, {
+  useContext,
+  useState,
+  useMemo,
+  useEffect,
+  useCallback,
+} from 'react';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../contexts/AuthContext.jsx';
@@ -14,6 +20,7 @@ import {
   useDeleteDevice,
 } from '../hooks/useDevices';
 import { useHouseholds } from '../hooks/useHouseholds';
+import { useIsMobile } from '../hooks/useIsMobile';
 
 const AppContainer = styled.div`
   display: flex;
@@ -29,18 +36,26 @@ const Body = styled.div`
 const Main = styled.main`
   flex: 1;
   background: ${({ theme }) => theme.colors.bg};
-  padding: 2rem;
+  padding: 1rem;
+  @media (min-width: 768px) {
+    padding: 2rem;
+  }
   overflow-y: auto;
 `;
 const DeviceItem = styled.li`
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  @media (min-width: 640px) {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
   margin-bottom: 0.5rem;
   background: ${({ theme }) => theme.colors.cardBg};
   border: 1px solid ${({ theme }) => theme.colors.border};
   border-radius: 8px;
   padding: 0.65rem 0.8rem;
+  gap: 0.5rem;
 `;
 const Actions = styled.div`
   display: flex;
@@ -76,7 +91,11 @@ const DangerBtn = styled(Btn)`
 export default function Dispositivos() {
   const { logout } = useContext(AuthContext);
   const navigate = useNavigate();
-  const [menuOpen, setMenuOpen] = useState(window.innerWidth >= 768);
+  const isMobile = useIsMobile();
+  const [menuOpen, setMenuOpen] = useState(!isMobile);
+  useEffect(() => {
+    setMenuOpen(!isMobile);
+  }, [isMobile]);
 
   const { data: households = [] } = useHouseholds();
   const { data: devices = [], isLoading: loadingDevices } = useDevices();
@@ -160,7 +179,10 @@ export default function Dispositivos() {
   };
 
   /* ---------- Helpers ---------- */
-  const hhName = (id) => households.find((h) => h._id === id)?.name || '';
+  const hhName = useCallback(
+    (id) => households.find((h) => h._id === id)?.name || '',
+    [households]
+  );
 
   /* ---------- Options for SearchToolbar ---------- */
   const householdOptions = useMemo(
@@ -227,7 +249,7 @@ export default function Dispositivos() {
     }
 
     return list;
-  }, [devices, q, flt, sort, households]);
+  }, [devices, q, flt, sort, hhName]);
 
   return (
     <AppContainer>
@@ -236,7 +258,7 @@ export default function Dispositivos() {
         onLogout={handleLogout}
       />
       <Body>
-        <Sidebar open={menuOpen} />
+        <Sidebar open={menuOpen} onClose={() => setMenuOpen(false)} />
         <Main>
           <h1>Dispositivos</h1>
 
@@ -273,31 +295,38 @@ export default function Dispositivos() {
             />
           </div>
 
-          <Btn variant="primary" style={{ marginBottom: '1rem' }} onClick={openNew}>
+          <Btn
+            variant="primary"
+            style={{ marginBottom: '1rem' }}
+            onClick={openNew}
+          >
             + Nuevo
           </Btn>
 
           <ul>
             {loadingDevices && <p>Cargando dispositivos...</p>}
-            {!loadingDevices && filteredDevices.map((d) => (
-              <DeviceItem key={d._id}>
-                <span>
-                  <strong>{d.plugmodel}</strong>
-                  {' — '}
-                  {d.room || 'Sin sala'}
-                  {' / '}
-                  {d.appliance || '—'}
-                  {' · '}
-                  <em>{hhName(d.household_id) || 'Sin hogar'}</em>
-                </span>
-                <Actions>
-                  <Btn variant="primary" onClick={() => openEdit(d)}>
-                    ✎
-                  </Btn>
-                  <DangerBtn onClick={() => handleDelete(d._id)}>🗑</DangerBtn>
-                </Actions>
-              </DeviceItem>
-            ))}
+            {!loadingDevices &&
+              filteredDevices.map((d) => (
+                <DeviceItem key={d._id}>
+                  <span>
+                    <strong>{d.plugmodel}</strong>
+                    {' — '}
+                    {d.room || 'Sin sala'}
+                    {' / '}
+                    {d.appliance || '—'}
+                    {' · '}
+                    <em>{hhName(d.household_id) || 'Sin hogar'}</em>
+                  </span>
+                  <Actions>
+                    <Btn variant="primary" onClick={() => openEdit(d)}>
+                      ✎
+                    </Btn>
+                    <DangerBtn onClick={() => handleDelete(d._id)}>
+                      🗑
+                    </DangerBtn>
+                  </Actions>
+                </DeviceItem>
+              ))}
             {!loadingDevices && !filteredDevices.length && (
               <li style={{ opacity: 0.8 }}>
                 No hay dispositivos que coincidan con el filtro.

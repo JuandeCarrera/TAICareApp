@@ -2,6 +2,7 @@ import React, { useContext, useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../contexts/AuthContext.jsx';
+import { useIsMobile } from '../hooks/useIsMobile';
 import Header from '../components/Header.jsx';
 import Sidebar from '../components/Sidebar.jsx';
 import Footer from '../components/Footer.jsx';
@@ -27,24 +28,25 @@ const Main = styled.main`
 `;
 
 export default function Datos() {
-  const { user, logout } = useContext(AuthContext);
+  const { logout } = useContext(AuthContext);
   const navigate = useNavigate();
-  const [menuOpen, setMenuOpen] = useState(window.innerWidth >= 768);
-
+  const isMobile = useIsMobile();
+  const [menuOpen, setMenuOpen] = useState(!isMobile);
   useEffect(() => {
-    setMenuOpen(window.innerWidth >= 768);
-  }, []);
-
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
+    setMenuOpen(!isMobile);
+  }, [isMobile]);
 
   return (
     <AppContainer>
-      <Header onToggleMenu={() => setMenuOpen((o) => !o)} />
+      <Header
+        onToggleMenu={() => setMenuOpen((o) => !o)}
+        onLogout={() => {
+          logout();
+          navigate('/login');
+        }}
+      />
       <Body>
-        <Sidebar open={menuOpen} />
+        <Sidebar open={menuOpen} onClose={() => setMenuOpen(false)} />
         <Main>
           <h1>DATOS</h1>
         </Main>

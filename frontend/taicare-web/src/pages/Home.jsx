@@ -22,7 +22,10 @@ const Body = styled.div`
 const Main = styled.main`
   flex: 1;
   background: ${({ theme }) => theme.colors.bg};
-  padding: 1.5rem;
+  padding: 1rem;
+  @media (min-width: 768px) {
+    padding: 1.5rem;
+  }
   overflow-y: auto;
 `;
 
@@ -195,7 +198,7 @@ const ListScroll = styled.div`
 `;
 
 export default function Home() {
-  const { user, logout } = useContext(AuthContext);
+  const { logout } = useContext(AuthContext);
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(window.innerWidth >= 768);
 
@@ -257,11 +260,6 @@ export default function Home() {
       }
     })();
   }, []);
-
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
 
   // utilidades de tiempo
   const dayName = (d) =>
@@ -510,7 +508,7 @@ export default function Home() {
         }}
       />
       <Body>
-        <Sidebar open={menuOpen} />
+        <Sidebar open={menuOpen} onClose={() => setMenuOpen(false)} />
         <Main>
           <Shell>
             {/* Charts arriba */}

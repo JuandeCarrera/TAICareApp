@@ -1,4 +1,4 @@
-import React, { useContext, useMemo, useState } from 'react';
+import React, { useContext, useMemo, useState, useCallback, useEffect } from 'react';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../contexts/AuthContext.jsx';
@@ -6,8 +6,13 @@ import Header from '../components/Header.jsx';
 import Sidebar from '../components/Sidebar.jsx';
 import Footer from '../components/Footer.jsx';
 import SearchToolbar from '../components/SearchToolbar.jsx';
-import { useAlerts, useMarkAlertAsRead, useDeleteAlert } from '../hooks/useAlerts';
+import {
+  useAlerts,
+  useMarkAlertAsRead,
+  useDeleteAlert,
+} from '../hooks/useAlerts';
 import { useUsers } from '../hooks/useUsers';
+import { useIsMobile } from '../hooks/useIsMobile';
 
 const AppContainer = styled.div`
   display: flex;
@@ -23,14 +28,19 @@ const Body = styled.div`
 const Main = styled.main`
   flex: 1;
   background: ${({ theme }) => theme.colors.bg};
-  padding: 2rem;
+  padding: 1rem;
+  @media (min-width: 768px) {
+    padding: 2rem;
+  }
   overflow-y: auto;
 `;
 const TopBar = styled.div`
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
   gap: 0.75rem;
+  margin-bottom: 1rem;
 `;
 const List = styled.ul`
   padding: 0;
@@ -39,8 +49,13 @@ const List = styled.ul`
 `;
 const AlertItem = styled.li`
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+  @media (min-width: 640px) {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+  gap: 1rem;
   background: ${({ theme }) => theme.colors.cardBg};
   border: 1px solid ${({ theme }) => theme.colors.border};
   border-radius: 8px;
@@ -59,10 +74,15 @@ const Dot = styled.span`
   border-radius: 50%;
   background: red;
   margin-top: 0.6rem;
+  flex-shrink: 0;
 `;
 const Actions = styled.div`
   display: flex;
   gap: 0.5rem;
+  align-self: flex-end;
+  @media (min-width: 640px) {
+    align-self: auto;
+  }
 `;
 const Btn = styled.button`
   font-size: 0.85rem;
@@ -98,10 +118,19 @@ const DangerBtn = styled(Btn)`
 export default function Alertas() {
   const { logout } = useContext(AuthContext);
   const navigate = useNavigate();
-  const [menuOpen, setMenuOpen] = useState(window.innerWidth >= 768);
+  const isMobile = useIsMobile();
+  const [menuOpen, setMenuOpen] = useState(!isMobile);
+  useEffect(() => {
+    setMenuOpen(!isMobile);
+  }, [isMobile]);
 
   // --- Hooks ---
-  const { data: alerts = [], isLoading: loadingAlerts, error: alertsError, refetch } = useAlerts();
+  const {
+    data: alerts = [],
+    isLoading: loadingAlerts,
+    error: alertsError,
+    refetch,
+  } = useAlerts();
   const { data: patients = [] } = useUsers({ role: 'paciente' });
 
   const markReadMutation = useMarkAlertAsRead();
@@ -137,12 +166,6 @@ export default function Alertas() {
       .includes(String(q || '').toLowerCase());
 
   // opciones para filtros dinámicos (tipos, pacientes)
-  const typeOptions = useMemo(() => {
-    const uniq = Array.from(
-      new Set((alerts || []).map((a) => a?.type).filter(Boolean))
-    );
-    return uniq.map((v) => ({ value: v, label: v }));
-  }, [alerts]);
 
   const patientOptions = useMemo(() => {
     return (patients || []).map((u) => ({
@@ -159,27 +182,23 @@ export default function Alertas() {
   ];
 
   // fallback helpers
-  function patientLabel(a) {
+  const patientLabel = useCallback((a) => {
     return a?.user_id?.name || a?.patient_name_snapshot || a?.user_id || '';
-  }
-  function deviceLabel(a) {
-    if (a?.device_id && typeof a.device_id === 'object') {
-      return (
-        a.device_id.appliance || a.device_id.plugmodel || a.device_id.room || ''
-      );
-    }
-    return '';
-  }
-  function safeTitle(a) {
-    if (a?.title && a.title.trim()) return a.title;
-    const parts = [];
-    const p = patientLabel(a);
-    const r = a?.routine_name_snapshot || a?.routine_id?.name || '';
-    if (p) parts.push(`Paciente: ${p}`);
-    if (r) parts.push(`Rutina: ${r}`);
-    if (a?.type) parts.push(a.type);
-    return parts.length ? parts.join(' · ') : 'Alerta';
-  }
+  }, []);
+
+  const safeTitle = useCallback(
+    (a) => {
+      if (a?.title && a.title.trim()) return a.title;
+      const parts = [];
+      const p = patientLabel(a);
+      const r = a?.routine_name_snapshot || a?.routine_id?.name || '';
+      if (p) parts.push(`Paciente: ${p}`);
+      if (r) parts.push(`Rutina: ${r}`);
+      if (a?.type) parts.push(a.type);
+      return parts.length ? parts.join(' · ') : 'Alerta';
+    },
+    [patientLabel]
+  );
 
   // filtrado + ordenación (client-side)
   const visible = useMemo(() => {
@@ -204,7 +223,9 @@ export default function Alertas() {
     }
 
     if (filterValues.onlyUnseen) {
-      arr = arr.filter((a) => (a.seen === false || a.seen === 'false' || a.read === false));
+      arr = arr.filter(
+        (a) => a.seen === false || a.seen === 'false' || a.read === false
+      );
       // Nota: El backend a veces usa 'seen' o 'read'. Ajustar según modelo real.
     }
 
@@ -255,7 +276,7 @@ export default function Alertas() {
     });
 
     return arr;
-  }, [alerts, query, filterValues, sort]);
+  }, [alerts, query, filterValues, sort, safeTitle, patientLabel]);
 
   // acciones
   async function markSeen(id) {
@@ -274,7 +295,7 @@ export default function Alertas() {
         onLogout={handleLogout}
       />
       <Body>
-        <Sidebar open={menuOpen} />
+        <Sidebar open={menuOpen} onClose={() => setMenuOpen(false)} />
         <Main>
           <TopBar>
             <h1>Alertas</h1>
@@ -334,7 +355,9 @@ export default function Alertas() {
           {loadingAlerts ? (
             <p style={{ opacity: 0.8, marginTop: 12 }}>Cargando…</p>
           ) : alertsError ? (
-            <p style={{ color: '#f55', marginTop: 12 }}>Error al cargar alertas</p>
+            <p style={{ color: '#f55', marginTop: 12 }}>
+              Error al cargar alertas
+            </p>
           ) : visible.length === 0 ? (
             <p style={{ opacity: 0.7, marginTop: 12 }}>
               No hay alertas para mostrar.

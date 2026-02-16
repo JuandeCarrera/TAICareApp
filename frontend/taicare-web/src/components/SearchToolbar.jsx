@@ -138,11 +138,11 @@ export default function SearchToolbar({
   placeholder = 'Buscar por texto (título, mensaje, tipo, habitación)',
   filters = [],
   values = {},
-  onValuesChange = () => { },
+  onValuesChange = () => {},
   sortOptions = [],
   sort,
-  onSortChange = () => { },
-  onClear = () => { },
+  onSortChange = () => {},
+  onClear = () => {},
 }) {
   const theme = useTheme();
 

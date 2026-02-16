@@ -1,4 +1,4 @@
-import React, { useContext, useMemo, useState } from 'react';
+import React, { useContext, useMemo, useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../contexts/AuthContext.jsx';
@@ -15,6 +15,7 @@ import {
   useAddRoom,
 } from '../hooks/useHouseholds';
 import { useUsers } from '../hooks/useUsers';
+import { useIsMobile } from '../hooks/useIsMobile';
 
 /* ---------- Estilos base ---------- */
 const AppContainer = styled.div`
@@ -31,7 +32,10 @@ const Body = styled.div`
 const Main = styled.main`
   flex: 1;
   background: ${({ theme }) => theme.colors.bg};
-  padding: 2rem;
+  padding: 1rem;
+  @media (min-width: 768px) {
+    padding: 2rem;
+  }
   overflow-y: auto;
 `;
 
@@ -45,18 +49,25 @@ const HouseItem = styled.div`
 `;
 const HouseHeader = styled.div`
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem;
+  justify-content: space-between;
 `;
 const Title = styled.strong`
-  flex: 1;
   font-size: 1.1rem;
   color: ${({ theme }) => theme.colors.text};
+  min-width: 200px;
 `;
 const Actions = styled.div`
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
   align-items: center;
+  margin-top: 0.5rem;
+  @media (min-width: 640px) {
+    margin-top: 0;
+  }
 `;
 const Btn = styled.button`
   font-size: 0.85rem;
@@ -98,11 +109,16 @@ const RoomsList = styled.ul`
 `;
 const RoomItem = styled.li`
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  @media (min-width: 640px) {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
   margin-bottom: 0.5rem;
   padding: 0.25rem 0.35rem;
   border-radius: 6px;
+  gap: 0.5rem;
   &:hover {
     background: ${({ theme }) => theme.colors.hoverBg};
   }
@@ -125,9 +141,15 @@ const ActionsTop = styled.div`
 export default function Hogares() {
   const { logout } = useContext(AuthContext);
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
+  const [menuOpen, setMenuOpen] = useState(!isMobile);
+  useEffect(() => {
+    setMenuOpen(!isMobile);
+  }, [isMobile]);
 
   // Queries
-  const { data: households = [], isLoading: loadingHouseholds } = useHouseholds();
+  const { data: households = [], isLoading: loadingHouseholds } =
+    useHouseholds();
   const { data: patients = [] } = useUsers({ role: 'paciente' });
 
   // Mutations
@@ -277,7 +299,7 @@ export default function Hogares() {
     if (!confirm('¿Borrar esta casa?')) return;
     try {
       await deleteMutation.mutateAsync(id);
-    } catch (e) {
+    } catch {
       alert('Error al borrar');
     }
   }
@@ -290,7 +312,7 @@ export default function Hogares() {
 
     try {
       await updateMutation.mutateAsync({ id: hId, rooms: newRooms });
-    } catch (e) {
+    } catch {
       alert('Error al borrar habitación');
     }
   }
@@ -323,7 +345,7 @@ export default function Hogares() {
         );
         await updateMutation.mutateAsync({
           id: form.targetHouseId,
-          rooms: updated
+          rooms: updated,
         });
       }
 
@@ -339,14 +361,14 @@ export default function Hogares() {
   return (
     <AppContainer>
       <Header
-        onToggleMenu={() => { }}
+        onToggleMenu={() => setMenuOpen((o) => !o)}
         onLogout={() => {
           logout();
           navigate('/login');
         }}
       />
       <Body>
-        <Sidebar open />
+        <Sidebar open={menuOpen} onClose={() => setMenuOpen(false)} />
         <Main>
           <h1>Hogares</h1>
 
@@ -472,7 +494,6 @@ export default function Hogares() {
               )}
             </>
           )}
-
         </Main>
       </Body>
       <Footer />

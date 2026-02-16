@@ -1,10 +1,11 @@
-import React, { useContext, useEffect, useState, useMemo } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header.jsx';
 import Sidebar from '../components/Sidebar.jsx';
 import Footer from '../components/Footer.jsx';
 import { AuthContext } from '../contexts/AuthContext.jsx';
+import { useIsMobile } from '../hooks/useIsMobile';
 import {
   SettingsAPI,
   NotifPrefsAPI,
@@ -50,14 +51,14 @@ const Btn = styled.button`
   cursor: pointer;
   border: 1px solid
     ${({ theme, variant }) =>
-      variant === 'primary' ? theme.colors.primary : theme.colors.border};
+    variant === 'primary' ? theme.colors.primary : theme.colors.border};
   background: ${({ theme, variant }) =>
     variant === 'primary' ? theme.colors.primary : theme.colors.cardBg};
   color: ${({ theme, variant }) =>
     variant === 'primary' ? '#fff' : theme.colors.text};
   &:hover {
     background: ${({ theme, variant }) =>
-      variant === 'primary' ? theme.colors.primaryDark : theme.colors.hoverBg};
+    variant === 'primary' ? theme.colors.primaryDark : theme.colors.hoverBg};
   }
 `;
 const Input = styled.input`
@@ -80,7 +81,11 @@ const Select = styled.select`
 export default function AjustesAlertas() {
   const { logout } = useContext(AuthContext);
   const navigate = useNavigate();
-  const [menuOpen, setMenuOpen] = useState(window.innerWidth >= 768);
+  const isMobile = useIsMobile();
+  const [menuOpen, setMenuOpen] = useState(!isMobile);
+  useEffect(() => {
+    setMenuOpen(!isMobile);
+  }, [isMobile]);
 
   // system settings
   const [enabled, setEnabled] = useState(true);
@@ -289,7 +294,7 @@ export default function AjustesAlertas() {
         }}
       />
       <Body>
-        <Sidebar open={menuOpen} />
+        <Sidebar open={menuOpen} onClose={() => setMenuOpen(false)} />
         <Main>
           <h1>Ajustes de alertas</h1>
 

@@ -12,7 +12,9 @@ async function fetchJSON(path, { method = 'GET', body } = {}) {
     try {
       const j = await res.json();
       errText = j.error || JSON.stringify(j);
-    } catch {}
+    } catch {
+      // ignore
+    }
     throw new Error(errText || `HTTP ${res.status}`);
   }
   // 204 No Content

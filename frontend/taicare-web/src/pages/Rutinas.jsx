@@ -1,4 +1,10 @@
-import React, { useContext, useEffect, useMemo, useState } from 'react';
+import React, {
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  useCallback,
+} from 'react';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../contexts/AuthContext.jsx';
@@ -16,6 +22,7 @@ import {
 import { useUsers } from '../hooks/useUsers';
 import { useHouseholds } from '../hooks/useHouseholds';
 import { useDevices } from '../hooks/useDevices';
+import { useIsMobile } from '../hooks/useIsMobile';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -34,11 +41,16 @@ const Body = styled.div`
 const Main = styled.main`
   flex: 1;
   background: ${({ theme }) => theme.colors.bg};
-  padding: 2rem;
+  padding: 1rem;
+  @media (min-width: 768px) {
+    padding: 2rem;
+  }
   overflow: auto;
 `;
 const Toolbar = styled.div`
   display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 1rem;
@@ -46,6 +58,7 @@ const Toolbar = styled.div`
     display: flex;
     gap: 0.5rem;
     align-items: center;
+    flex-wrap: wrap;
   }
 `;
 const Btn = styled.button`
@@ -91,6 +104,7 @@ const RoutineCard = styled.li`
 `;
 const CardTop = styled.div`
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
@@ -349,7 +363,11 @@ const idEq = (a, b) => String(a ?? '') === String(b ?? '');
 export default function Rutinas() {
   const { logout } = useContext(AuthContext);
   const navigate = useNavigate();
-  const [menuOpen, setMenuOpen] = useState(window.innerWidth >= 768);
+  const isMobile = useIsMobile();
+  const [menuOpen, setMenuOpen] = useState(!isMobile);
+  useEffect(() => {
+    setMenuOpen(!isMobile);
+  }, [isMobile]);
 
   // --- HOOKS ---
   const { data: routines = [], isLoading: loadingRoutines } = useRoutines();
@@ -392,7 +410,7 @@ export default function Rutinas() {
     end: '15:00',
     days: [],
   });
-  const [builderPresetId, setBuilderPresetId] = useState('');
+
   const [roomFilter, setRoomFilter] = useState('ALL');
   const [deviceQuery, setDeviceQuery] = useState('');
 
@@ -499,7 +517,7 @@ export default function Rutinas() {
     setScheduleBlocks({});
     setTarget('ALL');
     setBuilder({ start: '14:00', end: '15:00', days: [] });
-    setBuilderPresetId('');
+
     setRoomFilter('ALL');
     setDeviceQuery('');
   }
@@ -652,24 +670,30 @@ export default function Rutinas() {
       };
     return { id: ref._id || ref.id || '', name: '' };
   }
-  function getPatientName(userRef) {
-    const { id, name } = normalizeRef(userRef, { type: 'user' });
-    if (name) return name;
-    const p = patients.find((u) => idEq(u._id, id));
-    return p?.name || id || '—';
-  }
-  function getDeviceMeta(deviceRef, devs = devices, hhs = households) {
-    const norm = normalizeRef(deviceRef, { type: 'device' });
-    const d = devs.find((x) => idEq(x?._id, norm.id));
-    const isObj = deviceRef && typeof deviceRef === 'object';
-    const dispName =
-      norm.name || d?.appliance || d?.plugmodel || norm.id || 'Dispositivo';
-    const room = d?.room || (isObj ? deviceRef.room : '') || '';
-    const hhIdRaw =
-      d?.household_id || (isObj ? deviceRef.household_id : '') || '';
-    const home = hhs.find((h) => idEq(h?._id, hhIdRaw))?.name || '';
-    return { name: dispName, room, home };
-  }
+  const getPatientName = useCallback(
+    (userRef) => {
+      const { id, name } = normalizeRef(userRef, { type: 'user' });
+      if (name) return name;
+      const p = patients.find((u) => idEq(u._id, id));
+      return p?.name || id || '—';
+    },
+    [patients]
+  );
+  const getDeviceMeta = useCallback(
+    (deviceRef, devs = devices, hhs = households) => {
+      const norm = normalizeRef(deviceRef, { type: 'device' });
+      const d = devs.find((x) => idEq(x?._id, norm.id));
+      const isObj = deviceRef && typeof deviceRef === 'object';
+      const dispName =
+        norm.name || d?.appliance || d?.plugmodel || norm.id || 'Dispositivo';
+      const room = d?.room || (isObj ? deviceRef.room : '') || '';
+      const hhIdRaw =
+        d?.household_id || (isObj ? deviceRef.household_id : '') || '';
+      const home = hhs.find((h) => idEq(h?._id, hhIdRaw))?.name || '';
+      return { name: dispName, room, home };
+    },
+    [devices, households]
+  );
   function summarizeTimes(occ = []) {
     const m = new Map();
     for (const o of occ) {
@@ -756,7 +780,16 @@ export default function Rutinas() {
       });
     }
     return arr;
-  }, [q, flt, sort, routines, patients, devices, households]);
+  }, [
+    q,
+    flt,
+    sort,
+    routines,
+    devices,
+    households,
+    getPatientName,
+    getDeviceMeta,
+  ]);
 
   /* ---------- edición (completa) ---------- */
   function openEditModal(r) {
@@ -1132,7 +1165,7 @@ export default function Rutinas() {
         }}
       />
       <Body>
-        <Sidebar open={menuOpen} />
+        <Sidebar open={menuOpen} onClose={() => setMenuOpen(false)} />
         <Main>
           <Toolbar>
             <h1>Rutinas</h1>
@@ -1195,53 +1228,54 @@ export default function Rutinas() {
           {/* Lista */}
           <List>
             {loadingRoutines && <p>Cargando rutinas...</p>}
-            {!loadingRoutines && filteredSorted.map((r) => {
-              const patient = getPatientName(r.user_id);
-              const occ = Array.isArray(r.occurrences) ? r.occurrences : [];
-              const times = summarizeTimes(occ);
-              const daysPretty = daysUnion(occ).map((d) => ES_DAYS[d] || d);
-              const devCount = uniqueDevicesCount(occ);
-              return (
-                <RoutineCard key={r._id}>
-                  <CardTop>
-                    <CardTitle>
-                      {r.name || `Rutina ${String(r._id).slice(-6)}`}
-                    </CardTitle>
-                    <div
-                      style={{
-                        display: 'flex',
-                        gap: '.5rem',
-                        alignItems: 'center',
-                      }}
-                    >
-                      <Btn variant="primary" onClick={() => openEditModal(r)}>
-                        ✎ Editar
-                      </Btn>
-                      <DangerBtn onClick={() => openDeleteModal(r._id)}>
-                        🗑 Borrar
-                      </DangerBtn>
-                      {times.length > 0 && (
-                        <TimePill>{times.join(' · ')}</TimePill>
-                      )}
-                    </div>
-                  </CardTop>
-                  <Meta>
-                    Paciente: <strong>{patient}</strong>
-                    {' · '}
-                    Ocurrencias: <strong>{occ.length}</strong>
-                    {' · '}
-                    Dispositivos totales: <strong>{devCount}</strong>
-                  </Meta>
-                  {!!daysPretty.length && (
-                    <TagRow>
-                      {daysPretty.map((d) => (
-                        <Tag key={d}>{d}</Tag>
-                      ))}
-                    </TagRow>
-                  )}
-                </RoutineCard>
-              );
-            })}
+            {!loadingRoutines &&
+              filteredSorted.map((r) => {
+                const patient = getPatientName(r.user_id);
+                const occ = Array.isArray(r.occurrences) ? r.occurrences : [];
+                const times = summarizeTimes(occ);
+                const daysPretty = daysUnion(occ).map((d) => ES_DAYS[d] || d);
+                const devCount = uniqueDevicesCount(occ);
+                return (
+                  <RoutineCard key={r._id}>
+                    <CardTop>
+                      <CardTitle>
+                        {r.name || `Rutina ${String(r._id).slice(-6)}`}
+                      </CardTitle>
+                      <div
+                        style={{
+                          display: 'flex',
+                          gap: '.5rem',
+                          alignItems: 'center',
+                        }}
+                      >
+                        <Btn variant="primary" onClick={() => openEditModal(r)}>
+                          ✎ Editar
+                        </Btn>
+                        <DangerBtn onClick={() => openDeleteModal(r._id)}>
+                          🗑 Borrar
+                        </DangerBtn>
+                        {times.length > 0 && (
+                          <TimePill>{times.join(' · ')}</TimePill>
+                        )}
+                      </div>
+                    </CardTop>
+                    <Meta>
+                      Paciente: <strong>{patient}</strong>
+                      {' · '}
+                      Ocurrencias: <strong>{occ.length}</strong>
+                      {' · '}
+                      Dispositivos totales: <strong>{devCount}</strong>
+                    </Meta>
+                    {!!daysPretty.length && (
+                      <TagRow>
+                        {daysPretty.map((d) => (
+                          <Tag key={d}>{d}</Tag>
+                        ))}
+                      </TagRow>
+                    )}
+                  </RoutineCard>
+                );
+              })}
             {!loadingRoutines && !filteredSorted.length && (
               <Muted>No hay rutinas que coincidan con el filtro.</Muted>
             )}
@@ -1251,7 +1285,7 @@ export default function Rutinas() {
       <Footer />
 
       {/* ---------- MODAL CREAR ---------- */}
-      <Modal isOpen={open} onClose={() => setOpen(false)}>
+      <Modal isOpen={open} onClose={() => setOpen(false)} maxWidth="800px">
         <Wizard>
           <ModalBody>
             <ModalHeader>
@@ -1311,7 +1345,13 @@ export default function Rutinas() {
                       ))}
                     </select>
                     {touched.user_id && errors.user_id && (
-                      <div style={{ color: '#e04848', fontSize: '.85rem', marginTop: 4 }}>
+                      <div
+                        style={{
+                          color: '#e04848',
+                          fontSize: '.85rem',
+                          marginTop: 4,
+                        }}
+                      >
                         {errors.user_id}
                       </div>
                     )}
@@ -1320,43 +1360,91 @@ export default function Rutinas() {
                   <FormGroup>
                     <label>Casa</label>
                     {!form.user_id ? (
-                      <select disabled><option>— Selecciona un paciente —</option></select>
+                      <select disabled>
+                        <option>— Selecciona un paciente —</option>
+                      </select>
                     ) : availableHouseholds.length === 0 ? (
                       <>
-                        <select disabled><option>— Sin casa asignada —</option></select>
-                        {errors.household_id && <div style={{ color: '#e04848', fontSize: '.85rem', marginTop: 4 }}>{errors.household_id}</div>}
+                        <select disabled>
+                          <option>— Sin casa asignada —</option>
+                        </select>
+                        {errors.household_id && (
+                          <div
+                            style={{
+                              color: '#e04848',
+                              fontSize: '.85rem',
+                              marginTop: 4,
+                            }}
+                          >
+                            {errors.household_id}
+                          </div>
+                        )}
                       </>
                     ) : availableHouseholds.length === 1 ? (
                       <>
-                        <input value={availableHouseholds[0].name || availableHouseholds[0]._id} readOnly disabled />
-                        <Small>La casa queda fijada a la única casa del paciente.</Small>
+                        <input
+                          value={
+                            availableHouseholds[0].name ||
+                            availableHouseholds[0]._id
+                          }
+                          readOnly
+                          disabled
+                        />
+                        <Small>
+                          La casa queda fijada a la única casa del paciente.
+                        </Small>
                       </>
                     ) : (
                       <>
                         <select
                           value={form.household_id}
                           onChange={(e) => {
-                            setForm((f) => ({ ...f, household_id: e.target.value }));
+                            setForm((f) => ({
+                              ...f,
+                              household_id: e.target.value,
+                            }));
                             setTouched((t) => ({ ...t, household_id: true }));
                             setErrors({});
                           }}
                         >
                           <option value="">— Selecciona —</option>
                           {availableHouseholds.map((h) => (
-                            <option key={h._id} value={h._id}>{h.name || h._id}</option>
+                            <option key={h._id} value={h._id}>
+                              {h.name || h._id}
+                            </option>
                           ))}
                         </select>
-                        <Small>Este paciente está asociado a varias casas. Elige en cuál crear la rutina.</Small>
+                        <Small>
+                          Este paciente está asociado a varias casas. Elige en
+                          cuál crear la rutina.
+                        </Small>
                         {touched.household_id && errors.household_id && (
-                          <div style={{ color: '#e04848', fontSize: '.85rem', marginTop: 4 }}>{errors.household_id}</div>
+                          <div
+                            style={{
+                              color: '#e04848',
+                              fontSize: '.85rem',
+                              marginTop: 4,
+                            }}
+                          >
+                            {errors.household_id}
+                          </div>
                         )}
                       </>
                     )}
                   </FormGroup>
 
                   <StepFooter>
-                    <DangerBtn onClick={() => setOpen(false)}>Cancelar</DangerBtn>
-                    <Btn variant="primary" onClick={() => { if (validateStep1()) setStep(2); }}>Siguiente</Btn>
+                    <DangerBtn onClick={() => setOpen(false)}>
+                      Cancelar
+                    </DangerBtn>
+                    <Btn
+                      variant="primary"
+                      onClick={() => {
+                        if (validateStep1()) setStep(2);
+                      }}
+                    >
+                      Siguiente
+                    </Btn>
                   </StepFooter>
                 </>
               )}
@@ -1364,17 +1452,39 @@ export default function Rutinas() {
               {step === 2 && (
                 <>
                   <Card>
-                    <div style={{ display: 'flex', gap: '.75rem', flexWrap: 'wrap', alignItems: 'end' }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        gap: '.75rem',
+                        flexWrap: 'wrap',
+                        alignItems: 'end',
+                      }}
+                    >
                       <div style={{ minWidth: 220 }}>
-                        <label style={{ display: 'block', marginBottom: 6 }}>Habitación</label>
-                        <select value={roomFilter} onChange={(e) => setRoomFilter(e.target.value)}>
+                        <label style={{ display: 'block', marginBottom: 6 }}>
+                          Habitación
+                        </label>
+                        <select
+                          value={roomFilter}
+                          onChange={(e) => setRoomFilter(e.target.value)}
+                        >
                           <option value="ALL">Todas</option>
-                          {roomNames.map((r) => <option key={r} value={r}>{r}</option>)}
+                          {roomNames.map((r) => (
+                            <option key={r} value={r}>
+                              {r}
+                            </option>
+                          ))}
                         </select>
                       </div>
                       <div style={{ flex: 1, minWidth: 260 }}>
-                        <label style={{ display: 'block', marginBottom: 6 }}>Buscar dispositivo</label>
-                        <input value={deviceQuery} onChange={(e) => setDeviceQuery(e.target.value)} placeholder="Buscar por electrodoméstico o modelo..." />
+                        <label style={{ display: 'block', marginBottom: 6 }}>
+                          Buscar dispositivo
+                        </label>
+                        <input
+                          value={deviceQuery}
+                          onChange={(e) => setDeviceQuery(e.target.value)}
+                          placeholder="Buscar por electrodoméstico o modelo..."
+                        />
                       </div>
                       <div style={{ display: 'flex', gap: '.5rem' }}>
                         <DangerBtn
@@ -1384,7 +1494,9 @@ export default function Rutinas() {
                             setSelectedDevices(next);
                           }}
                           disabled={!visibleDevices.length}
-                        >Quitar visibles</DangerBtn>
+                        >
+                          Quitar visibles
+                        </DangerBtn>
                         <Btn
                           variant="primary"
                           onClick={() => {
@@ -1394,20 +1506,33 @@ export default function Rutinas() {
                             ensureBlocksFor([...next]);
                           }}
                           disabled={!visibleDevices.length}
-                        >Seleccionar visibles</Btn>
+                        >
+                          Seleccionar visibles
+                        </Btn>
                       </div>
                     </div>
                   </Card>
                   <ScrollCard style={{ marginTop: '.75rem' }}>
                     <strong>Dispositivos</strong>
                     <div style={{ marginTop: '.5rem' }}>
-                      {!visibleDevices.length && <Small>No hay dispositivos que coincidan.</Small>}
+                      {!visibleDevices.length && (
+                        <Small>No hay dispositivos que coincidan.</Small>
+                      )}
                       {visibleDevices.map((d) => (
                         <DeviceRow key={d._id}>
-                          <input type="checkbox" checked={selectedDevices.has(d._id)} onChange={() => toggleDevice(d)} />
+                          <input
+                            type="checkbox"
+                            checked={selectedDevices.has(d._id)}
+                            onChange={() => toggleDevice(d)}
+                          />
                           <span className="devText">
-                            {d.appliance || 'Dispositivo'} <Small>({d.plugmodel})</Small>
-                            {d.room ? <Small style={{ marginLeft: 8 }}>— {d.room}</Small> : null}
+                            {d.appliance || 'Dispositivo'}{' '}
+                            <Small>({d.plugmodel})</Small>
+                            {d.room ? (
+                              <Small style={{ marginLeft: 8 }}>
+                                — {d.room}
+                              </Small>
+                            ) : null}
                           </span>
                         </DeviceRow>
                       ))}
@@ -1415,7 +1540,18 @@ export default function Rutinas() {
                   </ScrollCard>
                   <StepFooter>
                     <DangerBtn onClick={() => setStep(1)}>Atrás</DangerBtn>
-                    <Btn variant="primary" onClick={() => { if (selectedDevices.size) { ensureBlocksFor([...selectedDevices]); setStep(3); } }} disabled={!selectedDevices.size}>Siguiente</Btn>
+                    <Btn
+                      variant="primary"
+                      onClick={() => {
+                        if (selectedDevices.size) {
+                          ensureBlocksFor([...selectedDevices]);
+                          setStep(3);
+                        }
+                      }}
+                      disabled={!selectedDevices.size}
+                    >
+                      Siguiente
+                    </Btn>
                   </StepFooter>
                 </>
               )}
@@ -1423,81 +1559,248 @@ export default function Rutinas() {
               {step === 3 && (
                 <>
                   <Card style={{ marginBottom: '1rem' }}>
-                    <div style={{ fontWeight: 'bold', marginBottom: '.5rem', borderBottom: '1px solid #333', paddingBottom: '.25rem' }}>
+                    <div
+                      style={{
+                        fontWeight: 'bold',
+                        marginBottom: '.5rem',
+                        borderBottom: '1px solid #333',
+                        paddingBottom: '.25rem',
+                      }}
+                    >
                       Definir franja horaria
                     </div>
-                    <div style={{ display: 'flex', gap: '.75rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        gap: '.75rem',
+                        alignItems: 'flex-end',
+                        flexWrap: 'wrap',
+                      }}
+                    >
                       <div style={{ flex: 1, minWidth: 200 }}>
-                        <label style={{ display: 'block', marginBottom: 4, fontSize: '.85rem' }}>Aplicar a dispositivo(s)</label>
-                        <select style={{ width: '100%', padding: '.4rem', borderRadius: 6, border: '1px solid #ccc' }} value={target} onChange={e => setTarget(e.target.value)}>
+                        <label
+                          style={{
+                            display: 'block',
+                            marginBottom: 4,
+                            fontSize: '.85rem',
+                          }}
+                        >
+                          Aplicar a dispositivo(s)
+                        </label>
+                        <select
+                          style={{
+                            width: '100%',
+                            padding: '.4rem',
+                            borderRadius: 6,
+                            border: '1px solid #ccc',
+                          }}
+                          value={target}
+                          onChange={(e) => setTarget(e.target.value)}
+                        >
                           <option value="ALL">Todos los seleccionados</option>
-                          {[...selectedDevices].map(id => {
-                            const d = devices.find(x => idEq(x._id, id));
-                            return <option key={id} value={id}>{d?.appliance || id} ({d?.room})</option>
+                          {[...selectedDevices].map((id) => {
+                            const d = devices.find((x) => idEq(x._id, id));
+                            return (
+                              <option key={id} value={id}>
+                                {d?.appliance || id} ({d?.room})
+                              </option>
+                            );
                           })}
                         </select>
                       </div>
-                      <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}>
+                      <div
+                        style={{
+                          display: 'flex',
+                          gap: '.5rem',
+                          alignItems: 'center',
+                        }}
+                      >
                         <div>
-                          <label style={{ display: 'block', marginBottom: 4, fontSize: '.85rem' }}>Inicio</label>
-                          <select style={{ padding: '.4rem', borderRadius: 6, border: '1px solid #ccc' }} value={builder.start} onChange={e => setBuilder(b => ({ ...b, start: e.target.value }))}>
-                            {slots48.map(t => <option key={t} value={t}>{t}</option>)}
+                          <label
+                            style={{
+                              display: 'block',
+                              marginBottom: 4,
+                              fontSize: '.85rem',
+                            }}
+                          >
+                            Inicio
+                          </label>
+                          <select
+                            style={{
+                              padding: '.4rem',
+                              borderRadius: 6,
+                              border: '1px solid #ccc',
+                            }}
+                            value={builder.start}
+                            onChange={(e) =>
+                              setBuilder((b) => ({
+                                ...b,
+                                start: e.target.value,
+                              }))
+                            }
+                          >
+                            {slots48.map((t) => (
+                              <option key={t} value={t}>
+                                {t}
+                              </option>
+                            ))}
                           </select>
                         </div>
                         <span style={{ paddingTop: 20 }}>—</span>
                         <div>
-                          <label style={{ display: 'block', marginBottom: 4, fontSize: '.85rem' }}>Fin</label>
-                          <select style={{ padding: '.4rem', borderRadius: 6, border: '1px solid #ccc' }} value={builder.end} onChange={e => setBuilder(b => ({ ...b, end: e.target.value }))}>
-                            {endOptionsFor(builder.start).map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                          <label
+                            style={{
+                              display: 'block',
+                              marginBottom: 4,
+                              fontSize: '.85rem',
+                            }}
+                          >
+                            Fin
+                          </label>
+                          <select
+                            style={{
+                              padding: '.4rem',
+                              borderRadius: 6,
+                              border: '1px solid #ccc',
+                            }}
+                            value={builder.end}
+                            onChange={(e) =>
+                              setBuilder((b) => ({ ...b, end: e.target.value }))
+                            }
+                          >
+                            {endOptionsFor(builder.start).map((opt) => (
+                              <option key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </option>
+                            ))}
                           </select>
                         </div>
                       </div>
                     </div>
 
                     <div style={{ marginTop: '.75rem' }}>
-                      <label style={{ display: 'block', marginBottom: 4, fontSize: '.85rem' }}>Días de la semana</label>
-                      <div style={{ display: 'flex', gap: '.25rem', flexWrap: 'wrap' }}>
+                      <label
+                        style={{
+                          display: 'block',
+                          marginBottom: 4,
+                          fontSize: '.85rem',
+                        }}
+                      >
+                        Días de la semana
+                      </label>
+                      <div
+                        style={{
+                          display: 'flex',
+                          gap: '.25rem',
+                          flexWrap: 'wrap',
+                        }}
+                      >
                         {DAY_SHORT.map((d, i) => {
                           const full = DAY_NAMES[i];
                           const active = builder.days.includes(full);
-                          return <Chip key={full} $active={active} onClick={() => toggleBuilderDay(full)}>{d}</Chip>
+                          return (
+                            <Chip
+                              key={full}
+                              $active={active}
+                              onClick={() => toggleBuilderDay(full)}
+                            >
+                              {d}
+                            </Chip>
+                          );
                         })}
                       </div>
                     </div>
 
                     <div style={{ marginTop: '1rem', textAlign: 'right' }}>
-                      <Btn variant="primary" onClick={applyBuilder}>+ Añadir franja</Btn>
+                      <Btn variant="primary" onClick={applyBuilder}>
+                        + Añadir franja
+                      </Btn>
                     </div>
                   </Card>
 
                   <ScrollCard style={{ maxHeight: '40vh' }}>
-                    {[...selectedDevices].map(devId => {
+                    {[...selectedDevices].map((devId) => {
                       if (target !== 'ALL' && target !== devId) return null;
-                      const d = devices.find(x => idEq(x._id, devId));
+                      const d = devices.find((x) => idEq(x._id, devId));
                       const blocks = scheduleBlocks[devId] || [];
                       return (
-                        <div key={devId} style={{ marginBottom: '1rem', borderBottom: '1px solid #eee', paddingBottom: '.5rem' }}>
-                          <strong>{d?.appliance} ({d?.room})</strong>
-                          {!blocks.length && <div style={{ opacity: .6, fontSize: '.9rem' }}>Sin franjas asignadas.</div>}
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '.25rem', marginTop: '.25rem' }}>
+                        <div
+                          key={devId}
+                          style={{
+                            marginBottom: '1rem',
+                            borderBottom: '1px solid #eee',
+                            paddingBottom: '.5rem',
+                          }}
+                        >
+                          <strong>
+                            {d?.appliance} ({d?.room})
+                          </strong>
+                          {!blocks.length && (
+                            <div style={{ opacity: 0.6, fontSize: '.9rem' }}>
+                              Sin franjas asignadas.
+                            </div>
+                          )}
+                          <div
+                            style={{
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '.25rem',
+                              marginTop: '.25rem',
+                            }}
+                          >
                             {blocks.map((b, i) => (
-                              <div key={i} style={{ display: 'flex', gap: '.5rem', alignItems: 'center', background: 'rgba(0,0,0,0.05)', padding: '.25rem .5rem', borderRadius: 4 }}>
-                                <span style={{ fontWeight: 600 }}>{b.start} - {b.end}</span>
+                              <div
+                                key={i}
+                                style={{
+                                  display: 'flex',
+                                  gap: '.5rem',
+                                  alignItems: 'center',
+                                  background: 'rgba(0,0,0,0.05)',
+                                  padding: '.25rem .5rem',
+                                  borderRadius: 4,
+                                }}
+                              >
+                                <span style={{ fontWeight: 600 }}>
+                                  {b.start} - {b.end}
+                                </span>
                                 <div style={{ display: 'flex', gap: 2 }}>
-                                  {b.days.map(day => <span key={day} style={{ fontSize: '.75rem', background: 'rgba(0,0,0,0.1)', padding: '0 .3rem', borderRadius: 4 }}>{ES_DAYS[day]?.slice(0, 3)}</span>)}
+                                  {b.days.map((day) => (
+                                    <span
+                                      key={day}
+                                      style={{
+                                        fontSize: '.75rem',
+                                        background: 'rgba(0,0,0,0.1)',
+                                        padding: '0 .3rem',
+                                        borderRadius: 4,
+                                      }}
+                                    >
+                                      {ES_DAYS[day]?.slice(0, 3)}
+                                    </span>
+                                  ))}
                                 </div>
-                                <DangerBtn style={{ padding: '.1rem .3rem', fontSize: '.7rem', marginLeft: 'auto' }} onClick={() => removeBlock(devId, i)}>x</DangerBtn>
+                                <DangerBtn
+                                  style={{
+                                    padding: '.1rem .3rem',
+                                    fontSize: '.7rem',
+                                    marginLeft: 'auto',
+                                  }}
+                                  onClick={() => removeBlock(devId, i)}
+                                >
+                                  x
+                                </DangerBtn>
                               </div>
                             ))}
                           </div>
                         </div>
-                      )
+                      );
                     })}
                   </ScrollCard>
 
                   <StepFooter>
                     <DangerBtn onClick={() => setStep(2)}>Atrás</DangerBtn>
-                    <Btn variant="primary" onClick={() => setStep(4)}>Siguiente</Btn>
+                    <Btn variant="primary" onClick={() => setStep(4)}>
+                      Siguiente
+                    </Btn>
                   </StepFooter>
                 </>
               )}
@@ -1505,32 +1808,65 @@ export default function Rutinas() {
               {step === 4 && (
                 <div style={{ textAlign: 'center', padding: '2rem 0' }}>
                   <h3>Resumen de la Rutina</h3>
-                  <Card style={{ maxWidth: 400, margin: '1rem auto', textAlign: 'left' }}>
-                    <p><strong>Nombre:</strong> {form.name || '(Sin nombre)'}</p>
-                    <p><strong>Paciente:</strong> {getPatientName(form.user_id)}</p>
-                    <p><strong>Casa:</strong> {households.find(h => idEq(h._id, form.household_id))?.name || form.household_id}</p>
-                    <div style={{ marginTop: '.5rem', borderTop: '1px solid #eee', paddingTop: '.5rem' }}>
-                      <strong>Dispositivos configurados:</strong> {Object.keys(scheduleBlocks).filter(k => scheduleBlocks[k]?.length).length}
+                  <Card
+                    style={{
+                      maxWidth: 400,
+                      margin: '1rem auto',
+                      textAlign: 'left',
+                    }}
+                  >
+                    <p>
+                      <strong>Nombre:</strong> {form.name || '(Sin nombre)'}
+                    </p>
+                    <p>
+                      <strong>Paciente:</strong> {getPatientName(form.user_id)}
+                    </p>
+                    <p>
+                      <strong>Casa:</strong>{' '}
+                      {households.find((h) => idEq(h._id, form.household_id))
+                        ?.name || form.household_id}
+                    </p>
+                    <div
+                      style={{
+                        marginTop: '.5rem',
+                        borderTop: '1px solid #eee',
+                        paddingTop: '.5rem',
+                      }}
+                    >
+                      <strong>Dispositivos configurados:</strong>{' '}
+                      {
+                        Object.keys(scheduleBlocks).filter(
+                          (k) => scheduleBlocks[k]?.length
+                        ).length
+                      }
                     </div>
                   </Card>
                   <StepFooter style={{ justifyContent: 'center' }}>
                     <DangerBtn onClick={() => setStep(3)}>Atrás</DangerBtn>
-                    <Btn variant="primary" onClick={saveRoutine}>Confirmar y Guardar</Btn>
+                    <Btn variant="primary" onClick={saveRoutine}>
+                      Confirmar y Guardar
+                    </Btn>
                   </StepFooter>
                 </div>
               )}
-
             </ModalContent>
           </ModalBody>
         </Wizard>
       </Modal>
 
       {/* ---------- MODAL EDITAR ---------- */}
-      <Modal isOpen={editOpen} onClose={() => setEditOpen(false)}>
+      <Modal
+        isOpen={editOpen}
+        onClose={() => setEditOpen(false)}
+        maxWidth="600px"
+      >
         <h2>Editar rutina</h2>
         <FormGroup>
           <label>Nombre</label>
-          <input value={editData.name} onChange={e => setEditData({ ...editData, name: e.target.value })} />
+          <input
+            value={editData.name}
+            onChange={(e) => setEditData({ ...editData, name: e.target.value })}
+          />
         </FormGroup>
         <div style={{ maxHeight: '60vh', overflow: 'auto', paddingRight: 4 }}>
           {editData.occurrences.map((o, idx) => (
@@ -1548,36 +1884,102 @@ export default function Rutinas() {
               />
             </div>
           ))}
-          {!editData.occurrences.length && <p>No hay franjas de tiempo definidas.</p>}
+          {!editData.occurrences.length && (
+            <p>No hay franjas de tiempo definidas.</p>
+          )}
         </div>
-        <Btn onClick={addOccurrence} style={{ marginTop: '.5rem', width: '100%' }}>+ Añadir franja</Btn>
+        <Btn
+          variant="primary"
+          onClick={addOccurrence}
+          style={{ marginTop: '.5rem', width: '100%' }}
+        >
+          + Añadir franja
+        </Btn>
 
-        <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end', gap: '.5rem' }}>
+        <div
+          style={{
+            marginTop: '1.5rem',
+            display: 'flex',
+            justifyContent: 'flex-end',
+            gap: '.5rem',
+          }}
+        >
           <DangerBtn onClick={() => setEditOpen(false)}>Cancelar</DangerBtn>
-          <Btn variant="primary" onClick={saveEdit}>Guardar Cambios</Btn>
+          <Btn variant="primary" onClick={saveEdit}>
+            Guardar Cambios
+          </Btn>
         </div>
       </Modal>
 
       {/* ---------- MODAL PRESETS ---------- */}
       <Modal isOpen={presetOpen} onClose={() => setPresetOpen(false)}>
         <h2>Gestionar Presets</h2>
-        <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', borderBottom: '1px solid #eee' }}>
-          <Btn variant={presetTab === 'create' ? 'primary' : ''} onClick={() => setPresetTab('create')} style={{ borderRadius: '4px 4px 0 0' }}>Crear nuevo</Btn>
-          <Btn variant={presetTab === 'list' ? 'primary' : ''} onClick={() => setPresetTab('list')} style={{ borderRadius: '4px 4px 0 0' }}>Mis presets</Btn>
+        <div
+          style={{
+            display: 'flex',
+            gap: '1rem',
+            marginBottom: '1rem',
+            borderBottom: '1px solid #eee',
+          }}
+        >
+          <Btn
+            variant={presetTab === 'create' ? 'primary' : ''}
+            onClick={() => setPresetTab('create')}
+            style={{ borderRadius: '4px 4px 0 0' }}
+          >
+            Crear nuevo
+          </Btn>
+          <Btn
+            variant={presetTab === 'list' ? 'primary' : ''}
+            onClick={() => setPresetTab('list')}
+            style={{ borderRadius: '4px 4px 0 0' }}
+          >
+            Mis presets
+          </Btn>
         </div>
 
         {presetTab === 'create' && (
           <>
             <FormGroup>
               <label>Nombre del preset</label>
-              <input value={presetForm.name} onChange={e => setPresetForm(f => ({ ...f, name: e.target.value }))} placeholder="p.ej. Tarde estándar" />
+              <input
+                value={presetForm.name}
+                onChange={(e) =>
+                  setPresetForm((f) => ({ ...f, name: e.target.value }))
+                }
+                placeholder="p.ej. Tarde estándar"
+              />
             </FormGroup>
             <FormGroup>
               <label>Horario por defecto</label>
-              <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}>
-                <select value={presetForm.start} onChange={e => setPresetForm(f => ({ ...f, start: e.target.value }))}>{slots48.map(t => <option key={t} value={t}>{t}</option>)}</select>
+              <div
+                style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}
+              >
+                <select
+                  value={presetForm.start}
+                  onChange={(e) =>
+                    setPresetForm((f) => ({ ...f, start: e.target.value }))
+                  }
+                >
+                  {slots48.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
                 <span>—</span>
-                <select value={presetForm.end} onChange={e => setPresetForm(f => ({ ...f, end: e.target.value }))}>{endOptionsFor(presetForm.start).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}</select>
+                <select
+                  value={presetForm.end}
+                  onChange={(e) =>
+                    setPresetForm((f) => ({ ...f, end: e.target.value }))
+                  }
+                >
+                  {endOptionsFor(presetForm.start).map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
               </div>
             </FormGroup>
             <FormGroup>
@@ -1585,30 +1987,68 @@ export default function Rutinas() {
               <div style={{ display: 'flex', gap: '.25rem' }}>
                 {DAY_SHORT.map((d, i) => {
                   const full = DAY_NAMES[i];
-                  return <Chip key={full} $active={presetForm.days.includes(full)} onClick={() => togglePresetDay(full)}>{d}</Chip>
+                  return (
+                    <Chip
+                      key={full}
+                      $active={presetForm.days.includes(full)}
+                      onClick={() => togglePresetDay(full)}
+                    >
+                      {d}
+                    </Chip>
+                  );
                 })}
               </div>
             </FormGroup>
-            <Btn variant="primary" onClick={addPreset} style={{ width: '100%', marginTop: '1rem' }}>Guardar Preset</Btn>
+            <Btn
+              variant="primary"
+              onClick={addPreset}
+              style={{ width: '100%', marginTop: '1rem' }}
+            >
+              Guardar Preset
+            </Btn>
           </>
         )}
 
         {presetTab === 'list' && (
           <ul style={{ listStyle: 'none', padding: 0 }}>
-            {presets.map(p => (
-              <li key={p.id} style={{ border: '1px solid #eee', padding: '.5rem', borderRadius: 6, marginBottom: '.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            {presets.map((p) => (
+              <li
+                key={p.id}
+                style={{
+                  border: '1px solid #eee',
+                  padding: '.5rem',
+                  borderRadius: 6,
+                  marginBottom: '.5rem',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                }}
+              >
                 <div>
                   <strong>{p.name}</strong>
-                  <div style={{ fontSize: '.85rem', opacity: .8 }}>{p.start}-{p.end}, {p.days.length} días</div>
+                  <div style={{ fontSize: '.85rem', opacity: 0.8 }}>
+                    {p.start}-{p.end}, {p.days.length} días
+                  </div>
                 </div>
-                <DangerBtn style={{ fontSize: '.8rem', padding: '.2rem .5rem' }} onClick={() => deletePreset(p.id)}>Borrar</DangerBtn>
+                <DangerBtn
+                  style={{ fontSize: '.8rem', padding: '.2rem .5rem' }}
+                  onClick={() => deletePreset(p.id)}
+                >
+                  Borrar
+                </DangerBtn>
               </li>
             ))}
             {!presets.length && <p>No tienes presets guardados.</p>}
           </ul>
         )}
-        <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end' }}>
-          <Btn onClick={() => setPresetOpen(false)}>Cerrar</Btn>
+        <div
+          style={{
+            marginTop: '1.5rem',
+            display: 'flex',
+            justifyContent: 'flex-end',
+          }}
+        >
+          <DangerBtn onClick={() => setPresetOpen(false)}>Cerrar</DangerBtn>
         </div>
       </Modal>
 
@@ -1616,7 +2056,14 @@ export default function Rutinas() {
       <Modal isOpen={deleteOpen} onClose={() => setDeleteOpen(false)}>
         <h2>¿Borrar rutina?</h2>
         <p>Esta acción no se puede deshacer.</p>
-        <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end', gap: '.5rem' }}>
+        <div
+          style={{
+            marginTop: '1.5rem',
+            display: 'flex',
+            justifyContent: 'flex-end',
+            gap: '.5rem',
+          }}
+        >
           <Btn onClick={() => setDeleteOpen(false)}>Cancelar</Btn>
           <DangerBtn onClick={confirmDelete}>Sí, Borrar</DangerBtn>
         </div>
