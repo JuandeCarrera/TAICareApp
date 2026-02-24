@@ -1,5 +1,5 @@
 import React, { useContext } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 
 import Home from './pages/Home.jsx';
 import UsersPage from './pages/UsersPage.jsx';
@@ -13,12 +13,28 @@ import Rutinas from './pages/Rutinas.jsx';
 import Alertas from './pages/Alertas.jsx';
 import AjustesAlertas from './pages/AjustesAlertas.jsx';
 import ReglasAlertas from './pages/ReglasAlertas.jsx';
+import AlertSetupPage from './pages/AlertSetupPage.jsx';
 
 import { AuthContext } from './contexts/AuthContext.jsx';
 
+const CAREGIVER_ROLES = ['cuidador', 'admin'];
+const SETUP_PATH = '/alertas/setup';
+
 function Private({ children }) {
   const { user } = useContext(AuthContext);
-  return user ? children : <Navigate to="/login" replace />;
+  const location = useLocation();
+
+  if (!user) return <Navigate to="/login" replace />;
+
+  // Redirect caregivers/admins to setup if they haven't configured alerts yet
+  const needsSetup =
+    CAREGIVER_ROLES.includes(user.role) &&
+    user.alert_preferences_configured === false &&
+    location.pathname !== SETUP_PATH;
+
+  if (needsSetup) return <Navigate to={SETUP_PATH} replace />;
+
+  return children;
 }
 
 export default function App() {
@@ -108,6 +124,14 @@ export default function App() {
         element={
           <Private>
             <ReglasAlertas />
+          </Private>
+        }
+      />
+      <Route
+        path="/alertas/setup"
+        element={
+          <Private>
+            <AlertSetupPage />
           </Private>
         }
       />

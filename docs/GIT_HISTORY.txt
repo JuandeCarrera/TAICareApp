@@ -131,3 +131,27 @@
 - **Frontend (hooks):**
   - useUsers.js: useUpdateUser ahora llama efetchQueries tras la mutación.
   - useRoutines.js / useAlerts.js: Corregido flag enabled para no enviar user_id inválidos al backend.
+
+
+## 2026-02-24: Phase 12 - Sistema de Preferencias de Alertas por Tipo
+**Commit Message:** `feat: per-type alert preferences with onboarding setup flow`
+
+**Changes:**
+- **Backend:**
+  - `constants/index.js`: Añadidos `ALERT_TYPES` (9 tipos con severidad por defecto) y `DEFAULT_ALERT_PREFERENCES`.
+  - `User.js`: Añadidos campos `alert_preferences` (Map por tipo: `{ enabled, severity }`) y `alert_preferences_configured` (Boolean, default false).
+  - `userController.js`: Añadidos ambos campos al whitelist de actualización para admin, cuidador y usuario propio.
+
+- **Frontend:**
+  - `AuthContext.jsx`: Tras login, se obtiene el perfil completo del usuario (`GET /users/:id`) para disponer de `alert_preferences_configured`. Se expone `updateUserProfile()` para actualizar el contexto sin re-login.
+  - `App.jsx`: El guard `Private` redirige automáticamente a `/alertas/setup` si el cuidador/admin aún no ha configurado sus alertas (`alert_preferences_configured === false`). Añadida ruta `/alertas/setup`.
+  - `AlertSetupPage.jsx` (nuevo): Página de onboarding con los 9 tipos de alerta agrupados por categoría. Cada tipo tiene toggle activar/desactivar y selector de severidad (Alta/Media/Baja). Botones: 'Guardar configuración' y 'Recordar más tarde'.
+  - `Configuracion.jsx`: Añadida sección colapsable ' Preferencias de alertas' con el grid completo de tipos, toggle switch y selector de severidad. Eliminado el botón de enlace que tenía antes.
+  - `AjustesAlertas.jsx`: Eliminada la sección de preferencias por tipo (ahora está en Configuración). Checkbox reemplazado por toggle switch en preferencias existentes.
+
+- **UI Fixes:**
+  - `SevSelect` en `Configuracion.jsx`: Añadido `color-scheme: dark/light` para que el desplegable nativo del OS use los colores correctos en modo oscuro.
+  - `Sidebar.jsx`: Cambiado `height: 100vh` a `height: 100%` en desktop para que el sidebar no tape el footer. Añadido `overflow-x: hidden` para eliminar scroll horizontal.
+
+- **Documentación:**
+  - `docs/alert_system_design.md`: Documento de diseño completo del sistema de alertas.

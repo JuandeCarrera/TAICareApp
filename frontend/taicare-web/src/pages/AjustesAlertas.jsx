@@ -6,12 +6,56 @@ import Sidebar from '../components/Sidebar.jsx';
 import Footer from '../components/Footer.jsx';
 import { AuthContext } from '../contexts/AuthContext.jsx';
 import { useIsMobile } from '../hooks/useIsMobile';
+import { useUpdateUser } from '../hooks/useUsers';
 import {
   SettingsAPI,
   NotifPrefsAPI,
   JobsAPI,
   DevAPI,
 } from '../services/alertsApi.js';
+
+// ---- Alert type definitions (mirrors backend ALERT_TYPES constant) ----
+const ALERT_CATEGORIES = [
+  {
+    label: '📅 Rutinas',
+    types: [
+      { code: 'ROUTINE_MISSED', name: 'Rutina no completada', defaultSeverity: 'high' },
+    ],
+  },
+  {
+    label: '🌙 Horas Anómalas',
+    types: [
+      { code: 'UNUSUAL_HOUR_ACTIVITY', name: 'Actividad fuera de horario', defaultSeverity: 'high' },
+      { code: 'NIGHT_ACTIVITY', name: 'Actividad nocturna', defaultSeverity: 'medium' },
+    ],
+  },
+  {
+    label: '📊 Datos Sospechosos',
+    types: [
+      { code: 'DATA_GAP', name: 'Sin datos del dispositivo', defaultSeverity: 'high' },
+      { code: 'DATA_SPIKE', name: 'Consumo anómalo alto', defaultSeverity: 'medium' },
+      { code: 'ERRATIC_BEHAVIOR', name: 'Comportamiento errático', defaultSeverity: 'high' },
+    ],
+  },
+  {
+    label: '🔴 Inactividad',
+    types: [
+      { code: 'NO_ACTIVITY', name: 'Sin actividad en rutina', defaultSeverity: 'high' },
+      { code: 'PROLONGED_INACTIVITY', name: 'Inactividad prolongada', defaultSeverity: 'high' },
+    ],
+  },
+  {
+    label: '📡 Dispositivo',
+    types: [
+      { code: 'DEVICE_ISSUE', name: 'Problema con dispositivo', defaultSeverity: 'medium' },
+    ],
+  },
+];
+const SEV_OPTIONS = [
+  { value: 'high', label: '🔴 Alta' },
+  { value: 'medium', label: '🟡 Media' },
+  { value: 'low', label: '🟢 Baja' },
+];
 
 const App = styled.div`
   display: flex;
@@ -36,6 +80,27 @@ const Card = styled.section`
   border-radius: 10px;
   padding: 1rem;
   margin-bottom: 1rem;
+`;
+const SwitchTrack = styled.div`
+  position: relative;
+  width: 40px;
+  height: 22px;
+  background: ${({ $active, theme }) => $active ? theme.colors.primary : '#ccc'};
+  border-radius: 999px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.25s;
+  &::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: ${({ $active }) => $active ? '20px' : '2px'};
+    width: 18px;
+    height: 18px;
+    background: #fff;
+    border-radius: 50%;
+    transition: left 0.25s;
+  }
 `;
 const Row = styled.div`
   display: flex;
@@ -79,7 +144,7 @@ const Select = styled.select`
 `;
 
 export default function AjustesAlertas() {
-  const { logout } = useContext(AuthContext);
+  const { logout, user, updateUserProfile } = useContext(AuthContext);
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [menuOpen, setMenuOpen] = useState(!isMobile);
@@ -87,7 +152,39 @@ export default function AjustesAlertas() {
     setMenuOpen(!isMobile);
   }, [isMobile]);
 
-  // system settings
+  // ---- Per-type alert preferences ----
+  const updateUserMutation = useUpdateUser();
+  const [prefs, setPrefs] = useState(() => {
+    // Seed from user context if available
+    const raw = user?.alert_preferences;
+    if (!raw) return {};
+    // alert_preferences may be a plain object or a Map
+    return raw instanceof Map ? Object.fromEntries(raw) : raw;
+  });
+  const [prefsSaving, setPrefsSaving] = useState(false);
+
+  function getPref(code, field) {
+    const cat = ALERT_CATEGORIES.flatMap(c => c.types).find(t => t.code === code);
+    return prefs[code]?.[field] ?? (field === 'enabled' ? true : cat?.defaultSeverity ?? 'medium');
+  }
+  function setPrefsField(code, field, value) {
+    setPrefs(p => ({ ...p, [code]: { ...p[code], [field]: value, enabled: getPref(code, 'enabled') } }));
+  }
+  async function savePrefsPerType() {
+    setPrefsSaving(true);
+    try {
+      const id = user?._id || user?.sub;
+      await updateUserMutation.mutateAsync({ id, alert_preferences: prefs, alert_preferences_configured: true });
+      if (updateUserProfile) updateUserProfile({ alert_preferences: prefs, alert_preferences_configured: true });
+      alert('Preferencias guardadas correctamente.');
+    } catch (e) {
+      alert('Error al guardar: ' + e.message);
+    } finally {
+      setPrefsSaving(false);
+    }
+  }
+
+  // ---- System settings ----
   const [enabled, setEnabled] = useState(true);
   const [windowStart, setWindowStart] = useState('06:00');
   const [windowEnd, setWindowEnd] = useState('22:00');
@@ -390,6 +487,7 @@ export default function AjustesAlertas() {
               </Btn>
             </div>
           </Card>
+
 
           <Card>
             <h3>Herramientas de prueba (dev)</h3>

@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcrypt';
 
-import { ROLES } from '../constants/index.js';
+import { ROLES, DEFAULT_ALERT_PREFERENCES } from '../constants/index.js';
 
 const {
   Schema,
@@ -18,6 +18,17 @@ const userSchema = new Schema(
     household_id: { type: ObjectId, ref: 'Household' },
     history: { type: String },
     vacation_mode: { type: Boolean, default: false },
+    // Alert preferences per type: { ROUTINE_MISSED: { enabled: true, severity: 'high' }, ... }
+    alert_preferences: {
+      type: Map,
+      of: new mongoose.Schema(
+        { enabled: { type: Boolean, default: true }, severity: { type: String, default: 'medium' } },
+        { _id: false }
+      ),
+      default: () => new Map(Object.entries(DEFAULT_ALERT_PREFERENCES)),
+    },
+    // False = user hasn't completed the onboarding alert setup yet
+    alert_preferences_configured: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

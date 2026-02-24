@@ -21,13 +21,16 @@ const Nav = styled.nav`
   position: ${({ isMobile }) => (isMobile ? 'fixed' : 'relative')};
   top: 0;
   left: 0;
-  height: 100vh;
+  /* On desktop, fill the Body container (which excludes header+footer).
+     On mobile, the sidebar is a fixed overlay that covers everything. */
+  height: ${({ isMobile }) => (isMobile ? '100vh' : '100%')};
   z-index: 100;
 
   width: ${({ open }) => (open ? '240px' : '0')};
   transition: width 0.2s ease;
   background: ${({ theme }) => theme.colors.buttonBg};
   overflow-y: auto;
+  overflow-x: hidden;
   box-shadow: ${({ isMobile, open }) =>
     isMobile && open ? '4px 0 12px rgba(0,0,0,0.3)' : 'none'};
 
