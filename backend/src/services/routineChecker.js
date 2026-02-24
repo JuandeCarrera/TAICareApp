@@ -1,6 +1,7 @@
 import Routine from '../models/Routine.js';
 import Data from '../models/Data.js';
 import RoutineOccurrence from '../models/routineOccurrence.js';
+import User from '../models/User.js';
 
 const DAY_NAMES = [
   'Sunday',
@@ -105,6 +106,7 @@ export async function getRoutinesStatusForDate(userId, dateLike) {
 
   const routines = await Routine.find({
     user_id: userId,
+    enabled: true,
     'occurrences.days': dayName,
   }).lean();
 
@@ -137,7 +139,14 @@ export async function evaluateAllForDate(
   const baseDay = dayStart(dateLike);
   const dayName = DAY_NAMES[baseDay.getDay()];
 
-  const routines = await Routine.find({ 'occurrences.days': dayName }).lean();
+  const activePatients = await User.find({ role: 'paciente', vacation_mode: { $ne: true } }, { _id: 1 }).lean();
+  const activePatientIds = activePatients.map(p => p._id);
+
+  const routines = await Routine.find({
+    enabled: true,
+    user_id: { $in: activePatientIds },
+    'occurrences.days': dayName
+  }).lean();
 
   let checked = 0;
   const results = [];

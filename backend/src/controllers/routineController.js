@@ -1,8 +1,12 @@
+import mongoose from 'mongoose';
 import * as routineService from '../services/routineService.js';
 import User from '../models/User.js'; // Necesario para validación extra en getRoutinesStatus
 
 export const getRoutines = async (req, res, next) => {
     try {
+        if (req.query.user_id && !mongoose.Types.ObjectId.isValid(req.query.user_id)) {
+            return res.status(400).json({ error: 'user_id inválido' });
+        }
         const routines = await routineService.getRoutines(req.user, req.query);
         res.json(routines);
     } catch (error) {

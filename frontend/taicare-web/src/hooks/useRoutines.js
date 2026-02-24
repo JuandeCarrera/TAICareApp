@@ -11,7 +11,9 @@ export function useRoutines({ userId } = {}) {
       const { data } = await api.get(`/routines?${params.toString()}`);
       return Array.isArray(data) ? data : [];
     },
-    enabled: true,
+    // enabled=true when no userId OR when userId is a real ID
+    // enabled=false only when userId is explicitly null (patient panel, no patient selected yet)
+    enabled: userId !== null,
   });
 }
 

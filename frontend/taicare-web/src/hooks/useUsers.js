@@ -38,7 +38,10 @@ export function useUpdateUser() {
       return data;
     },
     onSuccess: () => {
+      // Invalidate ALL user queries (prefix matching) so any page with patient data refreshes
       queryClient.invalidateQueries({ queryKey: ['users'] });
+      // Also refetch immediately to ensure fresh data across all pages
+      queryClient.refetchQueries({ queryKey: ['users'] });
     },
   });
 }

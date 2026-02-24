@@ -99,3 +99,35 @@
   - A�adido prop `maxWidth` a Modales y ajustado ancho en Rutinas (800px/600px).
   - Limitada altura de modales para evitar cortes en pantallas peque�as.
   - Limpieza de c�digo (`lint`) general.
+
+
+## 2026-02-19: Phase 10 - Mejoras de Legibilidad en Alertas
+**Commit Message:** `feat: improve alert readability and sidebar overflow fix`
+
+**Changes:**
+- **Frontend (Alertas.jsx):**
+  - Añadida función safeTitle para mapear tipos técnicos a títulos legibles con iconos (ej. NO_ACTIVITY   Falta de Actividad).
+  - Añadidos badges de severidad visual (ALTA / MEDIA / BAJA) en las tarjetas de alerta.
+- **Frontend (Sidebar.jsx):**
+  - Arreglado el desbordamiento vertical en pantallas pequeñas añadiendo overflow-y: auto al nav del sidebar.
+
+## 2026-02-22: Phase 11 - Modo Vacaciones y Toggles de Rutinas
+**Commit Message:** `feat: vacation mode & individual routine enable/disable toggles`
+
+**Changes:**
+- **Backend:**
+  - Añadido campo acation_mode: Boolean al modelo User.js.
+  - Actualizado userController.js para permitir actualizar acation_mode por admins y cuidadores.
+  - Actualizado outineChecker.js para saltar pacientes con acation_mode: true y rutinas con enabled: false.
+  - Actualizado lertEngine.js para filtrar pacientes con acation_mode: true.
+  - Añadida validación mongoose.Types.ObjectId.isValid en lertController.js y outineController.js para evitar crash con user_id inválidos.
+- **Frontend (UsersPage.jsx):**
+  - Añadidos componentes ToggleWrapper / SwitchControl.
+  - Añadido toggle "Modo Vacaciones" en el panel de detalle del paciente.
+- **Frontend (Rutinas.jsx):**
+  - Añadido toggle de activar/pausar por rutina individual en cada RoutineCard.
+  - Estado visual consciente del modo vacaciones: rutinas de pacientes de vacaciones aparecen difuminadas con etiqueta **(Modo Vacaciones)**.
+  - Diálogo de confirmación al activar manualmente una rutina con paciente en vacaciones.
+- **Frontend (hooks):**
+  - useUsers.js: useUpdateUser ahora llama efetchQueries tras la mutación.
+  - useRoutines.js / useAlerts.js: Corregido flag enabled para no enviar user_id inválidos al backend.

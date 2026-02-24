@@ -19,7 +19,7 @@ import {
   useUpdateRoutine,
   useDeleteRoutine,
 } from '../hooks/useRoutines';
-import { useUsers } from '../hooks/useUsers';
+import { useUsers, useUpdateUser } from '../hooks/useUsers';
 import { useHouseholds } from '../hooks/useHouseholds';
 import { useDevices } from '../hooks/useDevices';
 import { useIsMobile } from '../hooks/useIsMobile';
@@ -87,6 +87,35 @@ const DangerBtn = styled(Btn)`
     background: rgba(239, 68, 68, 0.12);
   }
 `;
+
+const ToggleWrapper = styled.label`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: ${({ theme }) => theme.colors.text};
+`;
+const SwitchControl = styled.div`
+  position: relative;
+  width: 36px;
+  height: 20px;
+  background: ${({ active, theme }) => (active ? theme.colors.primary : '#ccc')};
+  border-radius: 999px;
+  transition: background 0.3s;
+  &::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: ${({ active }) => (active ? '18px' : '2px')};
+    width: 16px;
+    height: 16px;
+    background: #fff;
+    border-radius: 50%;
+    transition: left 0.3s;
+  }
+`;
+
 /* ---------- Listado ---------- */
 const List = styled.ul`
   list-style: none;
@@ -378,6 +407,7 @@ export default function Rutinas() {
   const createRoutineMutation = useCreateRoutine();
   const updateRoutineMutation = useUpdateRoutine();
   const deleteRoutineMutation = useDeleteRoutine();
+  const updateUserMutation = useUpdateUser();
 
   // presets
   const [presets, setPresets] = useState(loadPresets());
@@ -1230,16 +1260,29 @@ export default function Rutinas() {
             {loadingRoutines && <p>Cargando rutinas...</p>}
             {!loadingRoutines &&
               filteredSorted.map((r) => {
+                // r.user_id can be a populated object { _id, name, ... } or just an ID string
+                const routineUserId = typeof r.user_id === 'object'
+                  ? (r.user_id?._id || r.user_id?.id || '')
+                  : r.user_id;
+                const userObj = patients.find((p) => idEq(p._id, routineUserId));
+                const isVacation = !!userObj?.vacation_mode;
+                const effectiveEnabled = r.enabled !== false && !isVacation;
+
                 const patient = getPatientName(r.user_id);
                 const occ = Array.isArray(r.occurrences) ? r.occurrences : [];
                 const times = summarizeTimes(occ);
                 const daysPretty = daysUnion(occ).map((d) => ES_DAYS[d] || d);
                 const devCount = uniqueDevicesCount(occ);
                 return (
-                  <RoutineCard key={r._id}>
+                  <RoutineCard key={r._id} style={{ opacity: effectiveEnabled ? 1 : 0.6 }}>
                     <CardTop>
                       <CardTitle>
                         {r.name || `Rutina ${String(r._id).slice(-6)}`}
+                        {!effectiveEnabled && (
+                          <span style={{ fontSize: '0.8rem', color: '#e04848', marginLeft: '0.5rem' }}>
+                            ({isVacation ? 'Modo Vacaciones' : 'Pausada'})
+                          </span>
+                        )}
                       </CardTitle>
                       <div
                         style={{
@@ -1248,6 +1291,46 @@ export default function Rutinas() {
                           alignItems: 'center',
                         }}
                       >
+                        <ToggleWrapper
+                          onClick={async (e) => {
+                            e.preventDefault();
+                            try {
+                              const willEnable = r.enabled === false;
+
+                              if (willEnable && isVacation && userObj) {
+                                if (window.confirm(`${userObj.name} está en Modo Vacaciones.\n\nSi activas esta rutina, el Modo Vacaciones se desactivará y sus otras rutinas se pausarán.\n\n¿Deseas continuar?`)) {
+                                  // 1. Desactivar modo vacaciones
+                                  await updateUserMutation.mutateAsync({
+                                    id: userObj._id,
+                                    vacation_mode: false
+                                  });
+
+                                  // 2. Pausar todas las demás rutinas del paciente
+                                  const otherRoutines = routines.filter(x => idEq(x.user_id, userObj._id) && x._id !== r._id && x.enabled !== false);
+                                  for (const or of otherRoutines) {
+                                    await updateRoutineMutation.mutateAsync({ id: or._id, enabled: false });
+                                  }
+
+                                  // 3. Activar esta
+                                  await updateRoutineMutation.mutateAsync({ id: r._id, enabled: true });
+                                }
+                              } else {
+                                // Toggle normal
+                                await updateRoutineMutation.mutateAsync({
+                                  id: r._id,
+                                  enabled: willEnable
+                                });
+                              }
+                            } catch (err) {
+                              alert('Error al actualizar rutina: ' + err.message);
+                            }
+                          }}
+                          title={r.enabled !== false ? "Pausar rutina" : "Activar rutina"}
+                          style={{ marginRight: '.5rem' }}
+                        >
+                          <SwitchControl active={r.enabled !== false} />
+                        </ToggleWrapper>
+
                         <Btn variant="primary" onClick={() => openEditModal(r)}>
                           ✎ Editar
                         </Btn>

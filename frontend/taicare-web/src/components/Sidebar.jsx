@@ -27,9 +27,24 @@ const Nav = styled.nav`
   width: ${({ open }) => (open ? '240px' : '0')};
   transition: width 0.2s ease;
   background: ${({ theme }) => theme.colors.buttonBg};
-  overflow: hidden;
+  overflow-y: auto;
   box-shadow: ${({ isMobile, open }) =>
     isMobile && open ? '4px 0 12px rgba(0,0,0,0.3)' : 'none'};
+
+  /* Custom Scrollbar */
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.4);
+  }
 `;
 
 const Inner = styled.div`

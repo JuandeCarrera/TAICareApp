@@ -17,6 +17,7 @@ const userSchema = new Schema(
     caregiver_id: { type: ObjectId, ref: 'User', index: true },
     household_id: { type: ObjectId, ref: 'Household' },
     history: { type: String },
+    vacation_mode: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

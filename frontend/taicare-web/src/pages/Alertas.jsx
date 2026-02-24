@@ -115,6 +115,20 @@ const DangerBtn = styled(Btn)`
   }
 `;
 
+const PatientTag = styled.span`
+  background: ${({ theme }) => theme.colors.bg};
+  border: 1px solid ${({ theme }) => theme.colors.border};
+  color: ${({ theme }) => theme.colors.text};
+  font-weight: 600;
+  font-size: 0.8rem;
+  padding: 2px 8px;
+  border-radius: 12px;
+  margin-left: auto;
+  @media (min-width: 640px) {
+    margin-left: 0;
+  }
+`;
+
 export default function Alertas() {
   const { logout } = useContext(AuthContext);
   const navigate = useNavigate();
@@ -181,6 +195,22 @@ export default function Alertas() {
     { value: 'type:desc', label: 'Tipo (Z–A)' },
   ];
 
+  // Mapeo de tipos de alerta a textos e iconos amigables
+  const ALERT_CONFIG = useMemo(() => ({
+    routine_missed: { label: 'Rutina Incumplida', icon: '❌', color: '#e04848' },
+    NO_ACTIVITY: { label: 'Inactividad Detectada', icon: '⚠️', color: '#f59e0b' },
+    DOOR_OPEN: { label: 'Puerta Abierta', icon: '🚪', color: '#3b82f6' },
+    GAS_LEAK: { label: 'Fuga de Gas', icon: '🔥', color: '#ef4444' },
+    SMOKE: { label: 'Humo Detectado', icon: '💨', color: '#71717a' },
+    SOS: { label: 'Botón de Pánico', icon: '🆘', color: '#ef4444' },
+    FALL: { label: 'Caída Detectada', icon: '🤕', color: '#ef4444' },
+    DEFAULT: { label: 'Alerta', icon: '🔔', color: '#6366f1' },
+  }), []);
+
+  const getAlertConfig = useCallback((type) => {
+    return ALERT_CONFIG[type] || ALERT_CONFIG.DEFAULT;
+  }, [ALERT_CONFIG]);
+
   // fallback helpers
   const patientLabel = useCallback((a) => {
     return a?.user_id?.name || a?.patient_name_snapshot || a?.user_id || '';
@@ -188,16 +218,21 @@ export default function Alertas() {
 
   const safeTitle = useCallback(
     (a) => {
-      if (a?.title && a.title.trim()) return a.title;
-      const parts = [];
-      const p = patientLabel(a);
-      const r = a?.routine_name_snapshot || a?.routine_id?.name || '';
-      if (p) parts.push(`Paciente: ${p}`);
-      if (r) parts.push(`Rutina: ${r}`);
-      if (a?.type) parts.push(a.type);
-      return parts.length ? parts.join(' · ') : 'Alerta';
+      // 1. Si el backend ya trae un título limpio, úsalo (prioridad máxima)
+      if (a?.title && a.title.trim() && a.title !== 'Alerta') return a.title;
+
+      // 2. Si no, usa el mapeo de tipos
+      const config = getAlertConfig(a?.type);
+
+      // 3. Enriquece con info extra si es necesario
+      if (a?.type === 'routine_missed') {
+        const routineName = a?.routine_name_snapshot || a?.routine_id?.name || '';
+        return routineName ? `${config.label}: ${routineName}` : config.label;
+      }
+
+      return config.label;
     },
-    [patientLabel]
+    [getAlertConfig]
   );
 
   // filtrado + ordenación (client-side)
@@ -376,15 +411,18 @@ export default function Alertas() {
                       {/* Usamos !a.read porque el backend suele usar 'read', pero UI previa usaba 'seen' */}
                       {(a.seen === false || a.read === false) && <Dot />}
                       <div>
-                        <p style={{ margin: 0 }}>
+                        <p style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '.5rem', flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: '1.2rem' }}>{getAlertConfig(a.type).icon}</span>
                           <strong>{safeTitle(a)}</strong>
+                          {patientLabel(a) && (
+                            <PatientTag>👤 {patientLabel(a)}</PatientTag>
+                          )}
                         </p>
                         {a.message && (
                           <p style={{ margin: '.2rem 0 0' }}>{a.message}</p>
                         )}
                         <Meta>
                           {fmtDateTime(a.timestamp || a.createdAt)}
-                          {patientLabel(a) ? ` · ${patientLabel(a)}` : ''}
                           {a.type ? ` · ${a.type}` : ''}
                           {a.device_id?.room ? ` · ${a.device_id.room}` : ''}
                         </Meta>

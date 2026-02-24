@@ -161,14 +161,14 @@ const Btn = styled.button`
     variant === 'primary' ? '#fff' : theme.colors.text};
   border: 1px solid
     ${({ theme, variant }) =>
-      variant === 'primary' ? theme.colors.primary : theme.colors.border};
+    variant === 'primary' ? theme.colors.primary : theme.colors.border};
   padding: 0.4rem 0.8rem;
   border-radius: 6px;
   cursor: pointer;
   font-size: 0.9rem;
   &:hover {
     background: ${({ theme, variant }) =>
-      variant === 'primary' ? theme.colors.primaryDark : theme.colors.hoverBg};
+    variant === 'primary' ? theme.colors.primaryDark : theme.colors.hoverBg};
   }
 `;
 const DangerBtn = styled(Btn)`
@@ -177,6 +177,34 @@ const DangerBtn = styled(Btn)`
   background: #e04848;
   &:hover {
     background: rgba(239, 68, 68, 0.12);
+  }
+`;
+
+const ToggleWrapper = styled.label`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: ${({ theme }) => theme.colors.text};
+`;
+const SwitchControl = styled.div`
+  position: relative;
+  width: 40px;
+  height: 22px;
+  background: ${({ active, theme }) => (active ? theme.colors.primary : '#ccc')};
+  border-radius: 999px;
+  transition: background 0.3s;
+  &::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: ${({ active }) => (active ? '20px' : '2px')};
+    width: 18px;
+    height: 18px;
+    background: #fff;
+    border-radius: 50%;
+    transition: left 0.3s;
   }
 `;
 
@@ -226,12 +254,8 @@ export default function UsersPage() {
     [patients, selectedId]
   );
 
-  const { data: patientRoutines = [] } = useRoutines(
-    selectedId ? { userId: selectedId } : { userId: 'SKIP' }
-  );
-  const { data: patientAlerts = [] } = useAlerts(
-    selectedId ? { userId: selectedId } : { userId: 'SKIP' }
-  );
+  const { data: patientRoutines = [] } = useRoutines({ userId: selectedId || null });
+  const { data: patientAlerts = [] } = useAlerts({ userId: selectedId || null });
 
   // Unread counts logic (simplified, without hooks for N+1 perf)
   const [unread, setUnread] = useState({});
@@ -609,6 +633,27 @@ export default function UsersPage() {
                         )}
                       </div>
 
+                      {/* Toggle Modo Vacaciones */}
+                      <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'rgba(0,0,0,0.03)', borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <strong>Modo Vacaciones</strong>
+                          <div style={{ fontSize: '0.85rem', opacity: 0.7 }}>Suspende todas las alertas de rutinas temporalmente.</div>
+                        </div>
+                        <ToggleWrapper onClick={async (e) => {
+                          e.preventDefault();
+                          try {
+                            await updateUserMutation.mutateAsync({
+                              id: selectedPatient._id,
+                              vacation_mode: !selectedPatient.vacation_mode
+                            });
+                          } catch (err) {
+                            alert('Error al actualizar modo vacaciones: ' + err.message);
+                          }
+                        }}>
+                          <SwitchControl active={!!selectedPatient.vacation_mode} />
+                        </ToggleWrapper>
+                      </div>
+
                       {isMobile && (
                         <div
                           style={{
@@ -731,10 +776,10 @@ export default function UsersPage() {
                         (r) =>
                           (r.user_id?._id || r.user_id) === selectedPatient._id
                       ).length && (
-                        <div style={{ fontSize: '0.9rem', opacity: 0.7 }}>
-                          Sin rutinas
-                        </div>
-                      )}
+                          <div style={{ fontSize: '0.9rem', opacity: 0.7 }}>
+                            Sin rutinas
+                          </div>
+                        )}
                     </Card>
                     {/* Alertas */}
                     <Card>
@@ -776,10 +821,10 @@ export default function UsersPage() {
                         (a) =>
                           (a.user_id?._id || a.user_id) === selectedPatient._id
                       ).length && (
-                        <div style={{ fontSize: '0.9rem', opacity: 0.7 }}>
-                          Sin alertas
-                        </div>
-                      )}
+                          <div style={{ fontSize: '0.9rem', opacity: 0.7 }}>
+                            Sin alertas
+                          </div>
+                        )}
                     </Card>
                   </CardGrid>
 

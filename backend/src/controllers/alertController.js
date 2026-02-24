@@ -1,7 +1,11 @@
+import mongoose from 'mongoose';
 import * as alertService from '../services/alertService.js';
 
 export const getAlerts = async (req, res, next) => {
     try {
+        if (req.query.user_id && !mongoose.Types.ObjectId.isValid(req.query.user_id)) {
+            return res.status(400).json({ error: 'user_id inválido' });
+        }
         // req.user viene del middleware de auth
         const alerts = await alertService.getAlerts(req.user, req.query);
         res.json(alerts);

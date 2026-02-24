@@ -12,7 +12,8 @@ export function useAlerts({ userId, unread } = {}) {
       const { data } = await api.get(`/alerts?${params.toString()}`);
       return Array.isArray(data) ? data : [];
     },
-    enabled: true, // Se puede controlar si userId existe, etc.
+    // Only skip when userId is explicitly null (patient panel, no patient selected)
+    enabled: userId !== null,
   });
 }
 

@@ -101,8 +101,8 @@ export const updateUser = async (req, res, next) => {
         }
 
         // Definir campos permitidos según rol
-        const allowedForAdmin = ['name', 'email', 'role', 'history', 'household_id'];
-        const allowedForCaregiver = ['name', 'email', 'history', 'household_id'];
+        const allowedForAdmin = ['name', 'email', 'role', 'history', 'household_id', 'vacation_mode'];
+        const allowedForCaregiver = ['name', 'email', 'history', 'household_id', 'vacation_mode'];
         const allowedForSelf = ['name', 'email', 'history', 'household_id'];
 
         let allowed = allowedForAdmin;

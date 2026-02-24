@@ -155,7 +155,7 @@ export async function processTick({ date = new Date() } = {}) {
     return { ok: true, ran: false, reason: 'alerts_disabled' };
   }
 
-  const patients = await User.find({ role: 'paciente' }, { _id: 1 }).lean();
+  const patients = await User.find({ role: 'paciente', vacation_mode: { $ne: true } }, { _id: 1 }).lean();
   let created = 0;
   let checked = 0;
 
