@@ -1,4 +1,4 @@
-# Historial de Commits - TAICareApp
+ï»¿# Historial de Commits - TAICareApp
 
 ## 2026-02-10: Fase 1 - Herramientas y ConfiguraciÃ³n
 **Mensaje del Commit:** `chore: configurar eslint, prettier, nodemon y constantes`
@@ -86,19 +86,19 @@
 - **Frontend (`UsersPage.jsx`)**: Corregido filtro para mostrar hogar si `user.household_id` coincide, aunque no estÃ© en `household.users`.
 - **Backend (`userService.js`)**: Implementada sincronizaciÃ³n automÃ¡tica. Al crear/editar un usuario con `household_id`, se actualiza el array `users` del Hogar correspondiente.
 
-## 2026-02-13: Fase 7 - Diseño Responsive y Mejoras de UI
-**Mensaje del Commit:** `feat: mobile responsiveness, sincronización sidebar y mejoras modales`
+## 2026-02-13: Fase 7 - Diseï¿½o Responsive y Mejoras de UI
+**Mensaje del Commit:** `feat: mobile responsiveness, sincronizaciï¿½n sidebar y mejoras modales`
 
 **Cambios:**
 - **Global:**
   - Implementado hook `useIsMobile`.
-  - Sidebar ahora funciona como overlay en móviles (<768px).
-  - Patrón Maestro-Detalle para listas en móvil (Usuarios, Dispositivos).
+  - Sidebar ahora funciona como overlay en mï¿½viles (<768px).
+  - Patrï¿½n Maestro-Detalle para listas en mï¿½vil (Usuarios, Dispositivos).
 - **Correcciones UI:**
-  - Sincronización del estado del menú lateral en todas las páginas (`Rutinas`, `Datos`, etc.).
-  - Añadido prop `maxWidth` a Modales y ajustado ancho en Rutinas (800px/600px).
-  - Limitada altura de modales para evitar cortes en pantallas pequeñas.
-  - Limpieza de código (`lint`) general.
+  - Sincronizaciï¿½n del estado del menï¿½ lateral en todas las pï¿½ginas (`Rutinas`, `Datos`, etc.).
+  - Aï¿½adido prop `maxWidth` a Modales y ajustado ancho en Rutinas (800px/600px).
+  - Limitada altura de modales para evitar cortes en pantallas pequeï¿½as.
+  - Limpieza de cï¿½digo (`lint`) general.
 
 
 ## 2026-02-19: Phase 10 - Mejoras de Legibilidad en Alertas
@@ -118,9 +118,11 @@
 - **Backend:**
   - AÃ±adido campo acation_mode: Boolean al modelo User.js.
   - Actualizado userController.js para permitir actualizar acation_mode por admins y cuidadores.
-  - Actualizado outineChecker.js para saltar pacientes con acation_mode: true y rutinas con enabled: false.
+  - Actualizado 
+outineChecker.js para saltar pacientes con acation_mode: true y rutinas con enabled: false.
   - Actualizado lertEngine.js para filtrar pacientes con acation_mode: true.
-  - AÃ±adida validaciÃ³n mongoose.Types.ObjectId.isValid en lertController.js y outineController.js para evitar crash con user_id invÃ¡lidos.
+  - AÃ±adida validaciÃ³n mongoose.Types.ObjectId.isValid en lertController.js y 
+outineController.js para evitar crash con user_id invÃ¡lidos.
 - **Frontend (UsersPage.jsx):**
   - AÃ±adidos componentes ToggleWrapper / SwitchControl.
   - AÃ±adido toggle "Modo Vacaciones" en el panel de detalle del paciente.
@@ -129,12 +131,13 @@
   - Estado visual consciente del modo vacaciones: rutinas de pacientes de vacaciones aparecen difuminadas con etiqueta **(Modo Vacaciones)**.
   - DiÃ¡logo de confirmaciÃ³n al activar manualmente una rutina con paciente en vacaciones.
 - **Frontend (hooks):**
-  - useUsers.js: useUpdateUser ahora llama efetchQueries tras la mutaciÃ³n.
+  - useUsers.js: useUpdateUser ahora llama 
+efetchQueries tras la mutaciÃ³n.
   - useRoutines.js / useAlerts.js: Corregido flag enabled para no enviar user_id invÃ¡lidos al backend.
 
 
 ## 2026-02-24: Phase 12 - Sistema de Preferencias de Alertas por Tipo
-**Commit Message:** `feat: per-type alert preferences with onboarding setup flow`
+**Commit Message:** `feat: preferencias de alerta por tipo y flujo de configuraciÃ³n inicial`
 
 **Changes:**
 - **Backend:**
