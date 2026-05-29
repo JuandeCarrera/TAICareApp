@@ -67,12 +67,13 @@ const Main = styled.main`
 `;
 
 const Section = styled.section`
-  width: 480px;
-  /* se quitó el margin: 0 auto para que no esté centrada */
+  width: 100%;
+  max-width: 500px;
   margin: 0 0 2rem 0;
   background: ${({ theme }) => theme.colors.cardBg};
   padding: 1.5rem;
   border-radius: 6px;
+  border: 1px solid ${({ theme }) => theme.colors.border};
 `;
 const Field = styled.div`
   margin-bottom: 1rem;
@@ -88,6 +89,8 @@ const Input = styled.input`
   border: 1px solid ${({ theme }) => theme.colors.border};
   border-radius: 4px;
   font-size: 1rem;
+  background: ${({ theme }) => theme.colors.buttonBg};
+  color: ${({ theme }) => theme.colors.text};
 `;
 const Actions = styled.div`
   display: flex;

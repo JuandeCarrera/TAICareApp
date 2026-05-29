@@ -51,7 +51,7 @@ export const getUserById = async (req, res, next) => {
 
         // Verificación de permisos
         if (req.user?.role === 'cuidador') {
-            if (user.caregiver_id?.toString() !== req.user.sub) {
+            if (user._id.toString() !== req.user.sub && user.caregiver_id?.toString() !== req.user.sub) {
                 return res.sendStatus(403);
             }
         } else if (req.user?.role !== 'admin' && req.user?.sub !== id) {
@@ -127,7 +127,9 @@ export const updateUser = async (req, res, next) => {
 
         const filter = {};
         if (req.user?.role === 'cuidador') {
-            filter.caregiver_id = req.user.sub;
+            if (req.user.sub !== id) {
+                filter.caregiver_id = req.user.sub;
+            }
         } else if (req.user?.role !== 'admin' && req.user?.sub !== id) {
             // Validación extra por si acaso, aunque arriba ya se filtran permisos
             return res.sendStatus(403);
@@ -158,7 +160,9 @@ export const deleteUser = async (req, res, next) => {
 
         const filter = {};
         if (req.user?.role === 'cuidador') {
-            filter.caregiver_id = req.user.sub;
+            if (req.user.sub !== id) {
+                filter.caregiver_id = req.user.sub;
+            }
         } else if (req.user?.role !== 'admin' && req.user?.sub !== id) {
             return res.sendStatus(403);
         }

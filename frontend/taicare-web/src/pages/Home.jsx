@@ -1,10 +1,11 @@
 import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
-import styled from 'styled-components';
+import styled, { useTheme } from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../contexts/AuthContext.jsx';
 import Header from '../components/Header.jsx';
 import Sidebar from '../components/Sidebar.jsx';
 import Footer from '../components/Footer.jsx';
+import { useIsMobile } from '../hooks/useIsMobile';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -200,14 +201,18 @@ const ListScroll = styled.div`
 export default function Home() {
   const { logout } = useContext(AuthContext);
   const navigate = useNavigate();
-  const [menuOpen, setMenuOpen] = useState(window.innerWidth >= 768);
+  const isMobile = useIsMobile();
+  const [menuOpen, setMenuOpen] = useState(!isMobile);
+  const theme = useTheme();
+  const chartTheme = theme.isDark ? 'dark' : 'light';
+  useEffect(() => { setMenuOpen(!isMobile); }, [isMobile]);
 
   /* datos para rutinas */
   const [routines, setRoutines] = useState([]);
   const [households, setHouseholds] = useState([]);
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [limit, setLimit] = useState(5); // ver más rutinas -> +5
+  const [limit, setLimit] = useState(5);
   const listRef = useRef(null);
 
   /* datos para alertas */
@@ -215,12 +220,6 @@ export default function Home() {
   const [loadingAlerts, setLoadingAlerts] = useState(true);
   const [limitAlerts, setLimitAlerts] = useState(5);
   const alertListRef = useRef(null);
-
-  useEffect(() => {
-    const onResize = () => setMenuOpen(window.innerWidth >= 768);
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, []);
 
   useEffect(() => {
     (async () => {
@@ -519,14 +518,14 @@ export default function Home() {
                 <ChartFrame>
                   <iframe
                     title="Alertas por household"
-                    src="https://charts.mongodb.com/charts-project-0-mrlcghx/embed/charts?id=5586cb32-40f5-43c6-aa69-2fc92f368003&maxDataAge=14400&theme=light&autoRefresh=true"
+                    src={`https://charts.mongodb.com/charts-project-0-mrlcghx/embed/charts?id=5586cb32-40f5-43c6-aa69-2fc92f368003&maxDataAge=3600&theme=${chartTheme}`}
                   />
                 </ChartFrame>
 
                 <ChartFrame>
                   <iframe
                     title="Resueltas vs No resueltas"
-                    src="https://charts.mongodb.com/charts-project-0-mrlcghx/embed/charts?id=4632ee43-0a08-4ed4-8a32-0fc3fd6d6b3a&maxDataAge=14400&theme=light&autoRefresh=true"
+                    src={`https://charts.mongodb.com/charts-project-0-mrlcghx/embed/charts?id=4632ee43-0a08-4ed4-8a32-0fc3fd6d6b3a&maxDataAge=3600&theme=${chartTheme}`}
                   />
                 </ChartFrame>
               </ChartGrid>

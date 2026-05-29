@@ -221,6 +221,7 @@ export default function AlertSetupPage() {
     async function handleRemindLater() {
         // Just navigate away; alert_preferences_configured stays false
         // The setup screen will reappear next login
+        sessionStorage.setItem('skipSetup', 'true');
         navigate('/');
     }
 

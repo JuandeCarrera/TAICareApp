@@ -70,6 +70,9 @@ const SearchInput = styled.input`
   margin-top: 0.5rem;
   border: 1px solid ${({ theme }) => theme.colors.border};
   border-radius: 4px;
+  background: ${({ theme }) => theme.colors.buttonBg};
+  color: ${({ theme }) => theme.colors.text};
+  &::placeholder { color: ${({ theme }) => theme.colors.textSecondary}; }
 `;
 const PatientList = styled.ul`
   list-style: none;
@@ -211,7 +214,9 @@ const SwitchControl = styled.div`
 export default function UsersPage() {
   const { user, logout } = useContext(AuthContext);
   const navigate = useNavigate();
-  const [menuOpen, setMenuOpen] = useState(window.innerWidth >= 768);
+  const isMobile = useIsMobile();
+  const [menuOpen, setMenuOpen] = useState(!isMobile);
+  useEffect(() => { setMenuOpen(!isMobile); }, [isMobile]);
 
   const caregiverId = user?.role === 'cuidador' ? user._id : null;
 
@@ -502,7 +507,6 @@ export default function UsersPage() {
     }
   }
 
-  const isMobile = useIsMobile();
 
   return (
     <AppContainer>
@@ -703,10 +707,10 @@ export default function UsersPage() {
                               key={h._id}
                               style={{
                                 fontSize: '0.9rem',
-                                color: '#6d28d9',
+                                color: 'var(--primary, #646cff)',
                                 fontWeight: 600,
                                 cursor: 'pointer',
-                                background: '#f3e8ff',
+                                background: 'rgba(100,108,255,0.12)',
                                 padding: '2px 8px',
                                 borderRadius: 4,
                               }}

@@ -7,6 +7,7 @@ const tokenKey = 'taicare_token';
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   // Fetch full profile (includes alert_preferences_configured)
   const fetchProfile = useCallback(async (id) => {
@@ -18,23 +19,20 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  // On startup, restore user from token and fetch full profile
+  // On startup, restore user from /auth/me
   useEffect(() => {
-    const token = localStorage.getItem(tokenKey);
-    if (token) {
+    async function restoreSession() {
       try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        // Set minimal user first so app can render
-        setUser({ _id: payload.sub, role: payload.role });
-        // Then hydrate with full profile
-        fetchProfile(payload.sub).then((profile) => {
-          if (profile) setUser(profile);
-        });
-      } catch {
-        localStorage.removeItem(tokenKey);
+        const { data } = await api.get('/auth/me');
+        setUser(data);
+      } catch (err) {
+        setUser(null);
+      } finally {
+        setLoading(false);
       }
     }
-  }, [fetchProfile]);
+    restoreSession();
+  }, []);
 
   // Login
   async function login({ email, password }) {
@@ -84,7 +82,13 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider value={{ user, login, register, logout, setUser, updateUserProfile }}>
-      {children}
+      {loading ? (
+        <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0f172a', color: '#fff' }}>
+          Cargando sesión...
+        </div>
+      ) : (
+        children
+      )}
     </AuthContext.Provider>
   );
 }

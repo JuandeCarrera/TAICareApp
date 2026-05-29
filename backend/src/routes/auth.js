@@ -46,11 +46,41 @@ router.post('/login', async (req, res) => {
           email: user.email,
           role: user.role,
           household_id: user.household_id,
+          alert_preferences_configured: user.alert_preferences_configured,
         },
       });
   } catch (e) {
     res.status(500).json({ error: 'Error en el login' });
   }
+});
+
+// Recuperar sesión desde cookie (usado al recargar la página)
+router.get('/me', async (req, res) => {
+  try {
+    const token = req.cookies?.token;
+    if (!token) return res.status(401).json({ error: 'No autenticado' });
+
+    let payload;
+    try {
+      payload = jwt.verify(token, process.env.JWT_SECRET);
+    } catch {
+      res.clearCookie('token');
+      return res.status(401).json({ error: 'Sesión expirada' });
+    }
+
+    const user = await User.findById(payload.sub).select('-password');
+    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+    res.json(user);
+  } catch (e) {
+    res.status(500).json({ error: 'Error al recuperar sesión' });
+  }
+});
+
+// Logout: borra la cookie del servidor también
+router.post('/logout', (req, res) => {
+  res.clearCookie('token', { httpOnly: true, sameSite: 'lax' });
+  res.json({ message: 'Sesión cerrada' });
 });
 
 export default router;

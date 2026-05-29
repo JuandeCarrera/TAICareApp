@@ -27,9 +27,11 @@ function Private({ children }) {
   if (!user) return <Navigate to="/login" replace />;
 
   // Redirect caregivers/admins to setup if they haven't configured alerts yet
+  const skipSetup = sessionStorage.getItem('skipSetup');
   const needsSetup =
     CAREGIVER_ROLES.includes(user.role) &&
     user.alert_preferences_configured === false &&
+    !skipSetup &&
     location.pathname !== SETUP_PATH;
 
   if (needsSetup) return <Navigate to={SETUP_PATH} replace />;

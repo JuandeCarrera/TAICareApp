@@ -44,18 +44,18 @@ export const FormGroup = styled.div`
 
   label {
     font-weight: 600;
-    color: ${({ theme }) => theme.colors.fg};
+    color: ${({ theme }) => theme.colors.text};
   }
 
   input,
   select {
     padding: 0.5rem;
-    border: 1px solid ${({ theme }) => theme.colors.fg};
+    border: 1px solid ${({ theme }) => theme.colors.border};
     border-radius: 4px;
     font-size: 1rem;
     width: 100%;
-    background: ${({ theme }) => theme.colors.bg};
-    color: ${({ theme }) => theme.colors.fg};
+    background: ${({ theme }) => theme.colors.buttonBg};
+    color: ${({ theme }) => theme.colors.text};
   }
 `;
 

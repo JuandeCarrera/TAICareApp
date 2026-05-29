@@ -32,6 +32,7 @@ const Card = styled.div`
 const Title = styled.h2`
   margin-bottom: 1.5rem;
   text-align: center;
+  color: ${({ theme }) => theme.colors.text};
 `;
 
 const Form = styled.form`
@@ -42,11 +43,12 @@ const Form = styled.form`
 
 const Input = styled.input`
   padding: 0.75rem 1rem;
-  border: 1px solid #ccc;
+  border: 1px solid ${({ theme }) => theme.colors.border};
   border-radius: 6px;
   font-size: 1rem;
   background: ${({ theme }) => theme.colors.buttonBg};
-  color: ${({ theme }) => theme.colors.fg};
+  color: ${({ theme }) => theme.colors.text};
+  &::placeholder { color: ${({ theme }) => theme.colors.textSecondary}; }
 `;
 
 const Button = styled.button`
@@ -66,6 +68,7 @@ const Footer = styled.p`
   text-align: center;
   margin-top: 1rem;
   font-size: 0.9rem;
+  color: ${({ theme }) => theme.colors.text};
   a {
     color: ${({ theme }) => theme.colors.primary};
     text-decoration: none;
