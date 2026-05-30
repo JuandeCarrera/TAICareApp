@@ -23,7 +23,11 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     async function restoreSession() {
       try {
-        const { data } = await api.get('/auth/me');
+        // Timeout de 5s por si el backend no responde (ej: VITE_API_URL no configurada)
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
+        const { data } = await api.get('/auth/me', { signal: controller.signal });
+        clearTimeout(timeout);
         setUser(data);
       } catch (err) {
         setUser(null);
@@ -83,8 +87,10 @@ export function AuthProvider({ children }) {
   return (
     <AuthContext.Provider value={{ user, login, register, logout, setUser, updateUserProfile }}>
       {loading ? (
-        <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0f172a', color: '#fff' }}>
-          Cargando sesión...
+        <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0f172a', color: '#fff', flexDirection: 'column', gap: '1rem' }}>
+          <div style={{ width: '32px', height: '32px', border: '3px solid rgba(255,255,255,0.2)', borderTop: '3px solid #6366f1', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+          <span style={{ fontSize: '0.9rem', opacity: 0.7 }}>Cargando...</span>
         </div>
       ) : (
         children
