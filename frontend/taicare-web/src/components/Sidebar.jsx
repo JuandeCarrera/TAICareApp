@@ -127,16 +127,6 @@ export default function Sidebar({ open, onClose }) {
                 Alertas
               </MenuLink>
             </Item>
-            <Item style={{ marginLeft: '1rem' }}>
-              <MenuLink to="/alertas/ajustes" onClick={handleLinkClick}>
-                Ajustes de alertas
-              </MenuLink>
-            </Item>
-            <Item style={{ marginLeft: '1rem' }}>
-              <MenuLink to="/alertas/reglas" onClick={handleLinkClick}>
-                Reglas de alertas
-              </MenuLink>
-            </Item>
             <Item>
               <MenuLink to="/households" onClick={handleLinkClick}>
                 Hogares
