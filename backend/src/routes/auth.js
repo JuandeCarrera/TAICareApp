@@ -33,10 +33,12 @@ router.post('/login', async (req, res) => {
       { expiresIn: '8h' }
     );
 
+    const isProd = process.env.NODE_ENV === 'production';
     res
       .cookie('token', token, {
         httpOnly: true,
-        sameSite: 'lax',
+        sameSite: isProd ? 'none' : 'lax',
+        secure: isProd,
         maxAge: 8 * 3600 * 1000,
       })
       .json({
@@ -79,7 +81,8 @@ router.get('/me', async (req, res) => {
 
 // Logout: borra la cookie del servidor también
 router.post('/logout', (req, res) => {
-  res.clearCookie('token', { httpOnly: true, sameSite: 'lax' });
+  const isProd = process.env.NODE_ENV === 'production';
+  res.clearCookie('token', { httpOnly: true, sameSite: isProd ? 'none' : 'lax', secure: isProd });
   res.json({ message: 'Sesión cerrada' });
 });
 
