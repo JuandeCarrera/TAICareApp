@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import * as routineService from '../services/routineService.js';
 import User from '../models/User.js'; // Necesario para validación extra en getRoutinesStatus
+import { toSentenceCase, formatLongText } from '../utils/formatters.js';
 
 export const getRoutines = async (req, res, next) => {
     try {
@@ -36,6 +37,10 @@ export const createRoutine = async (req, res, next) => {
             return res.status(400).json({ error: 'occurrences es obligatorio y no puede estar vacío' });
         }
 
+        // Sanitización y formateo
+        if (body.name) body.name = toSentenceCase(body.name);
+        if (body.description) body.description = formatLongText(body.description);
+
         const newRoutine = await routineService.createRoutine(body);
         res.status(201).json(newRoutine);
     } catch (error) {
@@ -46,7 +51,13 @@ export const createRoutine = async (req, res, next) => {
 export const updateRoutine = async (req, res, next) => {
     try {
         const { id } = req.params;
-        const updated = await routineService.updateRoutine(id, req.body);
+        const body = { ...req.body };
+
+        // Sanitización y formateo
+        if (body.name) body.name = toSentenceCase(body.name);
+        if (body.description) body.description = formatLongText(body.description);
+
+        const updated = await routineService.updateRoutine(id, body);
         if (!updated) return res.sendStatus(404);
         res.json(updated);
     } catch (error) {

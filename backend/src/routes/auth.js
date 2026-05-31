@@ -9,6 +9,16 @@ const router = Router();
 router.post('/register', async (req, res) => {
   try {
     let { name, email, password, role, household_id } = req.body;
+    
+    // Validaciones de seguridad
+    if (!password || password.length < 6) {
+      return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email || !emailRegex.test(email)) {
+      return res.status(400).json({ error: 'Formato de correo electrónico inválido' });
+    }
+
     if (name) name = toTitleCase(name);
     if (email) email = formatEmail(email);
     

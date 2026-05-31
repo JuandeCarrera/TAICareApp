@@ -28,3 +28,21 @@ export const formatEmail = (email) => {
     if (!email || typeof email !== 'string') return email;
     return email.trim().toLowerCase();
 };
+
+/**
+ * Sanitiza texto básico para evitar inyección XSS en cadenas de texto
+ * Escapa los caracteres < y >
+ */
+export const sanitizeText = (str) => {
+    if (!str || typeof str !== 'string') return str;
+    return str.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+};
+
+/**
+ * Formatea un texto largo: Sanitiza XSS + Aplica Sentence Case
+ */
+export const formatLongText = (str) => {
+    if (!str || typeof str !== 'string') return str;
+    const sanitized = sanitizeText(str);
+    return toSentenceCase(sanitized);
+};

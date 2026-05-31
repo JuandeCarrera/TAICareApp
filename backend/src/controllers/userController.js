@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import * as userService from '../services/userService.js';
-import { toTitleCase, formatEmail } from '../utils/formatters.js';
+import { toTitleCase, formatEmail, formatLongText } from '../utils/formatters.js';
 
 const {
     isValidObjectId,
@@ -85,6 +85,8 @@ export const createUser = async (req, res, next) => {
                 body.password =
                     Math.random().toString(36).slice(2) +
                     Math.random().toString(36).slice(2);
+            } else if (body.password.length < 6) {
+                return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
             }
         }
 
@@ -127,6 +129,7 @@ export const updateUser = async (req, res, next) => {
                 let val = req.body[k];
                 if (k === 'name') val = toTitleCase(val);
                 if (k === 'email') val = formatEmail(val);
+                if (k === 'history') val = formatLongText(val);
                 updateData[k] = val;
             }
         }
