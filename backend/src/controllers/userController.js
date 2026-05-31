@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import * as userService from '../services/userService.js';
+import { toTitleCase, formatEmail } from '../utils/formatters.js';
 
 const {
     isValidObjectId,
@@ -71,6 +72,10 @@ export const createUser = async (req, res, next) => {
     try {
         const body = req.body || {};
 
+        // Formateo de datos
+        if (body.name) body.name = toTitleCase(body.name);
+        if (body.email) body.email = formatEmail(body.email);
+
         // Lógica específica para cuidadores creando pacientes
         if (req.user?.role === 'cuidador') {
             body.role = 'paciente';
@@ -118,7 +123,12 @@ export const updateUser = async (req, res, next) => {
 
         const updateData = {};
         for (const k of allowed) {
-            if (k in req.body) updateData[k] = req.body[k];
+            if (k in req.body) {
+                let val = req.body[k];
+                if (k === 'name') val = toTitleCase(val);
+                if (k === 'email') val = formatEmail(val);
+                updateData[k] = val;
+            }
         }
 
         if (!Object.keys(updateData).length) {

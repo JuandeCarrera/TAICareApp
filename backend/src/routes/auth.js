@@ -1,13 +1,17 @@
 import { Router } from 'express';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
+import { toTitleCase, formatEmail } from '../utils/formatters.js';
 
 const router = Router();
 
 // Registro
 router.post('/register', async (req, res) => {
   try {
-    const { name, email, password, role, household_id } = req.body;
+    let { name, email, password, role, household_id } = req.body;
+    if (name) name = toTitleCase(name);
+    if (email) email = formatEmail(email);
+    
     await User.create({ name, email, password, role, household_id });
     res.status(201).json({ message: 'Registrado con éxito' });
   } catch (e) {
