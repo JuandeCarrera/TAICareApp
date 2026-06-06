@@ -5,7 +5,7 @@ import React, {
   useCallback,
   useMemo,
 } from 'react';
-import styled, { keyframes } from 'styled-components';
+import styled, { keyframes, css } from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../contexts/AuthContext.jsx';
 import { ThemeContext } from '../ThemeContext.jsx';
@@ -112,7 +112,7 @@ const RefreshBtn = styled.button`
   cursor: pointer;
   transition: background 0.15s;
   &:hover { background: ${({ theme }) => theme.colors.hoverBg}; }
-  svg { ${({ $spinning }) => $spinning && `animation: ${spin} 0.8s linear infinite;`} }
+  svg { ${({ $spinning }) => $spinning && css`animation: ${spin} 0.8s linear infinite;`} }
 `;
 
 /* ─── Tabs ───────────────────────────────────────────────────────────────── */
@@ -546,8 +546,8 @@ export default function Datos() {
           {activeTab === 'overview' && (
             <TabContent>
               <InfoBanner>
-                ℹ️ Los gráficos se cargan desde MongoDB Charts. Con el plan gratuito los datos se
-                actualizan cada 4 horas. Usa el botón <strong>Actualizar</strong> para forzar la recarga visual.
+                ℹ️ Los gráficos se cargan desde MongoDB Charts con un retardo de 4h (plan gratuito).
+                Usa el botón "Actualizar" que hay arriba a la derecha para forzar la recarga visual.
               </InfoBanner>
 
               {/* Fila 1 — KPIs rápidos */}
