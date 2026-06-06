@@ -88,6 +88,38 @@ const DangerBtn = styled(Btn)`
   }
 `;
 
+const GuideBanner = styled.div`
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  border-radius: 10px;
+  border: 1px solid ${({ theme, $warn }) =>
+    $warn ? 'rgba(234,179,8,.35)' : 'rgba(99,102,241,.25)'};
+  background: ${({ theme, $warn }) =>
+    $warn ? 'rgba(234,179,8,.08)' : 'rgba(99,102,241,.08)'};
+  margin-bottom: 1.25rem;
+  font-size: 0.875rem;
+  line-height: 1.55;
+  color: ${({ theme }) => theme.colors.text};
+`;
+const GuideIcon = styled.span`
+  font-size: 1.2rem;
+  flex-shrink: 0;
+  margin-top: 0.05rem;
+`;
+const GuideLink = styled.button`
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: ${({ theme }) => theme.colors.primary};
+  font-weight: 600;
+  font-size: inherit;
+  text-decoration: underline;
+  &:hover { opacity: 0.8; }
+`;
+
 export default function Dispositivos() {
   const { logout } = useContext(AuthContext);
   const navigate = useNavigate();
@@ -97,8 +129,13 @@ export default function Dispositivos() {
     setMenuOpen(!isMobile);
   }, [isMobile]);
 
-  const { data: households = [] } = useHouseholds();
+  const { data: households = [], isLoading: loadingHouseholds } = useHouseholds();
   const { data: devices = [], isLoading: loadingDevices } = useDevices();
+
+  // Prerequisitos para crear dispositivos
+  const hasHouseholds = households.length > 0;
+  const hasRooms = households.some((h) => h.rooms && h.rooms.length > 0);
+  const canCreate = hasHouseholds && hasRooms;
 
   const createDeviceMutation = useCreateDevice();
   const updateDeviceMutation = useUpdateDevice();
@@ -108,12 +145,8 @@ export default function Dispositivos() {
 
   const [showModal, setShowModal] = useState(false);
   const [editId, setEditId] = useState(null);
-  const [form, setForm] = useState({
-    plugmodel: '',
-    household_id: '',
-    room: '',
-    appliance: '',
-  });
+  const [form, setForm] = useState({ household_id: '', room: '', appliance: '' });
+  const [formErrors, setFormErrors] = useState({});
 
   /* -------- SearchToolbar state -------- */
   const [q, setQ] = useState('');
@@ -140,17 +173,18 @@ export default function Dispositivos() {
 
   const openNew = () => {
     setEditId(null);
-    setForm({ plugmodel: '', household_id: '', room: '', appliance: '' });
+    setForm({ household_id: '', room: '', appliance: '' });
+    setFormErrors({});
     setShowModal(true);
   };
   const openEdit = (d) => {
     setEditId(d._id);
     setForm({
-      plugmodel: d.plugmodel,
       household_id: d.household_id,
       room: d.room,
       appliance: d.appliance,
     });
+    setFormErrors({});
     setShowModal(true);
   };
   const handleDelete = async (id) => {
@@ -163,7 +197,19 @@ export default function Dispositivos() {
   };
 
   const handleSave = async () => {
-    const payload = { ...form };
+    // Validación frontend
+    const errors = {};
+    if (!form.household_id) errors.household_id = 'Selecciona un hogar.';
+    if (!form.room)         errors.room         = 'Selecciona una habitación.';
+    if (!form.appliance.trim()) errors.appliance = 'Indica el electrodoméstico.';
+    if (Object.keys(errors).length) {
+      setFormErrors(errors);
+      return;
+    }
+    setFormErrors({});
+
+    // plugmodel siempre es P110, el usuario no lo introduce
+    const payload = { ...form, plugmodel: 'P110' };
     try {
       if (editId) {
         await updateDeviceMutation.mutateAsync({ id: editId, ...payload });
@@ -171,7 +217,7 @@ export default function Dispositivos() {
         await createDeviceMutation.mutateAsync(payload);
       }
       setShowModal(false);
-      setForm({ plugmodel: '', household_id: '', room: '', appliance: '' });
+      setForm({ household_id: '', room: '', appliance: '' });
       setEditId(null);
     } catch (err) {
       alert(err.message || 'Error al guardar dispositivo');
@@ -206,7 +252,7 @@ export default function Dispositivos() {
   const sortOptions = [
     { value: 'recent_desc', label: 'Más recientes' },
     { value: 'recent_asc', label: 'Más antiguos' },
-    { value: 'model_alpha', label: 'Modelo (A–Z)' },
+    { value: 'app_alpha',  label: 'Electrodoméstico (A–Z)' },
     { value: 'room_alpha', label: 'Habitación (A–Z)' },
   ];
 
@@ -238,9 +284,9 @@ export default function Dispositivos() {
         const tb = new Date(b.updatedAt || b.createdAt || 0).getTime();
         return sort === 'recent_desc' ? tb - ta : ta - tb;
       });
-    } else if (sort === 'model_alpha') {
+    } else if (sort === 'app_alpha') {
       list.sort((a, b) =>
-        String(a.plugmodel || '').localeCompare(String(b.plugmodel || ''))
+        String(a.appliance || '').localeCompare(String(b.appliance || ''))
       );
     } else if (sort === 'room_alpha') {
       list.sort((a, b) =>
@@ -262,12 +308,39 @@ export default function Dispositivos() {
         <Main>
           <h1>Dispositivos</h1>
 
+          {/* ---- Banner de guía ---- */}
+          {!loadingHouseholds && !hasHouseholds && (
+            <GuideBanner $warn>
+              <GuideIcon>🏠</GuideIcon>
+              <div>
+                <strong>Antes de crear un dispositivo</strong> necesitas tener al menos un hogar
+                con una habitación configurada.{' '}
+                <GuideLink onClick={() => navigate('/households')}>
+                  Ir a Hogares →
+                </GuideLink>
+              </div>
+            </GuideBanner>
+          )}
+          {!loadingHouseholds && hasHouseholds && !hasRooms && (
+            <GuideBanner $warn>
+              <GuideIcon>🚪</GuideIcon>
+              <div>
+                Tienes hogares creados pero ninguno tiene habitaciones.
+                Añade al menos una habitación en{' '}
+                <GuideLink onClick={() => navigate('/households')}>
+                  Hogares
+                </GuideLink>
+                {' '}para poder registrar dispositivos.
+              </div>
+            </GuideBanner>
+          )}
+
           {/* ---- Barra de búsqueda y filtros ---- */}
           <div style={{ marginBottom: '1rem' }}>
             <SearchToolbar
               query={q}
               onQueryChange={setQ}
-              placeholder="Buscar por modelo, electrodoméstico, habitación u hogar"
+              placeholder="Buscar por electrodoméstico, habitación u hogar"
               filters={[
                 {
                   type: 'select',
@@ -297,8 +370,9 @@ export default function Dispositivos() {
 
           <Btn
             variant="primary"
-            style={{ marginBottom: '1rem' }}
-            onClick={openNew}
+            style={{ marginBottom: '1rem', opacity: canCreate ? 1 : 0.45, cursor: canCreate ? 'pointer' : 'not-allowed' }}
+            onClick={() => canCreate && openNew()}
+            title={!canCreate ? 'Crea primero un hogar con habitaciones' : ''}
           >
             + Nuevo
           </Btn>
@@ -309,11 +383,9 @@ export default function Dispositivos() {
               filteredDevices.map((d) => (
                 <DeviceItem key={d._id}>
                   <span>
-                    <strong>{d.plugmodel}</strong>
-                    {' — '}
+                    <strong>{d.appliance || '—'}</strong>
+                    {' · '}
                     {d.room || 'Sin sala'}
-                    {' / '}
-                    {d.appliance || '—'}
                     {' · '}
                     <em>{hhName(d.household_id) || 'Sin hogar'}</em>
                   </span>
@@ -339,25 +411,25 @@ export default function Dispositivos() {
 
       <Modal isOpen={showModal} onClose={() => setShowModal(false)}>
         <h2>{editId ? 'Editar dispositivo' : 'Crear dispositivo'}</h2>
-        <FormGroup>
-          <label>Modelo</label>
-          <input name="plugmodel" value={form.plugmodel} onChange={onChange} />
-        </FormGroup>
+
         <FormGroup>
           <label>Hogar</label>
           <select
             name="household_id"
             value={form.household_id}
             onChange={onChange}
+            style={formErrors.household_id ? { borderColor: '#ef4444' } : {}}
           >
             <option value="">— Selecciona —</option>
             {households.map((h) => (
-              <option key={h._id} value={h._id}>
-                {h.name}
-              </option>
+              <option key={h._id} value={h._id}>{h.name}</option>
             ))}
           </select>
+          {formErrors.household_id && (
+            <small style={{ color: '#ef4444' }}>{formErrors.household_id}</small>
+          )}
         </FormGroup>
+
         <FormGroup>
           <label>Habitación</label>
           <select
@@ -365,23 +437,34 @@ export default function Dispositivos() {
             value={form.room}
             onChange={onChange}
             disabled={!form.household_id}
+            style={formErrors.room ? { borderColor: '#ef4444' } : {}}
           >
             <option value="">— Selecciona —</option>
             {rooms.map((r) => (
-              <option key={r} value={r}>
-                {r}
-              </option>
+              <option key={r} value={r}>{r}</option>
             ))}
           </select>
+          {formErrors.room && (
+            <small style={{ color: '#ef4444' }}>{formErrors.room}</small>
+          )}
         </FormGroup>
+
         <FormGroup>
           <label>Electrodoméstico</label>
-          <input name="appliance" value={form.appliance} onChange={onChange} />
+          <input
+            name="appliance"
+            value={form.appliance}
+            onChange={onChange}
+            placeholder="Ej: Televisión, Lavadora, Aire acondicionado"
+            style={formErrors.appliance ? { borderColor: '#ef4444' } : {}}
+          />
+          {formErrors.appliance && (
+            <small style={{ color: '#ef4444' }}>{formErrors.appliance}</small>
+          )}
         </FormGroup>
+
         <FormGroup style={{ textAlign: 'right' }}>
-          <Btn variant="primary" onClick={handleSave}>
-            Guardar
-          </Btn>
+          <Btn variant="primary" onClick={handleSave}>Guardar</Btn>
         </FormGroup>
       </Modal>
     </AppContainer>

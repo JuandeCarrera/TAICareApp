@@ -74,7 +74,13 @@ export function AuthProvider({ children }) {
     await login({ email, password });
   }
 
-  function logout() {
+  async function logout() {
+    try {
+      const API = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+      await fetch(`${API}/auth/logout`, { method: 'POST', credentials: 'include' });
+    } catch (e) {
+      console.error('Error calling logout API', e);
+    }
     localStorage.removeItem(tokenKey);
     setUser(null);
   }

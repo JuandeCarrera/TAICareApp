@@ -110,6 +110,7 @@ const ChartsHeader = styled.div`
   h3 {
     margin: 0;
     font-size: 1.05rem;
+    color: ${({ theme }) => theme.colors.text};
   }
 `;
 /* Charts grid + frames */
@@ -163,7 +164,8 @@ const Title = styled.div`
     color: ${({ theme }) => theme.colors.text};
   }
   small {
-    opacity: 0.8;
+    color: ${({ theme }) => theme.colors.textSecondary || theme.colors.text};
+    font-size: 0.8rem;
   }
 `;
 const Badge = styled.span`
@@ -171,14 +173,14 @@ const Badge = styled.span`
   padding: 0.15rem 0.5rem;
   border-radius: 999px;
   border: 1px solid transparent;
-  ${({ variant }) =>
+  ${({ variant, theme }) =>
     variant === 'running'
-      ? 'background: rgba(34,197,94,.12); color:#16a34a; border-color: rgba(34,197,94,.25);'
-      : 'background: rgba(59,130,246,.12); color:#2563eb; border-color: rgba(59,130,246,.25);'}
+      ? `background: rgba(34,197,94,.15); color: ${theme.isDark ? '#4ade80' : '#16a34a'}; border-color: rgba(34,197,94,.3);`
+      : `background: rgba(99,102,241,.15); color: ${theme.isDark ? '#a5b4fc' : '#4f46e5'}; border-color: rgba(99,102,241,.3);`}
 `;
 const Meta = styled.div`
   font-size: 0.85rem;
-  opacity: 0.9;
+  color: ${({ theme }) => theme.colors.textSecondary || theme.colors.text};
 `;
 const More = styled.button`
   margin-top: 0.5rem;

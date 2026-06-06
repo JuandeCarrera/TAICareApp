@@ -93,7 +93,6 @@ const FreeTierBadge = styled.div`
 const LastUpdated = styled.span`
   font-size: 0.78rem;
   color: ${({ theme }) => theme.colors.textSecondary || theme.colors.text};
-  opacity: 0.75;
 `;
 const HeaderActions = styled.div`
   display: flex;
@@ -178,7 +177,6 @@ const ChartCardTitle = styled.span`
 const ChartCardDesc = styled.span`
   font-size: 0.72rem;
   color: ${({ theme }) => theme.colors.textSecondary || theme.colors.text};
-  opacity: 0.7;
   margin-left: auto;
 `;
 const IframeWrap = styled.div`
@@ -265,7 +263,6 @@ const StatValue = styled.div`
 const StatDesc = styled.div`
   font-size: 0.75rem;
   color: ${({ theme }) => theme.colors.textSecondary || theme.colors.text};
-  opacity: 0.75;
 `;
 const LoadingPulse = styled.div`
   width: 60%;
@@ -351,10 +348,8 @@ const CATEGORIES = [
     key: 'alertas',
     label: '🔔 Alertas',
     charts: [
-      { id: CHART_IDS.alertasHoy,         title: 'Alertas de hoy',           desc: 'Total pendientes' },
-      { id: CHART_IDS.alertasSinResolver,  title: 'Sin resolver hoy',         desc: 'KPI' },
-      { id: CHART_IDS.alertasHoy,         title: 'Alertas de hoy',           desc: 'Estado' },
-      { id: CHART_IDS.alertasSinResolver,  title: 'Sin resolver hoy',          desc: 'KPI' },
+      { id: CHART_IDS.alertasHoy,        title: 'Alertas de hoy',      desc: 'Total pendientes' },
+      { id: CHART_IDS.alertasSinResolver, title: 'Sin resolver hoy',    desc: 'KPI' },
     ],
   },
   {
@@ -391,13 +386,15 @@ export default function Datos() {
   const [activeTab, setActiveTab] = useState('overview');
 
   /* ── Refresh ── */
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [refreshKey, setRefreshKey] = useState(0);       // recarga iframes
+  const [dataRefreshKey, setDataRefreshKey] = useState(0); // recarga datos de API
   const [lastUpdated, setLastUpdated] = useState(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleRefresh = useCallback(() => {
     setIsRefreshing(true);
-    setRefreshKey((k) => k + 1);
+    setRefreshKey((k) => k + 1);       // fuerza recarga de iframes de MongoDB Charts
+    setDataRefreshKey((k) => k + 1);   // fuerza recarga de datos de la API
     setLastUpdated(new Date());
     setTimeout(() => setIsRefreshing(false), 1500);
   }, []);
@@ -415,10 +412,10 @@ export default function Datos() {
         const data = res.ok ? await res.json() : [];
         const list = Array.isArray(data) ? data : [];
         setPatients(list);
-        if (list.length) setSelectedPatientId(String(list[0]._id));
+        if (list.length) setSelectedPatientId((prev) => prev || String(list[0]._id));
       } catch { /* silencioso */ }
     })();
-  }, []);
+  }, [dataRefreshKey]);
 
   useEffect(() => {
     if (!selectedPatientId) return;
@@ -479,7 +476,7 @@ export default function Datos() {
       } catch { setPatientData(null); }
       finally   { setLoadingPatient(false); }
     })();
-  }, [selectedPatientId]);
+  }, [selectedPatientId, dataRefreshKey]);
 
   /* ── Categorías ── */
   const [activeCategory, setActiveCategory] = useState('alertas');
@@ -509,7 +506,7 @@ export default function Datos() {
           {/* ── Cabecera ── */}
           <PageHeader>
             <PageMeta>
-              <PageTitle>📊 Datos e Indicadores</PageTitle>
+              <PageTitle>📊 Estadísticas</PageTitle>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
                 <LastUpdated>Última actualización: {timeAgo(lastUpdated)}</LastUpdated>
                 <FreeTierBadge>
@@ -533,13 +530,13 @@ export default function Datos() {
           {/* ── Tabs ── */}
           <TabBar>
             <Tab $active={activeTab === 'overview'} onClick={() => setActiveTab('overview')}>
-              🗺 Vista General
+              🗺 Resumen del sistema
             </Tab>
             <Tab $active={activeTab === 'patient'} onClick={() => setActiveTab('patient')}>
-              👤 Por Paciente
+              👤 Datos del paciente
             </Tab>
             <Tab $active={activeTab === 'category'} onClick={() => setActiveTab('category')}>
-              📂 Por Categoría
+              📂 Por categoría
             </Tab>
           </TabBar>
 
@@ -588,15 +585,10 @@ export default function Datos() {
           )}
 
           {/* ══════════════════════════════════════════
-              TAB: POR PACIENTE
+              TAB: DATOS DEL PACIENTE
           ══════════════════════════════════════════ */}
           {activeTab === 'patient' && (
             <TabContent>
-              <InfoBanner>
-                ℹ️ Los indicadores de actividad se calculan en tiempo real desde la API. Los gráficos
-                de MongoDB Charts muestran datos globales del sistema.
-              </InfoBanner>
-
               {/* Selector */}
               <PatientSelectorWrap>
                 <PatientLabel htmlFor="patient-select">Paciente:</PatientLabel>
@@ -614,23 +606,24 @@ export default function Datos() {
                 </PatientSelect>
               </PatientSelectorWrap>
 
-              {/* Stats del paciente */}
-              {selectedPatient && (
+              {/* KPIs + listas del paciente */}
+              {selectedPatient ? (
                 <>
                   <SectionLabel>
                     <SectionTitle>
-                      Actividad de {selectedPatient.name || selectedPatient.email}
+                      Resumen de {selectedPatient.name || selectedPatient.email}
                     </SectionTitle>
                     <SectionDivider />
                   </SectionLabel>
 
+                  {/* Tarjetas KPI */}
                   <StatsGrid>
                     <StatCard>
                       <StatIcon>📡</StatIcon>
                       {loadingPatient ? <LoadingPulse /> : (
                         <StatValue>{patientData?.devices?.length ?? '—'}</StatValue>
                       )}
-                      <StatDesc>Dispositivos activos</StatDesc>
+                      <StatDesc>Dispositivos registrados</StatDesc>
                     </StatCard>
                     <StatCard>
                       <StatIcon>🔔</StatIcon>
@@ -649,18 +642,16 @@ export default function Datos() {
                     <StatCard>
                       <StatIcon>🏠</StatIcon>
                       {loadingPatient ? <LoadingPulse /> : (
-                        <StatValue>
-                          {patientData?.household?.name
-                            ? patientData.household.name.slice(0, 8)
-                            : '—'}
+                        <StatValue style={{ fontSize: '1.2rem' }}>
+                          {patientData?.household?.name || '—'}
                         </StatValue>
                       )}
-                      <StatDesc>{patientData?.household?.name || 'Sin hogar asignado'}</StatDesc>
+                      <StatDesc>Hogar asignado</StatDesc>
                     </StatCard>
                   </StatsGrid>
 
-                  {/* Dispositivos del paciente */}
-                  {patientData?.devices?.length > 0 && (
+                  {/* Dispositivos */}
+                  {!loadingPatient && patientData?.devices?.length > 0 && (
                     <>
                       <SectionLabel $mt="0.5rem">
                         <SectionTitle>Dispositivos</SectionTitle>
@@ -669,24 +660,72 @@ export default function Datos() {
                       <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
                         {patientData.devices.map((d) => (
                           <DeviceChip key={d._id}>
-                            📡 {d.name || d.type || 'Dispositivo'} · <em style={{ opacity: 0.7 }}>{d.room || 'Sin habitación'}</em>
+                            📡 {d.appliance || d.type || 'Dispositivo'}
+                            {d.room && <em style={{ marginLeft: '0.35rem', color: 'inherit', opacity: 0.75 }}>· {d.room}</em>}
                           </DeviceChip>
                         ))}
                       </div>
                     </>
                   )}
-                </>
-              )}
 
-              {/* Charts globales de referencia */}
-              <SectionLabel $mt="0.5rem">
-                <SectionTitle>Gráficos de referencia (datos globales)</SectionTitle>
-                <SectionDivider />
-              </SectionLabel>
-              <ChartGrid $cols={2}>
-                <EmbeddedChart id={CHART_IDS.dispPorPaciente}     title="Dispositivos por paciente"  desc="Global"  tall refreshKey={refreshKey} chartTheme={chartTheme} />
-                <EmbeddedChart id={CHART_IDS.numAlertas} title="Número de alertas"          desc="Global"  tall refreshKey={refreshKey} chartTheme={chartTheme} />
-              </ChartGrid>
+                  {/* Rutinas */}
+                  {!loadingPatient && patientData?.routines?.length > 0 && (
+                    <>
+                      <SectionLabel $mt="0.5rem">
+                        <SectionTitle>Rutinas</SectionTitle>
+                        <SectionDivider />
+                      </SectionLabel>
+                      <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
+                        {patientData.routines.map((r) => (
+                          <DeviceChip key={r._id}>
+                            📅 {r.name || 'Rutina sin nombre'}
+                          </DeviceChip>
+                        ))}
+                      </div>
+                    </>
+                  )}
+
+                  {/* Alertas pendientes */}
+                  {!loadingPatient && patientData?.alerts?.length > 0 && (
+                    <>
+                      <SectionLabel $mt="0.5rem">
+                        <SectionTitle>Alertas pendientes</SectionTitle>
+                        <SectionDivider />
+                      </SectionLabel>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.25rem' }}>
+                        {patientData.alerts.map((a) => (
+                          <div key={a._id} style={{
+                            padding: '0.6rem 0.85rem',
+                            borderRadius: '8px',
+                            border: '1px solid rgba(239,68,68,.25)',
+                            background: 'rgba(239,68,68,.06)',
+                            fontSize: '0.85rem',
+                          }}>
+                            🔔 <strong>{a.title || a.type || 'Alerta'}</strong>
+                            {a.timestamp && (
+                              <span style={{ marginLeft: '0.5rem', opacity: 0.7 }}>
+                                · {new Date(a.timestamp).toLocaleString()}
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+
+                  {/* Sin datos */}
+                  {!loadingPatient && patientData &&
+                    !patientData.devices?.length &&
+                    !patientData.routines?.length &&
+                    !patientData.alerts?.length && (
+                    <InfoBanner style={{ marginTop: '0.5rem' }}>
+                      ℹ️ Este paciente no tiene dispositivos, rutinas ni alertas registradas.
+                    </InfoBanner>
+                  )}
+                </>
+              ) : (
+                <InfoBanner>ℹ️ Selecciona un paciente para ver sus datos.</InfoBanner>
+              )}
             </TabContent>
           )}
 
@@ -708,9 +747,9 @@ export default function Datos() {
               </CatBar>
 
               <ChartGrid $cols={currentCat.charts.length >= 3 ? 2 : currentCat.charts.length}>
-                {currentCat.charts.map((c) => (
+                {currentCat.charts.map((c, i) => (
                   <EmbeddedChart
-                    key={c.id}
+                    key={`${currentCat.key}-${i}`}
                     id={c.id}
                     title={c.title}
                     desc={c.desc}

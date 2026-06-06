@@ -119,7 +119,7 @@ export default function Sidebar({ open, onClose }) {
             </Item>
             <Item>
               <MenuLink to="/data" onClick={handleLinkClick}>
-                Datos
+                Estadísticas
               </MenuLink>
             </Item>
             <Item>

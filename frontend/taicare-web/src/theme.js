@@ -21,7 +21,7 @@ export const darkTheme = {
     bg:            '#1e293b',
     fg:            '#f9fafb',
     text:          '#f1f5f9',
-    textSecondary: '#94a3b8',
+    textSecondary: '#b0bec5',
     primary:       '#818cf8',
     primaryDark:   '#6366f1',
     buttonBg:      '#374151',

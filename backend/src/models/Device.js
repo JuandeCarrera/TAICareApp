@@ -2,7 +2,7 @@ import { Schema, model } from 'mongoose';
 
 const deviceSchema = new Schema(
   {
-    plugmodel: { type: String, required: true },
+    plugmodel: { type: String, default: 'P110' },
     user: { type: String, required: true },
     room: { type: String, required: true },
     appliance: { type: String, required: true },
