@@ -23,6 +23,7 @@ import { useRoutines } from '../hooks/useRoutines';
 import { useAlerts } from '../hooks/useAlerts';
 import { useIsMobile } from '../hooks/useIsMobile';
 import api from '../api/axios';
+import { Home as HomeIcon } from 'lucide-react';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -716,7 +717,7 @@ export default function UsersPage() {
                               }}
                               onClick={() => openHouseModal(h)}
                             >
-                              🏠 {h.name}
+                              <HomeIcon size={13} style={{marginRight:'4px',verticalAlign:'middle'}}/> {h.name}
                             </span>
                           ))}
                         </div>

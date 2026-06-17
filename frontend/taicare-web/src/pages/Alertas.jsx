@@ -13,6 +13,10 @@ import {
 } from '../hooks/useAlerts';
 import { useUsers } from '../hooks/useUsers';
 import { useIsMobile } from '../hooks/useIsMobile';
+import {
+  AlertTriangle, XCircle, DoorOpen, Flame, Wind,
+  AlertOctagon, PersonStanding, Bell, User, Trash2, Check,
+} from 'lucide-react';
 
 const AppContainer = styled.div`
   display: flex;
@@ -197,14 +201,14 @@ export default function Alertas() {
 
   // Mapeo de tipos de alerta a textos e iconos amigables
   const ALERT_CONFIG = useMemo(() => ({
-    routine_missed: { label: 'Rutina Incumplida', icon: '❌', color: '#e04848' },
-    NO_ACTIVITY: { label: 'Inactividad Detectada', icon: '⚠️', color: '#f59e0b' },
-    DOOR_OPEN: { label: 'Puerta Abierta', icon: '🚪', color: '#3b82f6' },
-    GAS_LEAK: { label: 'Fuga de Gas', icon: '🔥', color: '#ef4444' },
-    SMOKE: { label: 'Humo Detectado', icon: '💨', color: '#71717a' },
-    SOS: { label: 'Botón de Pánico', icon: '🆘', color: '#ef4444' },
-    FALL: { label: 'Caída Detectada', icon: '🤕', color: '#ef4444' },
-    DEFAULT: { label: 'Alerta', icon: '🔔', color: '#6366f1' },
+    routine_missed: { label: 'Rutina Incumplida',    Icon: XCircle,        color: '#e04848' },
+    NO_ACTIVITY:    { label: 'Inactividad Detectada', Icon: AlertTriangle,   color: '#f59e0b' },
+    DOOR_OPEN:      { label: 'Puerta Abierta',        Icon: DoorOpen,       color: '#3b82f6' },
+    GAS_LEAK:       { label: 'Fuga de Gas',           Icon: Flame,          color: '#ef4444' },
+    SMOKE:          { label: 'Humo Detectado',        Icon: Wind,           color: '#71717a' },
+    SOS:            { label: 'Botón de Pánico',      Icon: AlertOctagon,    color: '#ef4444' },
+    FALL:           { label: 'Caída Detectada',       Icon: PersonStanding,  color: '#ef4444' },
+    DEFAULT:        { label: 'Alerta',                Icon: Bell,           color: '#6366f1' },
   }), []);
 
   const getAlertConfig = useCallback((type) => {
@@ -412,10 +416,10 @@ export default function Alertas() {
                       {(a.seen === false || a.read === false) && <Dot />}
                       <div>
                         <p style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '.5rem', flexWrap: 'wrap' }}>
-                          <span style={{ fontSize: '1.2rem' }}>{getAlertConfig(a.type).icon}</span>
+                          {(() => { const cfg = getAlertConfig(a.type); const Ic = cfg.Icon || Bell; return <Ic size={16} color={cfg.color} strokeWidth={2} />; })()}
                           <strong>{safeTitle(a)}</strong>
                           {patientLabel(a) && (
-                            <PatientTag>👤 {patientLabel(a)}</PatientTag>
+                            <PatientTag><User size={12} style={{marginRight:'3px'}}/>{patientLabel(a)}</PatientTag>
                           )}
                         </p>
                         {a.message && (
@@ -435,14 +439,14 @@ export default function Alertas() {
                           onClick={() => markSeen(a._id)}
                           title="Marcar como vista"
                         >
-                          ✓
+                          <Check size={14} />
                         </Btn>
                       )}
                       <DangerBtn
                         onClick={() => deleteAlert(a._id)}
                         title="Eliminar"
                       >
-                        🗑
+                        <Trash2 size={14} />
                       </DangerBtn>
                     </Actions>
                   </AlertItem>

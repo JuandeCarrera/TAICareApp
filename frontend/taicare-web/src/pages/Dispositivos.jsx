@@ -21,6 +21,7 @@ import {
 } from '../hooks/useDevices';
 import { useHouseholds } from '../hooks/useHouseholds';
 import { useIsMobile } from '../hooks/useIsMobile';
+import { Home, DoorOpen, Pencil, Trash2 } from 'lucide-react';
 
 const AppContainer = styled.div`
   display: flex;
@@ -311,7 +312,7 @@ export default function Dispositivos() {
           {/* ---- Banner de guía ---- */}
           {!loadingHouseholds && !hasHouseholds && (
             <GuideBanner $warn>
-              <GuideIcon>🏠</GuideIcon>
+              <GuideIcon><Home size={20} /></GuideIcon>
               <div>
                 <strong>Antes de crear un dispositivo</strong> necesitas tener al menos un hogar
                 con una habitación configurada.{' '}
@@ -323,7 +324,7 @@ export default function Dispositivos() {
           )}
           {!loadingHouseholds && hasHouseholds && !hasRooms && (
             <GuideBanner $warn>
-              <GuideIcon>🚪</GuideIcon>
+              <GuideIcon><DoorOpen size={20} /></GuideIcon>
               <div>
                 Tienes hogares creados pero ninguno tiene habitaciones.
                 Añade al menos una habitación en{' '}
@@ -391,10 +392,10 @@ export default function Dispositivos() {
                   </span>
                   <Actions>
                     <Btn variant="primary" onClick={() => openEdit(d)}>
-                      ✎
+                      <Pencil size={14} />
                     </Btn>
                     <DangerBtn onClick={() => handleDelete(d._id)}>
-                      🗑
+                      <Trash2 size={14} />
                     </DangerBtn>
                   </Actions>
                 </DeviceItem>

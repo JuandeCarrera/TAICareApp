@@ -2,6 +2,7 @@ import React, { useContext, useMemo, useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../contexts/AuthContext.jsx';
+import { Pencil, Trash2 } from 'lucide-react';
 import Header from '../components/Header.jsx';
 import Sidebar from '../components/Sidebar.jsx';
 import Footer from '../components/Footer.jsx';
@@ -431,13 +432,13 @@ export default function Hogares() {
                         + Habitación
                       </Btn>
                       <Btn variant="primary" onClick={() => openEditHouse(h)}>
-                        ✎ Editar
+                        <Pencil size={14} /> Editar
                       </Btn>
                       <DangerBtn
                         variant="primary"
                         onClick={() => deleteHouse(h._id)}
                       >
-                        🗑 Borrar
+                        <Trash2 size={14} /> Borrar
                       </DangerBtn>
                       <ToggleButton
                         aria-label="Mostrar habitaciones"
@@ -468,13 +469,13 @@ export default function Hogares() {
                               variant="primary"
                               onClick={() => openEditRoom(h, room)}
                             >
-                              ✎
+                              <Pencil size={13} />
                             </Btn>
                             <DangerBtn
                               variant="primary"
                               onClick={() => deleteRoom(h._id, room)}
                             >
-                              🗑
+                              <Trash2 size={13} />
                             </DangerBtn>
                           </Actions>
                         </RoomItem>

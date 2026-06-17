@@ -7,45 +7,46 @@ import { useUpdateUser } from '../hooks/useUsers';
 import Header from '../components/Header.jsx';
 import Sidebar from '../components/Sidebar.jsx';
 import Footer from '../components/Footer.jsx';
+import { Calendar, Moon, BarChart2, AlertTriangle, Plug, Bell, ChevronUp, ChevronDown, Save } from 'lucide-react';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 // ---- Alert type definitions ----
 const ALERT_CATEGORIES = [
   {
-    label: '📅 Rutinas', types: [
+    label: 'Rutinas', Icon: Calendar, types: [
       { code: 'ROUTINE_MISSED', name: 'Rutina no completada', defaultSeverity: 'high' },
     ]
   },
   {
-    label: '🌙 Horas Anómalas', types: [
+    label: 'Horas Anómalas', Icon: Moon, types: [
       { code: 'UNUSUAL_HOUR_ACTIVITY', name: 'Actividad fuera de horario', defaultSeverity: 'high' },
       { code: 'NIGHT_ACTIVITY', name: 'Actividad nocturna', defaultSeverity: 'medium' },
     ]
   },
   {
-    label: '📊 Datos Sospechosos', types: [
+    label: 'Datos Sospechosos', Icon: BarChart2, types: [
       { code: 'DATA_GAP', name: 'Sin datos del dispositivo', defaultSeverity: 'high' },
       { code: 'DATA_SPIKE', name: 'Consumo anómalo alto', defaultSeverity: 'medium' },
       { code: 'ERRATIC_BEHAVIOR', name: 'Comportamiento errático', defaultSeverity: 'high' },
     ]
   },
   {
-    label: '🔴 Inactividad', types: [
+    label: 'Inactividad', Icon: AlertTriangle, types: [
       { code: 'NO_ACTIVITY', name: 'Sin actividad en rutina', defaultSeverity: 'high' },
       { code: 'PROLONGED_INACTIVITY', name: 'Inactividad prolongada', defaultSeverity: 'high' },
     ]
   },
   {
-    label: '📡 Dispositivo', types: [
+    label: 'Dispositivo', Icon: Plug, types: [
       { code: 'DEVICE_ISSUE', name: 'Problema con dispositivo', defaultSeverity: 'medium' },
     ]
   },
 ];
 const SEV_OPTIONS = [
-  { value: 'high', label: '🔴 Alta' },
-  { value: 'medium', label: '🟡 Media' },
-  { value: 'low', label: '🟢 Baja' },
+  { value: 'high',   label: 'Alta',  dot: '#ef4444' },
+  { value: 'medium', label: 'Media', dot: '#f59e0b' },
+  { value: 'low',    label: 'Baja',  dot: '#10b981' },
 ];
 
 const AppContainer = styled.div`
@@ -406,8 +407,12 @@ export default function Configuracion() {
               style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', userSelect: 'none' }}
               onClick={() => setShowAlertPrefs(s => !s)}
             >
-              <h2 style={{ marginTop: 0, fontSize: '1rem', marginBottom: 0 }}>🔔 Preferencias de alertas</h2>
-              <span style={{ fontSize: '1.1rem', opacity: 0.6 }}>{showAlertPrefs ? '▲' : '▼'}</span>
+              <h2 style={{ marginTop: 0, fontSize: '1rem', marginBottom: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Bell size={17} /> Preferencias de alertas
+              </h2>
+              <span style={{ display: 'flex', alignItems: 'center', opacity: 0.5 }}>
+                {showAlertPrefs ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+              </span>
             </div>
             {showAlertPrefs && (
               <>
@@ -416,7 +421,9 @@ export default function Configuracion() {
                 </p>
                 {ALERT_CATEGORIES.map(cat => (
                   <div key={cat.label}>
-                    <CatLabel>{cat.label}</CatLabel>
+                    <CatLabel style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      {cat.Icon && <cat.Icon size={14} />} {cat.label}
+                    </CatLabel>
                     {cat.types.map(t => {
                       const on = getPref(t.code, 'enabled');
                       return (
@@ -428,7 +435,9 @@ export default function Configuracion() {
                               disabled={!on}
                               onChange={e => setSev(t.code, e.target.value)}
                             >
-                              {SEV_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                              {SEV_OPTIONS.map(o => (
+                                <option key={o.value} value={o.value}>{o.label}</option>
+                              ))}
                             </SevSelect>
                             <SwitchTrack $active={on} onClick={() => togglePref(t.code)} title={on ? 'Desactivar' : 'Activar'} />
                           </div>
@@ -438,8 +447,8 @@ export default function Configuracion() {
                   </div>
                 ))}
                 <Actions style={{ marginTop: '1rem' }}>
-                  <Button variant="primary" onClick={savePrefs} disabled={prefsSaving}>
-                    {prefsSaving ? 'Guardando...' : 'Guardar preferencias'}
+                  <Button variant="primary" onClick={savePrefs} disabled={prefsSaving} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <Save size={15} /> {prefsSaving ? 'Guardando...' : 'Guardar preferencias'}
                   </Button>
                 </Actions>
               </>

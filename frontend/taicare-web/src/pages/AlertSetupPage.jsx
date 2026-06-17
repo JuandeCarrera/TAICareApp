@@ -3,24 +3,25 @@ import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../contexts/AuthContext.jsx';
 import api from '../api/axios';
+import { Calendar, Moon, BarChart2, AlertTriangle, Plug, Save, Clock } from 'lucide-react';
 
 /* ─── Alert type definitions (mirrors backend constants) ─── */
 const CATEGORIES = [
     {
-        label: '📅 Rutinas',
+        label: 'Rutinas', Icon: Calendar,
         types: [
             { code: 'ROUTINE_MISSED', name: 'Rutina no completada', description: 'El paciente no realizó una rutina en su ventana horaria.', defaultSeverity: 'high' },
         ],
     },
     {
-        label: '🌙 Actividad en Horas Anómalas',
+        label: 'Actividad en Horas Anómalas', Icon: Moon,
         types: [
             { code: 'UNUSUAL_HOUR_ACTIVITY', name: 'Actividad fuera de horario', description: 'Dispositivo activo fuera del rango horario configurado del paciente.', defaultSeverity: 'high' },
             { code: 'NIGHT_ACTIVITY', name: 'Actividad nocturna', description: 'Actividad intensa detectada durante la franja nocturna.', defaultSeverity: 'medium' },
         ],
     },
     {
-        label: '📊 Datos Sospechosos',
+        label: 'Datos Sospechosos', Icon: BarChart2,
         types: [
             { code: 'DATA_GAP', name: 'Sin datos del dispositivo', description: 'El dispositivo no envió datos durante un período prolongado.', defaultSeverity: 'high' },
             { code: 'DATA_SPIKE', name: 'Consumo anómalo alto', description: 'Consumo eléctrico notablemente superior a la media del paciente.', defaultSeverity: 'medium' },
@@ -28,14 +29,14 @@ const CATEGORIES = [
         ],
     },
     {
-        label: '🔴 Inactividad',
+        label: 'Inactividad', Icon: AlertTriangle,
         types: [
             { code: 'NO_ACTIVITY', name: 'Sin actividad en rutina', description: 'Ningún dispositivo activo durante la ventana de una rutina.', defaultSeverity: 'high' },
             { code: 'PROLONGED_INACTIVITY', name: 'Inactividad prolongada', description: 'Ningún dispositivo activo durante un período largo en horas de vigilia.', defaultSeverity: 'high' },
         ],
     },
     {
-        label: '📡 Dispositivo',
+        label: 'Dispositivo', Icon: Plug,
         types: [
             { code: 'DEVICE_ISSUE', name: 'Problema con dispositivo', description: 'Dispositivo offline, sin respuesta o con lecturas inválidas.', defaultSeverity: 'medium' },
         ],
@@ -43,9 +44,9 @@ const CATEGORIES = [
 ];
 
 const SEVERITY_OPTIONS = [
-    { value: 'high', label: '🔴 Alta' },
-    { value: 'medium', label: '🟡 Media' },
-    { value: 'low', label: '🟢 Baja' },
+    { value: 'high',   label: 'Alta' },
+    { value: 'medium', label: 'Media' },
+    { value: 'low',    label: 'Baja' },
 ];
 
 function buildDefaults() {
@@ -228,7 +229,9 @@ export default function AlertSetupPage() {
     return (
         <Page>
             <Card>
-                <Title>⚙️ Configura tus alertas</Title>
+                <Title style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <Save size={22} /> Configura tus alertas
+                </Title>
                 <Subtitle>
                     Decide qué tipos de alerta quieres recibir y con qué severidad.
                     Siempre podrás cambiarlo desde la página de Configuración.
@@ -236,7 +239,9 @@ export default function AlertSetupPage() {
 
                 {CATEGORIES.map(cat => (
                     <div key={cat.label}>
-                        <CategoryTitle>{cat.label}</CategoryTitle>
+                        <CategoryTitle style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          {cat.Icon && <cat.Icon size={16} />} {cat.label}
+                        </CategoryTitle>
                         {cat.types.map(t => (
                             <TypeRow key={t.code}>
                                 <TypeInfo>
@@ -265,11 +270,11 @@ export default function AlertSetupPage() {
                 ))}
 
                 <Actions>
-                    <Btn variant="primary" onClick={handleSave} disabled={saving}>
-                        {saving ? 'Guardando...' : '✅ Guardar configuración'}
+                    <Btn variant="primary" onClick={handleSave} disabled={saving} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <Save size={16} /> {saving ? 'Guardando...' : 'Guardar configuración'}
                     </Btn>
-                    <Btn onClick={handleRemindLater}>
-                        🕐 Recordar más tarde
+                    <Btn onClick={handleRemindLater} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <Clock size={16} /> Recordar más tarde
                     </Btn>
                 </Actions>
             </Card>

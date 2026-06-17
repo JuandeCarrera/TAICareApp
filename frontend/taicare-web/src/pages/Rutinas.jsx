@@ -7,6 +7,7 @@ import React, {
 } from 'react';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
+import { Pencil, Trash2 } from 'lucide-react';
 import { AuthContext } from '../contexts/AuthContext.jsx';
 import Header from '../components/Header.jsx';
 import Sidebar from '../components/Sidebar.jsx';
@@ -1332,10 +1333,10 @@ export default function Rutinas() {
                         </ToggleWrapper>
 
                         <Btn variant="primary" onClick={() => openEditModal(r)}>
-                          ✎ Editar
+                          <Pencil size={14} /> Editar
                         </Btn>
                         <DangerBtn onClick={() => openDeleteModal(r._id)}>
-                          🗑 Borrar
+                          <Trash2 size={14} /> Borrar
                         </DangerBtn>
                         {times.length > 0 && (
                           <TimePill>{times.join(' · ')}</TimePill>
