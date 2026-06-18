@@ -139,13 +139,16 @@ export async function evaluateAllForDate(
   const baseDay = dayStart(dateLike);
   const dayName = DAY_NAMES[baseDay.getDay()];
 
-  const activePatients = await User.find({ role: 'paciente', vacation_mode: { $ne: true } }, { _id: 1 }).lean();
-  const activePatientIds = activePatients.map(p => p._id);
+  const activePatients = await User.find(
+    { role: 'paciente', vacation_mode: { $ne: true } },
+    { _id: 1 }
+  ).lean();
+  const activePatientIds = activePatients.map((p) => p._id);
 
   const routines = await Routine.find({
     enabled: true,
     user_id: { $in: activePatientIds },
-    'occurrences.days': dayName
+    'occurrences.days': dayName,
   }).lean();
 
   let checked = 0;

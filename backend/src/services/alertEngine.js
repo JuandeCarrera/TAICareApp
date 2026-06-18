@@ -5,6 +5,7 @@ import User from '../models/User.js';
 import Device from '../models/Device.js';
 import Routine from '../models/Routine.js';
 import { getRoutinesStatusForDate } from './routineChecker.js';
+import { DEFAULT_ALERT_PREFERENCES } from '../constants/index.js';
 
 const z2 = (n) => String(n).padStart(2, '0');
 const dayKey = (d) =>
@@ -79,6 +80,38 @@ export async function ensureAlert({
   const ctx = await contextFromRefs({ user_id, device_id, routine_id });
   const dk = dayKey(new Date(timestamp));
 
+  // Consult caregiver preferences
+  let enabled = true;
+  let severity = 'medium';
+
+  const typeKey = String(type || '').toUpperCase();
+  const defaultPref = DEFAULT_ALERT_PREFERENCES[typeKey];
+  if (defaultPref) {
+    severity = defaultPref.severity || severity;
+  }
+
+  if (ctx.caregiver_id) {
+    const caregiver = await User.findById(ctx.caregiver_id).lean();
+    if (caregiver && caregiver.alert_preferences) {
+      const pref =
+        caregiver.alert_preferences instanceof Map
+          ? caregiver.alert_preferences.get(typeKey)
+          : caregiver.alert_preferences[typeKey];
+
+      if (pref) {
+        enabled = pref.enabled !== false;
+        severity = pref.severity || severity;
+      }
+    }
+  }
+
+  if (!enabled) {
+    console.log(
+      `[AlertEngine] Alert suppressed by caregiver preferences: type=${type}, caregiver=${ctx.caregiver_id}`
+    );
+    return null;
+  }
+
   const base = {
     type,
     user_id,
@@ -93,6 +126,7 @@ export async function ensureAlert({
     window_key: ctx.window_key,
     title: typeof title === 'string' ? title : ctx.title,
     message: typeof message === 'string' ? message : ctx.message,
+    severity,
   };
 
   if (routine_id) {
@@ -155,7 +189,10 @@ export async function processTick({ date = new Date() } = {}) {
     return { ok: true, ran: false, reason: 'alerts_disabled' };
   }
 
-  const patients = await User.find({ role: 'paciente', vacation_mode: { $ne: true } }, { _id: 1 }).lean();
+  const patients = await User.find(
+    { role: 'paciente', vacation_mode: { $ne: true } },
+    { _id: 1 }
+  ).lean();
   let created = 0;
   let checked = 0;
 

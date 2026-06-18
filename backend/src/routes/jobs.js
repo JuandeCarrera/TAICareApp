@@ -9,12 +9,10 @@ async function handleRunTick(_req, res) {
     const result = await runRoutineCheckerTick();
     res.json({ ok: true, ...result });
   } catch (e) {
-    res
-      .status(500)
-      .json({
-        ok: false,
-        error: e?.message || 'Failed to run routine checker',
-      });
+    res.status(500).json({
+      ok: false,
+      error: e?.message || 'Failed to run routine checker',
+    });
   }
 }
 

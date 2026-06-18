@@ -22,7 +22,10 @@ const userSchema = new Schema(
     alert_preferences: {
       type: Map,
       of: new mongoose.Schema(
-        { enabled: { type: Boolean, default: true }, severity: { type: String, default: 'medium' } },
+        {
+          enabled: { type: Boolean, default: true },
+          severity: { type: String, default: 'medium' },
+        },
         { _id: false }
       ),
       default: () => new Map(Object.entries(DEFAULT_ALERT_PREFERENCES)),

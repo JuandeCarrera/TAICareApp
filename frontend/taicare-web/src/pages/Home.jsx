@@ -201,12 +201,13 @@ const ListScroll = styled.div`
 `;
 
 export default function Home() {
-  const { logout } = useContext(AuthContext);
+  const { logout, user } = useContext(AuthContext);
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [menuOpen, setMenuOpen] = useState(!isMobile);
   const theme = useTheme();
   const chartTheme = theme.isDark ? 'dark' : 'light';
+  const caregiverId = user?._id || user?.sub || null;
   useEffect(() => { setMenuOpen(!isMobile); }, [isMobile]);
 
   /* datos para rutinas */
@@ -519,15 +520,17 @@ export default function Home() {
               <ChartGrid>
                 <ChartFrame>
                   <iframe
+                    key={`chart-hh-${caregiverId}`}
                     title="Alertas por household"
-                    src={`https://charts.mongodb.com/charts-project-0-mrlcghx/embed/charts?id=5586cb32-40f5-43c6-aa69-2fc92f368003&maxDataAge=3600&theme=${chartTheme}`}
+                    src={`https://charts.mongodb.com/charts-project-0-mrlcghx/embed/charts?id=5586cb32-40f5-43c6-aa69-2fc92f368003&maxDataAge=3600&theme=${chartTheme}&autoRefresh=true${caregiverId ? `&filter=${encodeURIComponent(JSON.stringify({ caregiver_id: { $oid: String(caregiverId) } }))}` : ''}`}
                   />
                 </ChartFrame>
 
                 <ChartFrame>
                   <iframe
+                    key={`chart-res-${caregiverId}`}
                     title="Resueltas vs No resueltas"
-                    src={`https://charts.mongodb.com/charts-project-0-mrlcghx/embed/charts?id=4632ee43-0a08-4ed4-8a32-0fc3fd6d6b3a&maxDataAge=3600&theme=${chartTheme}`}
+                    src={`https://charts.mongodb.com/charts-project-0-mrlcghx/embed/charts?id=4632ee43-0a08-4ed4-8a32-0fc3fd6d6b3a&maxDataAge=3600&theme=${chartTheme}&autoRefresh=true${caregiverId ? `&filter=${encodeURIComponent(JSON.stringify({ caregiver_id: { $oid: String(caregiverId) } }))}` : ''}`}
                   />
                 </ChartFrame>
               </ChartGrid>

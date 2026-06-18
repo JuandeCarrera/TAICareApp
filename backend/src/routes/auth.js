@@ -9,19 +9,23 @@ const router = Router();
 router.post('/register', async (req, res) => {
   try {
     let { name, email, password, role, household_id } = req.body;
-    
+
     // Validaciones de seguridad
     if (!password || password.length < 6) {
-      return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
+      return res
+        .status(400)
+        .json({ error: 'La contraseña debe tener al menos 6 caracteres' });
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!email || !emailRegex.test(email)) {
-      return res.status(400).json({ error: 'Formato de correo electrónico inválido' });
+      return res
+        .status(400)
+        .json({ error: 'Formato de correo electrónico inválido' });
     }
 
     if (name) name = toTitleCase(name);
     if (email) email = formatEmail(email);
-    
+
     await User.create({ name, email, password, role, household_id });
     res.status(201).json({ message: 'Registrado con éxito' });
   } catch (e) {
@@ -96,7 +100,11 @@ router.get('/me', async (req, res) => {
 // Logout: borra la cookie del servidor también
 router.post('/logout', (req, res) => {
   const isProd = process.env.NODE_ENV === 'production';
-  res.clearCookie('token', { httpOnly: true, sameSite: isProd ? 'none' : 'lax', secure: isProd });
+  res.clearCookie('token', {
+    httpOnly: true,
+    sameSite: isProd ? 'none' : 'lax',
+    secure: isProd,
+  });
   res.json({ message: 'Sesión cerrada' });
 });
 

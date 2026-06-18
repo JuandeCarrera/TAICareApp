@@ -13,23 +13,34 @@ import { useIsMobile } from '../hooks/useIsMobile';
 import Header from '../components/Header.jsx';
 import Sidebar from '../components/Sidebar.jsx';
 import Footer from '../components/Footer.jsx';
+import { BarChart2, Globe, User, FolderOpen, Plug, Bell, Calendar, Home, AlertTriangle, Info } from 'lucide-react';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 const CHARTS_BASE = 'https://charts.mongodb.com/charts-project-0-mrlcghx';
 
-/* ─── Registro de charts (IDs del embed code de MongoDB Charts) ──────────── */
-const CHART_IDS = {
-  dispPorPaciente:          'c29cb27f-4ee4-4c9c-a6d9-0540f06ce116',
-  numAlertas:               'c5cad3fc-2244-4b73-b0ba-a8793a6a0ac9',
-  consumoPorCasa:           '2a56b1b7-9b22-4a9e-9845-37db7ed6f5d9',
-  dispPorHab:               '0aa6db07-6166-4feb-b68f-6682eb0d7c14',
-  habitacionesMonitorizadas:'858ce105-990f-42d2-aace-97835c085fff',
-  alertasHoy:               '5586cb32-40f5-43c6-aa69-2fc92f368003',
-  alertasSinResolver:       '4632ee43-0a08-4ed4-8a32-0fc3fd6d6b3a',
+/* ─── Configuración de charts: ID + campo de filtro (debe coincidir con
+   "Allowed filter fields" configurado en Atlas Charts Embed settings) ─── */
+const CHART_CONFIGS = {
+  // Coleccion: devices CON lookup owner→users (panel Fields → "+")
+  dispPorPaciente:           { id: 'c29cb27f-4ee4-4c9c-a6d9-0540f06ce116', filterField: 'household.owner_lookup_users.caregiver_id' },
+  // Estos dos necesitan añadir lookup en Atlas Charts (Fields → "+") antes de filtrar
+  dispPorHab:                { id: '0aa6db07-6166-4feb-b68f-6682eb0d7c14', filterField: 'household.owner_lookup_users.caregiver_id' },
+  consumoPorCasa:            { id: '2a56b1b7-9b22-4a9e-9845-37db7ed6f5d9', filterField: 'household.owner_lookup_users.caregiver_id' },
+  // Coleccion: household_rooms_coverage (view) — lookup: householdId→households→owner→users
+  habitacionesMonitorizadas: { id: '858ce105-990f-42d2-aace-97835c085fff', filterField: 'household_data.owner_user.caregiver_id' },
+  // Coleccion: alerts → caregiver_id directo ✅
+  alertasHoy:                { id: '5586cb32-40f5-43c6-aa69-2fc92f368003', filterField: 'caregiver_id' },
+  alertasSinResolver:        { id: '4632ee43-0a08-4ed4-8a32-0fc3fd6d6b3a', filterField: 'caregiver_id' },
+  numAlertas:                { id: 'c5cad3fc-2244-4b73-b0ba-a8793a6a0ac9', filterField: 'caregiver_id' },
 };
 
-const chartUrl = (id, theme = 'light') =>
-  `${CHARTS_BASE}/embed/charts?id=${id}&maxDataAge=3600&theme=${theme}`;
+// Genera la URL del chart con filtro de cuidador (Embedding Filter)
+const chartUrl = (id, theme = 'light', caregiverId = null, filterField = 'caregiver_id') => {
+  const base = `${CHARTS_BASE}/embed/charts?id=${id}&maxDataAge=3600&theme=${theme}&autoRefresh=true`;
+  if (!caregiverId) return base;
+  const filter = encodeURIComponent(JSON.stringify({ [filterField]: { $oid: String(caregiverId) } }));
+  return `${base}&filter=${filter}`;
+};
 
 /* ─── Animaciones ────────────────────────────────────────────────────────── */
 const spin = keyframes`from { transform: rotate(0deg); } to { transform: rotate(360deg); }`;
@@ -323,7 +334,7 @@ function timeAgo(date) {
 }
 
 /* ─── Componente chart embebido ──────────────────────────────────────────── */
-function EmbeddedChart({ id, title, desc, tall, refreshKey, chartTheme }) {
+function EmbeddedChart({ id, filterField = 'caregiver_id', title, desc, tall, refreshKey, chartTheme, caregiverId }) {
   return (
     <ChartCard>
       <ChartCardHeader>
@@ -332,9 +343,9 @@ function EmbeddedChart({ id, title, desc, tall, refreshKey, chartTheme }) {
       </ChartCardHeader>
       <IframeWrap $tall={tall}>
         <iframe
-          key={`${id}-${refreshKey}`}
+          key={`${id}-${refreshKey}-${caregiverId}`}
           title={title}
-          src={chartUrl(id, chartTheme)}
+          src={chartUrl(id, chartTheme, caregiverId, filterField)}
           allowFullScreen
         />
       </IframeWrap>
@@ -346,26 +357,29 @@ function EmbeddedChart({ id, title, desc, tall, refreshKey, chartTheme }) {
 const CATEGORIES = [
   {
     key: 'alertas',
-    label: '🔔 Alertas',
+    label: 'Alertas',
+    icon: Bell,
     charts: [
-      { id: CHART_IDS.alertasHoy,        title: 'Alertas de hoy',      desc: 'Total pendientes' },
-      { id: CHART_IDS.alertasSinResolver, title: 'Sin resolver hoy',    desc: 'KPI' },
+      { ...CHART_CONFIGS.alertasHoy,        title: 'Alertas de hoy',      desc: 'Total pendientes' },
+      { ...CHART_CONFIGS.alertasSinResolver, title: 'Sin resolver hoy',    desc: 'KPI' },
     ],
   },
   {
     key: 'dispositivos',
-    label: '📡 Dispositivos',
+    label: 'Dispositivos',
+    icon: Plug,
     charts: [
-      { id: CHART_IDS.dispPorPaciente, title: 'Disp. por paciente',    desc: 'Por hogar' },
-      { id: CHART_IDS.dispPorHab,      title: 'Disp. por habitación',  desc: 'Distribución' },
+      { ...CHART_CONFIGS.dispPorPaciente, title: 'Disp. por paciente',    desc: 'Por hogar' },
+      { ...CHART_CONFIGS.dispPorHab,      title: 'Disp. por habitación',  desc: 'Distribución' },
     ],
   },
   {
     key: 'hogares',
-    label: '🏠 Hogares',
+    label: 'Hogares',
+    icon: Home,
     charts: [
-      { id: CHART_IDS.habitacionesMonitorizadas, title: 'Habitaciones monitorizadas', desc: 'Estado' },
-      { id: CHART_IDS.consumoPorCasa,            title: 'Consumo por casa',           desc: 'Actividad' },
+      { ...CHART_CONFIGS.habitacionesMonitorizadas, title: 'Habitaciones monitorizadas', desc: 'Estado' },
+      // { ...CHART_CONFIGS.consumoPorCasa,            title: 'Consumo por casa',           desc: 'Actividad' },
     ],
   },
 ];
@@ -374,7 +388,10 @@ const CATEGORIES = [
    COMPONENTE PRINCIPAL
 ═══════════════════════════════════════════════════════════════════════════ */
 export default function Datos() {
-  const { logout } = useContext(AuthContext);
+  const { logout, user } = useContext(AuthContext);
+  const caregiverId = user?._id ? String(user._id) : (user?.sub ? String(user.sub) : null);
+  // DEBUG: quitar tras verificar
+  console.log('[Charts] user:', user, '→ caregiverId:', caregiverId);
   const { themeName } = useContext(ThemeContext);
   const navigate = useNavigate();
   const isMobile = useIsMobile();
@@ -506,11 +523,13 @@ export default function Datos() {
           {/* ── Cabecera ── */}
           <PageHeader>
             <PageMeta>
-              <PageTitle>📊 Estadísticas</PageTitle>
+              <PageTitle style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <BarChart2 size={22} strokeWidth={2} /> Estadísticas
+              </PageTitle>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
                 <LastUpdated>Última actualización: {timeAgo(lastUpdated)}</LastUpdated>
                 <FreeTierBadge>
-                  ⚠ Plan gratuito · refresco cada 4h
+                  <AlertTriangle size={13} strokeWidth={2.5} style={{flexShrink:0}}/> Plan gratuito · refresco cada 4h
                 </FreeTierBadge>
               </div>
             </PageMeta>
@@ -530,13 +549,13 @@ export default function Datos() {
           {/* ── Tabs ── */}
           <TabBar>
             <Tab $active={activeTab === 'overview'} onClick={() => setActiveTab('overview')}>
-              🗺 Resumen del sistema
+              <Globe size={15} style={{marginRight: '0.5rem'}} /> Resumen del sistema
             </Tab>
             <Tab $active={activeTab === 'patient'} onClick={() => setActiveTab('patient')}>
-              👤 Datos del paciente
+              <User size={15} style={{marginRight: '0.5rem'}} /> Datos del paciente
             </Tab>
             <Tab $active={activeTab === 'category'} onClick={() => setActiveTab('category')}>
-              📂 Por categoría
+              <FolderOpen size={15} style={{marginRight: '0.5rem'}} /> Por categoría
             </Tab>
           </TabBar>
 
@@ -546,7 +565,7 @@ export default function Datos() {
           {activeTab === 'overview' && (
             <TabContent>
               <InfoBanner>
-                ℹ️ Los gráficos se cargan desde MongoDB Charts con un retardo de 4h (plan gratuito).
+                <Info size={16} style={{marginRight: '0.5rem'}} /> Los gráficos se cargan desde MongoDB Charts con un retardo de 4h (plan gratuito).
                 Usa el botón "Actualizar" que hay arriba a la derecha para forzar la recarga visual.
               </InfoBanner>
 
@@ -556,9 +575,9 @@ export default function Datos() {
                 <SectionDivider />
               </SectionLabel>
               <ChartGrid $cols={3} style={{ marginBottom: '1.25rem' }}>
-                <EmbeddedChart id={CHART_IDS.alertasHoy}         title="Alertas de hoy"          desc="Estado pendiente"    refreshKey={refreshKey} chartTheme={chartTheme} />
-                <EmbeddedChart id={CHART_IDS.alertasSinResolver}  title="Alertas sin resolver"    desc="Contador KPI"        refreshKey={refreshKey} chartTheme={chartTheme} />
-                <EmbeddedChart id={CHART_IDS.habitacionesMonitorizadas} title="Habitaciones monitorizadas" desc="Estado global" refreshKey={refreshKey} chartTheme={chartTheme} />
+                <EmbeddedChart {...CHART_CONFIGS.alertasHoy}         title="Alertas de hoy"          desc="Estado pendiente"    refreshKey={refreshKey} chartTheme={chartTheme} caregiverId={caregiverId} />
+                <EmbeddedChart {...CHART_CONFIGS.alertasSinResolver}  title="Alertas sin resolver"    desc="Contador KPI"        refreshKey={refreshKey} chartTheme={chartTheme} caregiverId={caregiverId} />
+                <EmbeddedChart {...CHART_CONFIGS.habitacionesMonitorizadas} title="Habitaciones monitorizadas" desc="Estado global" refreshKey={refreshKey} chartTheme={chartTheme} caregiverId={caregiverId} />
               </ChartGrid>
 
               {/* Fila 2 — Distribución */}
@@ -566,10 +585,10 @@ export default function Datos() {
                 <SectionTitle>Distribución</SectionTitle>
                 <SectionDivider />
               </SectionLabel>
-              <ChartGrid $cols={3} style={{ marginBottom: '1.25rem' }}>
-                <EmbeddedChart id={CHART_IDS.dispPorPaciente}   title="Dispositivos por paciente"   desc="Por hogar"        tall refreshKey={refreshKey} chartTheme={chartTheme} />
-                <EmbeddedChart id={CHART_IDS.dispPorHab}        title="Dispositivos por habitación" desc="Distribución"     tall refreshKey={refreshKey} chartTheme={chartTheme} />
-                <EmbeddedChart id={CHART_IDS.consumoPorCasa}    title="Consumo por casa"            desc="Actividad"        tall refreshKey={refreshKey} chartTheme={chartTheme} />
+              <ChartGrid $cols={2} style={{ marginBottom: '1.25rem' }}>
+                <EmbeddedChart {...CHART_CONFIGS.dispPorPaciente}   title="Dispositivos por paciente"   desc="Por hogar"        tall refreshKey={refreshKey} chartTheme={chartTheme} caregiverId={caregiverId} />
+                <EmbeddedChart {...CHART_CONFIGS.dispPorHab}        title="Dispositivos por habitación" desc="Distribución"     tall refreshKey={refreshKey} chartTheme={chartTheme} caregiverId={caregiverId} />
+                {/* <EmbeddedChart {...CHART_CONFIGS.consumoPorCasa}    title="Consumo por casa"            desc="Actividad"        tall refreshKey={refreshKey} chartTheme={chartTheme} caregiverId={caregiverId} /> */}
               </ChartGrid>
 
               {/* Fila 3 — Alertas detalle */}
@@ -578,8 +597,8 @@ export default function Datos() {
                 <SectionDivider />
               </SectionLabel>
               <ChartGrid $cols={2}>
-                <EmbeddedChart id={CHART_IDS.numAlertas}       title="Número de alertas"        desc="Por hogar" tall refreshKey={refreshKey} chartTheme={chartTheme} />
-                <EmbeddedChart id={CHART_IDS.alertasSinResolver} title="Sin resolver hoy"         desc="KPI"      tall refreshKey={refreshKey} chartTheme={chartTheme} />
+                <EmbeddedChart {...CHART_CONFIGS.numAlertas}          title="Número de alertas"   desc="Por hogar" tall refreshKey={refreshKey} chartTheme={chartTheme} caregiverId={caregiverId} />
+                <EmbeddedChart {...CHART_CONFIGS.alertasSinResolver}  title="Sin resolver hoy"    desc="KPI"      tall refreshKey={refreshKey} chartTheme={chartTheme} caregiverId={caregiverId} />
               </ChartGrid>
             </TabContent>
           )}
@@ -619,28 +638,28 @@ export default function Datos() {
                   {/* Tarjetas KPI */}
                   <StatsGrid>
                     <StatCard>
-                      <StatIcon>📡</StatIcon>
+                      <StatIcon><Plug size={20} color="inherit" /></StatIcon>
                       {loadingPatient ? <LoadingPulse /> : (
                         <StatValue>{patientData?.devices?.length ?? '—'}</StatValue>
                       )}
                       <StatDesc>Dispositivos registrados</StatDesc>
                     </StatCard>
                     <StatCard>
-                      <StatIcon>🔔</StatIcon>
+                      <StatIcon><Bell size={20} color="inherit" /></StatIcon>
                       {loadingPatient ? <LoadingPulse /> : (
                         <StatValue>{patientData?.alerts?.length ?? '—'}</StatValue>
                       )}
                       <StatDesc>Alertas pendientes</StatDesc>
                     </StatCard>
                     <StatCard>
-                      <StatIcon>📅</StatIcon>
+                      <StatIcon><Calendar size={20} color="inherit" /></StatIcon>
                       {loadingPatient ? <LoadingPulse /> : (
                         <StatValue>{patientData?.routines?.length ?? '—'}</StatValue>
                       )}
                       <StatDesc>Rutinas configuradas</StatDesc>
                     </StatCard>
                     <StatCard>
-                      <StatIcon>🏠</StatIcon>
+                      <StatIcon><Home size={20} /></StatIcon>
                       {loadingPatient ? <LoadingPulse /> : (
                         <StatValue style={{ fontSize: '1.2rem' }}>
                           {patientData?.household?.name || '—'}
@@ -660,7 +679,7 @@ export default function Datos() {
                       <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
                         {patientData.devices.map((d) => (
                           <DeviceChip key={d._id}>
-                            📡 {d.appliance || d.type || 'Dispositivo'}
+                            <Plug size={13} style={{marginRight:'4px',flexShrink:0}}/> {d.appliance || d.type || 'Dispositivo'}
                             {d.room && <em style={{ marginLeft: '0.35rem', color: 'inherit', opacity: 0.75 }}>· {d.room}</em>}
                           </DeviceChip>
                         ))}
@@ -678,7 +697,7 @@ export default function Datos() {
                       <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
                         {patientData.routines.map((r) => (
                           <DeviceChip key={r._id}>
-                            📅 {r.name || 'Rutina sin nombre'}
+                            <Calendar size={13} style={{marginRight:'4px',flexShrink:0}}/> {r.name || 'Rutina sin nombre'}
                           </DeviceChip>
                         ))}
                       </div>
@@ -701,7 +720,7 @@ export default function Datos() {
                             background: 'rgba(239,68,68,.06)',
                             fontSize: '0.85rem',
                           }}>
-                            🔔 <strong>{a.title || a.type || 'Alerta'}</strong>
+                            <Bell size={14} style={{marginRight:'5px',flexShrink:0,verticalAlign:'middle'}}/> <strong>{a.title || a.type || 'Alerta'}</strong>
                             {a.timestamp && (
                               <span style={{ marginLeft: '0.5rem', opacity: 0.7 }}>
                                 · {new Date(a.timestamp).toLocaleString()}
@@ -719,7 +738,7 @@ export default function Datos() {
                     !patientData.routines?.length &&
                     !patientData.alerts?.length && (
                     <InfoBanner style={{ marginTop: '0.5rem' }}>
-                      ℹ️ Este paciente no tiene dispositivos, rutinas ni alertas registradas.
+                      <Info size={16} style={{marginRight: '0.5rem'}} /> Este paciente no tiene dispositivos, rutinas ni alertas registradas.
                     </InfoBanner>
                   )}
                 </>
@@ -735,13 +754,14 @@ export default function Datos() {
           {activeTab === 'category' && (
             <TabContent>
               <CatBar>
-                {CATEGORIES.map((cat) => (
+                {CATEGORIES.map(({ key, label, icon: CatIcon, charts }) => (
                   <CatBtn
-                    key={cat.key}
-                    $active={activeCategory === cat.key}
-                    onClick={() => setActiveCategory(cat.key)}
+                    key={key}
+                    $active={activeCategory === key}
+                    onClick={() => setActiveCategory(key)}
                   >
-                    {cat.label}
+                    {CatIcon && <CatIcon size={16} style={{marginRight: '0.4rem'}} />}
+                    {label}
                   </CatBtn>
                 ))}
               </CatBar>
@@ -751,11 +771,13 @@ export default function Datos() {
                   <EmbeddedChart
                     key={`${currentCat.key}-${i}`}
                     id={c.id}
+                    filterField={c.filterField}
                     title={c.title}
                     desc={c.desc}
                     tall
                     refreshKey={refreshKey}
                     chartTheme={chartTheme}
+                    caregiverId={caregiverId}
                   />
                 ))}
               </ChartGrid>
