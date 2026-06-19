@@ -14,6 +14,7 @@ import Header from '../components/Header.jsx';
 import Sidebar from '../components/Sidebar.jsx';
 import Footer from '../components/Footer.jsx';
 import { BarChart2, Globe, User, FolderOpen, Plug, Bell, Calendar, Home, AlertTriangle, Info } from 'lucide-react';
+import InfoTooltip from '../components/InfoTooltip.jsx';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 const CHARTS_BASE = 'https://charts.mongodb.com/charts-project-0-mrlcghx';
@@ -334,11 +335,14 @@ function timeAgo(date) {
 }
 
 /* ─── Componente chart embebido ──────────────────────────────────────────── */
-function EmbeddedChart({ id, filterField = 'caregiver_id', title, desc, tall, refreshKey, chartTheme, caregiverId }) {
+function EmbeddedChart({ id, filterField = 'caregiver_id', title, tooltipText, desc, tall, refreshKey, chartTheme, caregiverId }) {
   return (
     <ChartCard>
       <ChartCardHeader>
-        <ChartCardTitle>{title}</ChartCardTitle>
+        <ChartCardTitle>
+          {title}
+          {tooltipText && <InfoTooltip text={tooltipText} />}
+        </ChartCardTitle>
         {desc && <ChartCardDesc>{desc}</ChartCardDesc>}
       </ChartCardHeader>
       <IframeWrap $tall={tall}>
@@ -550,9 +554,11 @@ export default function Datos() {
           <TabBar>
             <Tab $active={activeTab === 'overview'} onClick={() => setActiveTab('overview')}>
               <Globe size={15} style={{marginRight: '0.5rem'}} /> Resumen del sistema
+              <InfoTooltip text="Estadísticas agregadas de todos tus hogares y alertas generadas." />
             </Tab>
             <Tab $active={activeTab === 'patient'} onClick={() => setActiveTab('patient')}>
               <User size={15} style={{marginRight: '0.5rem'}} /> Datos del paciente
+              <InfoTooltip text="Detalle interactivo individual de dispositivos activos, alertas y rutinas de un paciente en particular." />
             </Tab>
             <Tab $active={activeTab === 'category'} onClick={() => setActiveTab('category')}>
               <FolderOpen size={15} style={{marginRight: '0.5rem'}} /> Por categoría
@@ -586,7 +592,7 @@ export default function Datos() {
                 <SectionDivider />
               </SectionLabel>
               <ChartGrid $cols={2} style={{ marginBottom: '1.25rem' }}>
-                <EmbeddedChart {...CHART_CONFIGS.dispPorPaciente}   title="Dispositivos por paciente"   desc="Por hogar"        tall refreshKey={refreshKey} chartTheme={chartTheme} caregiverId={caregiverId} />
+                <EmbeddedChart {...CHART_CONFIGS.dispPorPaciente}   title="Dispositivos por paciente"   tooltipText="Distribución de la cantidad de sensores instalados en el hogar de cada paciente." desc="Por hogar"        tall refreshKey={refreshKey} chartTheme={chartTheme} caregiverId={caregiverId} />
                 <EmbeddedChart {...CHART_CONFIGS.dispPorHab}        title="Dispositivos por habitación" desc="Distribución"     tall refreshKey={refreshKey} chartTheme={chartTheme} caregiverId={caregiverId} />
                 {/* <EmbeddedChart {...CHART_CONFIGS.consumoPorCasa}    title="Consumo por casa"            desc="Actividad"        tall refreshKey={refreshKey} chartTheme={chartTheme} caregiverId={caregiverId} /> */}
               </ChartGrid>

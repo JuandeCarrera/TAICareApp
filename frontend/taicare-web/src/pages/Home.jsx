@@ -6,6 +6,7 @@ import Header from '../components/Header.jsx';
 import Sidebar from '../components/Sidebar.jsx';
 import Footer from '../components/Footer.jsx';
 import { useIsMobile } from '../hooks/useIsMobile';
+import InfoTooltip from '../components/InfoTooltip.jsx';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -515,7 +516,12 @@ export default function Home() {
           <Shell>
             {/* Charts arriba */}
             <ChartsBand>
-              <ChartsHeader></ChartsHeader>
+              <ChartsHeader>
+                <h3>
+                  Indicadores globales
+                  <InfoTooltip text="Gráficos de MongoDB Atlas que resumen el histórico de alertas por hogar y el estado de resolución de las mismas." />
+                </h3>
+              </ChartsHeader>
 
               <ChartGrid>
                 <ChartFrame>
@@ -541,7 +547,10 @@ export default function Home() {
               {/* Próximas rutinas */}
               <Card>
                 <CardHeader>
-                  <h3>Próximas rutinas</h3>
+                  <h3>
+                    Próximas rutinas
+                    <InfoTooltip text="Muestra los hábitos de uso esperados para las próximas 48 horas de tus pacientes (ej. encender la cafetera por la mañana)." />
+                  </h3>
                   <AddBtn
                     variant="primary"
                     title="Añadir rutina"
@@ -613,7 +622,10 @@ export default function Home() {
               {/* Alertas (NO resueltas, más antiguas primero) */}
               <Card>
                 <CardHeader>
-                  <h3>Alertas</h3>
+                  <h3>
+                    Alertas
+                    <InfoTooltip text="Listado de anomalías o periodos de inactividad detectados que requieren atención." />
+                  </h3>
                 </CardHeader>
 
                 {loadingAlerts ? (

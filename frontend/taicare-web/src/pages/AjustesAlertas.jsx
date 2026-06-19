@@ -7,6 +7,7 @@ import Footer from '../components/Footer.jsx';
 import { AuthContext } from '../contexts/AuthContext.jsx';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { useUpdateUser } from '../hooks/useUsers';
+import InfoTooltip from '../components/InfoTooltip.jsx';
 import {
   SettingsAPI,
   NotifPrefsAPI,
@@ -396,7 +397,10 @@ export default function AjustesAlertas() {
           <h1>Ajustes de alertas</h1>
 
           <Card>
-            <h3>Sistema</h3>
+            <h3>
+              Sistema (Horas de Silencio)
+              <InfoTooltip text="Rango de horas durante las cuales el sistema no enviará notificaciones molestas por email o push (las alertas se seguirán registrando en el sistema)." />
+            </h3>
             <Row>
               <div>Motor de alertas</div>
               <label
@@ -441,7 +445,10 @@ export default function AjustesAlertas() {
           </Card>
 
           <Card>
-            <h3>Mis notificaciones</h3>
+            <h3>
+              Mis notificaciones
+              <InfoTooltip text="Canales por los cuales deseas ser notificado en tiempo real ante una nueva alerta." />
+            </h3>
             <div
               style={{
                 display: 'grid',
@@ -470,7 +477,10 @@ export default function AjustesAlertas() {
                 Push
               </label>
               <div>
-                <label>Severidad mínima</label>
+                <label>
+                  Severidad mínima
+                  <InfoTooltip text="Solo recibirás avisos push o email si la severidad de la alerta es igual o superior al nivel seleccionado." />
+                </label>
                 <Select
                   value={minSeverity}
                   onChange={(e) => setMinSeverity(e.target.value)}
@@ -534,7 +544,10 @@ export default function AjustesAlertas() {
               </div>
 
               <div>
-                <label>Potencia (W)</label>
+                <label>
+                  Potencia (W)
+                  <InfoTooltip text="Consumo eléctrico en tiempo real. Un valor superior a 5W indica que el aparato está encendido." />
+                </label>
                 <Input
                   type="number"
                   value={testPower}

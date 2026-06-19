@@ -7,6 +7,7 @@ import { useUpdateUser } from '../hooks/useUsers';
 import Header from '../components/Header.jsx';
 import Sidebar from '../components/Sidebar.jsx';
 import Footer from '../components/Footer.jsx';
+import InfoTooltip from '../components/InfoTooltip.jsx';
 import { Calendar, Moon, BarChart2, AlertTriangle, Plug, Bell, ChevronUp, ChevronDown, Save } from 'lucide-react';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3000';
@@ -409,6 +410,7 @@ export default function Configuracion() {
             >
               <h2 style={{ marginTop: 0, fontSize: '1rem', marginBottom: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <Bell size={17} /> Preferencias de alertas
+                <InfoTooltip text="Si desactivas un tipo de alerta, el motor dejará de generarla completamente para tus pacientes." />
               </h2>
               <span style={{ display: 'flex', alignItems: 'center', opacity: 0.5 }}>
                 {showAlertPrefs ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
@@ -428,7 +430,10 @@ export default function Configuracion() {
                       const on = getPref(t.code, 'enabled');
                       return (
                         <PrefRow key={t.code}>
-                          <span style={{ flex: 1, fontSize: '0.9rem' }}>{t.name}</span>
+                          <span style={{ flex: 1, fontSize: '0.9rem' }}>
+                            {t.name}
+                            <InfoTooltip text="Permite subir o bajar la importancia de un tipo de alerta. Afecta al color del aviso en el panel y a las notificaciones recibidas." />
+                          </span>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                             <SevSelect
                               value={getPref(t.code, 'severity')}

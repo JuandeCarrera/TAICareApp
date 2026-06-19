@@ -17,6 +17,7 @@ import {
 } from '../hooks/useHouseholds';
 import { useUsers } from '../hooks/useUsers';
 import { useIsMobile } from '../hooks/useIsMobile';
+import InfoTooltip from '../components/InfoTooltip.jsx';
 
 /* ---------- Estilos base ---------- */
 const AppContainer = styled.div`
@@ -371,7 +372,10 @@ export default function Hogares() {
       <Body>
         <Sidebar open={menuOpen} onClose={() => setMenuOpen(false)} />
         <Main>
-          <h1>Hogares</h1>
+          <h1>
+            Hogares
+            <InfoTooltip text="Hogares asignados. Cada hogar representa la vivienda física de un paciente y contiene sus habitaciones y sensores configurados." />
+          </h1>
 
           <div style={{ marginBottom: '1rem' }}>
             <SearchToolbar

@@ -22,6 +22,7 @@ import {
 import { useHouseholds } from '../hooks/useHouseholds';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { Home, DoorOpen, Pencil, Trash2 } from 'lucide-react';
+import InfoTooltip from '../components/InfoTooltip.jsx';
 
 const AppContainer = styled.div`
   display: flex;
@@ -307,7 +308,10 @@ export default function Dispositivos() {
       <Body>
         <Sidebar open={menuOpen} onClose={() => setMenuOpen(false)} />
         <Main>
-          <h1>Dispositivos</h1>
+          <h1>
+            Dispositivos
+            <InfoTooltip text="Enchufes inteligentes instalados en los hogares. Miden el consumo eléctrico de electrodomésticos clave para deducir la actividad del paciente." />
+          </h1>
 
           {/* ---- Banner de guía ---- */}
           {!loadingHouseholds && !hasHouseholds && (

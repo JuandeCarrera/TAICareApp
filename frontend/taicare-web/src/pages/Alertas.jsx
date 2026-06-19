@@ -13,6 +13,7 @@ import {
 } from '../hooks/useAlerts';
 import { useUsers } from '../hooks/useUsers';
 import { useIsMobile } from '../hooks/useIsMobile';
+import InfoTooltip from '../components/InfoTooltip.jsx';
 import {
   AlertTriangle, XCircle, DoorOpen, Flame, Wind,
   AlertOctagon, PersonStanding, Bell, User, Trash2, Check,
@@ -337,7 +338,10 @@ export default function Alertas() {
         <Sidebar open={menuOpen} onClose={() => setMenuOpen(false)} />
         <Main>
           <TopBar>
-            <h1>Alertas</h1>
+            <h1>
+              Alertas
+              <InfoTooltip text="Historial de notificaciones críticas. Haz clic en 'Marcar como vista' cuando hayas verificado el estado de salud del paciente." />
+            </h1>
             <Btn variant="primary" onClick={() => refetch()}>
               Recargar
             </Btn>

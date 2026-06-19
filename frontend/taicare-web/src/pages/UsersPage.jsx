@@ -24,6 +24,7 @@ import { useAlerts } from '../hooks/useAlerts';
 import { useIsMobile } from '../hooks/useIsMobile';
 import api from '../api/axios';
 import { Home as HomeIcon } from 'lucide-react';
+import InfoTooltip from '../components/InfoTooltip.jsx';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -522,7 +523,10 @@ export default function UsersPage() {
           {(!isMobile || !selectedId) && (
             <PanelList style={{ width: isMobile ? '100%' : '380px' }}>
               <ListHeader>
-                <h3>Pacientes</h3>
+                <h3>
+                  Pacientes
+                  <InfoTooltip text="Listado de personas mayores a tu cargo. Puedes editar su información, historial de salud y asignarles un hogar." />
+                </h3>
                 <Btn variant="primary" onClick={openNew}>
                   + Nuevo
                 </Btn>
@@ -641,7 +645,10 @@ export default function UsersPage() {
                       {/* Toggle Modo Vacaciones */}
                       <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'rgba(0,0,0,0.03)', borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
-                          <strong>Modo Vacaciones</strong>
+                          <strong>
+                            Modo Vacaciones
+                            <InfoTooltip text="Si se activa, el motor de alertas ignorará temporalmente a este paciente para no generar falsos positivos por ausencia." />
+                          </strong>
                           <div style={{ fontSize: '0.85rem', opacity: 0.7 }}>Suspende todas las alertas de rutinas temporalmente.</div>
                         </div>
                         <ToggleWrapper onClick={async (e) => {

@@ -24,6 +24,7 @@ import { useUsers, useUpdateUser } from '../hooks/useUsers';
 import { useHouseholds } from '../hooks/useHouseholds';
 import { useDevices } from '../hooks/useDevices';
 import { useIsMobile } from '../hooks/useIsMobile';
+import InfoTooltip from '../components/InfoTooltip.jsx';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -1199,7 +1200,10 @@ export default function Rutinas() {
         <Sidebar open={menuOpen} onClose={() => setMenuOpen(false)} />
         <Main>
           <Toolbar>
-            <h1>Rutinas</h1>
+            <h1>
+              Rutinas
+              <InfoTooltip text="Las rutinas definen cuándo se espera que el paciente use un electrodoméstico específico. Si no se detecta consumo en esa franja horaria, el sistema crea una alerta." />
+            </h1>
             <div>
               <Btn variant="primary" onClick={() => setPresetOpen(true)}>
                 + Añadir preset
@@ -1401,7 +1405,10 @@ export default function Rutinas() {
               {step === 1 && (
                 <>
                   <FormGroup>
-                    <label>Nombre de la rutina (opcional)</label>
+                    <label>
+                      Nombre de la rutina (opcional)
+                      <InfoTooltip text="Ejemplo: Desayuno, Encendido de TV, etc. Ayuda a identificar el hábito." />
+                    </label>
                     <input
                       value={form.name}
                       onChange={(e) =>
@@ -1412,7 +1419,10 @@ export default function Rutinas() {
                   </FormGroup>
 
                   <FormGroup>
-                    <label>Paciente</label>
+                    <label>
+                      Paciente
+                      <InfoTooltip text="Selecciona a qué paciente asignado pertenece esta rutina." />
+                    </label>
                     <select
                       value={form.user_id}
                       onChange={(e) => {
@@ -1597,7 +1607,10 @@ export default function Rutinas() {
                     </div>
                   </Card>
                   <ScrollCard style={{ marginTop: '.75rem' }}>
-                    <strong>Dispositivos</strong>
+                    <strong>
+                      Dispositivos
+                      <InfoTooltip text="Enchufes inteligentes que el paciente debe activar durante esta rutina." />
+                    </strong>
                     <div style={{ marginTop: '.5rem' }}>
                       {!visibleDevices.length && (
                         <Small>No hay dispositivos que coincidan.</Small>
@@ -1652,6 +1665,7 @@ export default function Rutinas() {
                       }}
                     >
                       Definir franja horaria
+                      <InfoTooltip text="Periodo del día durante el cual se debe detectar el uso del electrodoméstico." />
                     </div>
                     <div
                       style={{
@@ -1771,6 +1785,7 @@ export default function Rutinas() {
                         }}
                       >
                         Días de la semana
+                        <InfoTooltip text="Días específicos en los que se evaluará el cumplimiento de esta rutina." />
                       </label>
                       <div
                         style={{
