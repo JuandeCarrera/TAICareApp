@@ -373,7 +373,7 @@ const CATEGORIES = [
     label: 'Dispositivos',
     icon: Plug,
     charts: [
-      { ...CHART_CONFIGS.dispPorPaciente, title: 'Disp. por paciente',    desc: 'Por hogar' },
+      { ...CHART_CONFIGS.dispPorPaciente, title: 'Disp. por persona',    desc: 'Por hogar' },
       { ...CHART_CONFIGS.dispPorHab,      title: 'Disp. por habitación',  desc: 'Distribución' },
     ],
   },
@@ -557,8 +557,8 @@ export default function Datos() {
               <InfoTooltip text="Estadísticas agregadas de todos tus hogares y alertas generadas." />
             </Tab>
             <Tab $active={activeTab === 'patient'} onClick={() => setActiveTab('patient')}>
-              <User size={15} style={{marginRight: '0.5rem'}} /> Datos del paciente
-              <InfoTooltip text="Detalle interactivo individual de dispositivos activos, alertas y rutinas de un paciente en particular." />
+              <User size={15} style={{marginRight: '0.5rem'}} /> Datos de la persona
+              <InfoTooltip text="Detalle interactivo individual de dispositivos activos, alertas y rutinas de una persona en particular." />
             </Tab>
             <Tab $active={activeTab === 'category'} onClick={() => setActiveTab('category')}>
               <FolderOpen size={15} style={{marginRight: '0.5rem'}} /> Por categoría
@@ -592,7 +592,7 @@ export default function Datos() {
                 <SectionDivider />
               </SectionLabel>
               <ChartGrid $cols={2} style={{ marginBottom: '1.25rem' }}>
-                <EmbeddedChart {...CHART_CONFIGS.dispPorPaciente}   title="Dispositivos por paciente"   tooltipText="Distribución de la cantidad de sensores instalados en el hogar de cada paciente." desc="Por hogar"        tall refreshKey={refreshKey} chartTheme={chartTheme} caregiverId={caregiverId} />
+                <EmbeddedChart {...CHART_CONFIGS.dispPorPaciente}   title="Dispositivos por persona"   tooltipText="Distribución de la cantidad de sensores instalados en el hogar de cada persona." desc="Por hogar"        tall refreshKey={refreshKey} chartTheme={chartTheme} caregiverId={caregiverId} />
                 <EmbeddedChart {...CHART_CONFIGS.dispPorHab}        title="Dispositivos por habitación" desc="Distribución"     tall refreshKey={refreshKey} chartTheme={chartTheme} caregiverId={caregiverId} />
                 {/* <EmbeddedChart {...CHART_CONFIGS.consumoPorCasa}    title="Consumo por casa"            desc="Actividad"        tall refreshKey={refreshKey} chartTheme={chartTheme} caregiverId={caregiverId} /> */}
               </ChartGrid>
@@ -616,13 +616,13 @@ export default function Datos() {
             <TabContent>
               {/* Selector */}
               <PatientSelectorWrap>
-                <PatientLabel htmlFor="patient-select">Paciente:</PatientLabel>
+                <PatientLabel htmlFor="patient-select">Persona en seguimiento:</PatientLabel>
                 <PatientSelect
                   id="patient-select"
                   value={selectedPatientId}
                   onChange={(e) => setSelectedPatientId(e.target.value)}
                 >
-                  {patients.length === 0 && <option value="">Sin pacientes</option>}
+                  {patients.length === 0 && <option value="">Sin personas</option>}
                   {patients.map((p) => (
                     <option key={p._id} value={String(p._id)}>
                       {p.name || p.email}
@@ -744,12 +744,12 @@ export default function Datos() {
                     !patientData.routines?.length &&
                     !patientData.alerts?.length && (
                     <InfoBanner style={{ marginTop: '0.5rem' }}>
-                      <Info size={16} style={{marginRight: '0.5rem'}} /> Este paciente no tiene dispositivos, rutinas ni alertas registradas.
+                      <Info size={16} style={{marginRight: '0.5rem'}} /> Esta persona no tiene dispositivos, rutinas ni alertas registradas.
                     </InfoBanner>
                   )}
                 </>
               ) : (
-                <InfoBanner>ℹ️ Selecciona un paciente para ver sus datos.</InfoBanner>
+                <InfoBanner>ℹ️ Selecciona una persona en seguimiento para ver sus datos.</InfoBanner>
               )}
             </TabContent>
           )}

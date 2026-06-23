@@ -25,6 +25,7 @@ import { useIsMobile } from '../hooks/useIsMobile';
 import api from '../api/axios';
 import { Home as HomeIcon } from 'lucide-react';
 import InfoTooltip from '../components/InfoTooltip.jsx';
+import { useAlert } from '../contexts/AlertContext.jsx';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -217,6 +218,7 @@ export default function UsersPage() {
   const { user, logout } = useContext(AuthContext);
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { showAlert } = useAlert();
   const [menuOpen, setMenuOpen] = useState(!isMobile);
   useEffect(() => { setMenuOpen(!isMobile); }, [isMobile]);
 
@@ -423,7 +425,7 @@ export default function UsersPage() {
       setShowEditModal(false);
       setEditId(null);
     } catch (e) {
-      alert(e.message || 'Error al guardar');
+      showAlert(e.message || 'Error al guardar los datos de la persona.');
     }
   };
 
@@ -436,7 +438,7 @@ export default function UsersPage() {
       });
       setShowHistoryModal(false);
     } catch (e) {
-      alert(e.message || 'Error al guardar');
+      showAlert(e.message || 'Error al guardar el historial.');
     }
   };
 
@@ -447,7 +449,7 @@ export default function UsersPage() {
       if (selectedId === confirmData.id) setSelectedId(null);
       setConfirmOpen(false);
     } catch (e) {
-      alert(e.message || 'Error al borrar');
+      showAlert(e.message || 'Error al borrar la persona.');
     }
   };
 
@@ -463,7 +465,7 @@ export default function UsersPage() {
       setHhQuery(created.name);
       setHhOpen(false);
     } catch (e) {
-      alert(e.message || 'Error al crear hogar');
+      showAlert(e.message || 'Error al crear el hogar.');
     }
   }
 
@@ -505,7 +507,7 @@ export default function UsersPage() {
 
       setHouseMode('view');
     } catch (e) {
-      alert(e.message || 'Error');
+      showAlert(e.message || 'Error al actualizar el hogar.');
     }
   }
 
@@ -524,7 +526,7 @@ export default function UsersPage() {
             <PanelList style={{ width: isMobile ? '100%' : '380px' }}>
               <ListHeader>
                 <h3>
-                  Pacientes
+                  Personas en seguimiento
                   <InfoTooltip text="Listado de personas mayores a tu cargo. Puedes editar su información, historial de salud y asignarles un hogar." />
                 </h3>
                 <Btn variant="primary" onClick={openNew}>
@@ -533,7 +535,7 @@ export default function UsersPage() {
               </ListHeader>
               <div style={{ padding: '0.5rem 1rem' }}>
                 <SearchInput
-                  placeholder="Buscar paciente..."
+                  placeholder="Buscar persona..."
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
                 />
@@ -567,7 +569,7 @@ export default function UsersPage() {
                       opacity: 0.6,
                     }}
                   >
-                    No hay pacientes.
+                    No hay personas en seguimiento.
                   </div>
                 )}
               </PatientList>
@@ -592,7 +594,7 @@ export default function UsersPage() {
                     textAlign: 'center',
                   }}
                 >
-                  <h2>Selecciona un paciente</h2>
+                  <h2>Selecciona una persona en seguimiento</h2>
                 </div>
               ) : (
                 <>
@@ -647,7 +649,7 @@ export default function UsersPage() {
                         <div>
                           <strong>
                             Modo Vacaciones
-                            <InfoTooltip text="Si se activa, el motor de alertas ignorará temporalmente a este paciente para no generar falsos positivos por ausencia." />
+                            <InfoTooltip text="Si se activa, el motor de alertas ignorará temporalmente a esta persona para no generar falsos positivos por ausencia." />
                           </strong>
                           <div style={{ fontSize: '0.85rem', opacity: 0.7 }}>Suspende todas las alertas de rutinas temporalmente.</div>
                         </div>
@@ -659,7 +661,7 @@ export default function UsersPage() {
                               vacation_mode: !selectedPatient.vacation_mode
                             });
                           } catch (err) {
-                            alert('Error al actualizar modo vacaciones: ' + err.message);
+                            showAlert('Error al actualizar modo vacaciones: ' + err.message);
                           }
                         }}>
                           <SwitchControl active={!!selectedPatient.vacation_mode} />
@@ -867,7 +869,7 @@ export default function UsersPage() {
 
       {/* --- MODAL EDICION --- */}
       <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)}>
-        <h2>{editId ? 'Editar Paciente' : 'Nuevo Paciente'}</h2>
+        <h2>{editId ? 'Editar Persona' : 'Nueva Persona'}</h2>
         <FormGroup>
           <label>Nombre</label>
           <input name="name" value={form.name} onChange={onChange} />
@@ -991,7 +993,7 @@ export default function UsersPage() {
 
       {/* --- MODAL CONFIRM DELETE --- */}
       <Modal isOpen={confirmOpen} onClose={() => setConfirmOpen(false)}>
-        <h2>¿Borrar paciente?</h2>
+        <h2>¿Borrar persona en seguimiento?</h2>
         <p>
           Se eliminará a <strong>{confirmData.name}</strong>.
         </p>

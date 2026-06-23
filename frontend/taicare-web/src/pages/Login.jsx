@@ -212,7 +212,7 @@ export default function Login() {
             <Activity size={24} color="#fff" strokeWidth={2.5} />
           </LogoCircle>
           <div style={{ textAlign: 'center' }}>
-            <AppName>TAICare</AppName>
+            <AppName>TAICare Visualizer</AppName>
             <AppSub>Plataforma de asistencia y monitorización</AppSub>
           </div>
         </Brand>

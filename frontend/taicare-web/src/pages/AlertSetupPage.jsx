@@ -4,19 +4,20 @@ import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../contexts/AuthContext.jsx';
 import api from '../api/axios';
 import { Calendar, Moon, BarChart2, AlertTriangle, Plug, Save, Clock } from 'lucide-react';
+import { useAlert } from '../contexts/AlertContext.jsx';
 
 /* ─── Alert type definitions (mirrors backend constants) ─── */
 const CATEGORIES = [
     {
         label: 'Rutinas', Icon: Calendar,
         types: [
-            { code: 'ROUTINE_MISSED', name: 'Rutina no completada', description: 'El paciente no realizó una rutina en su ventana horaria.', defaultSeverity: 'high' },
+            { code: 'ROUTINE_MISSED', name: 'Rutina no completada', description: 'La persona en seguimiento no realizó una rutina en su ventana horaria.', defaultSeverity: 'high' },
         ],
     },
     {
         label: 'Actividad en Horas Anómalas', Icon: Moon,
         types: [
-            { code: 'UNUSUAL_HOUR_ACTIVITY', name: 'Actividad fuera de horario', description: 'Dispositivo activo fuera del rango horario configurado del paciente.', defaultSeverity: 'high' },
+            { code: 'UNUSUAL_HOUR_ACTIVITY', name: 'Actividad fuera de horario', description: 'Dispositivo activo fuera del rango horario configurado de la persona en seguimiento.', defaultSeverity: 'high' },
             { code: 'NIGHT_ACTIVITY', name: 'Actividad nocturna', description: 'Actividad intensa detectada durante la franja nocturna.', defaultSeverity: 'medium' },
         ],
     },
@@ -24,7 +25,7 @@ const CATEGORIES = [
         label: 'Datos Sospechosos', Icon: BarChart2,
         types: [
             { code: 'DATA_GAP', name: 'Sin datos del dispositivo', description: 'El dispositivo no envió datos durante un período prolongado.', defaultSeverity: 'high' },
-            { code: 'DATA_SPIKE', name: 'Consumo anómalo alto', description: 'Consumo eléctrico notablemente superior a la media del paciente.', defaultSeverity: 'medium' },
+            { code: 'DATA_SPIKE', name: 'Consumo anómalo alto', description: 'Consumo eléctrico notablemente superior a la media de la persona en seguimiento.', defaultSeverity: 'medium' },
             { code: 'ERRATIC_BEHAVIOR', name: 'Comportamiento errático', description: 'Ciclos de encendido/apagado repetidos en poco tiempo.', defaultSeverity: 'high' },
         ],
     },
@@ -193,6 +194,7 @@ export default function AlertSetupPage() {
     const navigate = useNavigate();
     const [prefs, setPrefs] = useState(buildDefaults);
     const [saving, setSaving] = useState(false);
+    const { showAlert } = useAlert();
 
     function toggleEnabled(code) {
         setPrefs(p => ({ ...p, [code]: { ...p[code], enabled: !p[code].enabled } }));
@@ -211,9 +213,10 @@ export default function AlertSetupPage() {
                 alert_preferences_configured: true,
             });
             updateUserProfile({ alert_preferences: prefs, alert_preferences_configured: true });
+            showAlert('Preferencias de alertas configuradas correctamente.', 'success');
             navigate('/');
         } catch (err) {
-            alert('Error al guardar las preferencias: ' + (err.message || 'Error desconocido'));
+            showAlert('Error al guardar las preferencias: ' + (err.message || 'Error desconocido'));
         } finally {
             setSaving(false);
         }

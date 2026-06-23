@@ -7,7 +7,7 @@ import React, {
 } from 'react';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Trash2, Sun } from 'lucide-react';
 import { AuthContext } from '../contexts/AuthContext.jsx';
 import Header from '../components/Header.jsx';
 import Sidebar from '../components/Sidebar.jsx';
@@ -25,6 +25,7 @@ import { useHouseholds } from '../hooks/useHouseholds';
 import { useDevices } from '../hooks/useDevices';
 import { useIsMobile } from '../hooks/useIsMobile';
 import InfoTooltip from '../components/InfoTooltip.jsx';
+import { useAlert } from '../contexts/AlertContext.jsx';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -144,6 +145,33 @@ const CardTitle = styled.div`
   font-weight: 700;
   font-size: 1.05rem;
   color: ${({ theme }) => theme.colors.text};
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+`;
+
+const StatusBadge = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-left: 0.5rem;
+  
+  ${({ $type }) =>
+    $type === 'vacation'
+      ? `
+          background: rgba(245, 158, 11, 0.15);
+          color: #f59e0b;
+          border: 1px solid rgba(245, 158, 11, 0.3);
+        `
+      : `
+          background: rgba(239, 68, 68, 0.15);
+          color: #ef4444;
+          border: 1px solid rgba(239, 68, 68, 0.3);
+        `}
 `;
 const TimePill = styled.span`
   padding: 0.2rem 0.55rem;
@@ -395,10 +423,29 @@ export default function Rutinas() {
   const { logout } = useContext(AuthContext);
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { showAlert } = useAlert();
   const [menuOpen, setMenuOpen] = useState(!isMobile);
   useEffect(() => {
     setMenuOpen(!isMobile);
   }, [isMobile]);
+
+  // overrides locales de modo vacaciones para activar rutinas individuales
+  const [vacationOverrides, setVacationOverrides] = useState(() => {
+    try {
+      const saved = localStorage.getItem('vacation_overrides');
+      return saved ? JSON.parse(saved) : {};
+    } catch (e) {
+      return {};
+    }
+  });
+
+  const toggleVacationOverride = (routineId) => {
+    setVacationOverrides((prev) => {
+      const next = { ...prev, [routineId]: !prev[routineId] };
+      localStorage.setItem('vacation_overrides', JSON.stringify(next));
+      return next;
+    });
+  };
 
   // --- HOOKS ---
   const { data: routines = [], isLoading: loadingRoutines } = useRoutines();
@@ -576,16 +623,16 @@ export default function Rutinas() {
   function validateStep1() {
     const e = {};
 
-    if (!form.user_id) e.user_id = 'Selecciona un paciente.';
+    if (!form.user_id) e.user_id = 'Selecciona una persona en seguimiento.';
     if (!availableHouseholds.length) {
-      e.household_id = 'Este paciente no tiene casa asignada.';
+      e.household_id = 'Esta persona en seguimiento no tiene casa asignada.';
     } else {
       if (!form.household_id) e.household_id = 'Selecciona una casa.';
       else if (
         !availableHouseholds.some((h) => idEq(h._id, form.household_id))
       ) {
         e.household_id =
-          'La casa seleccionada no está asociada a este paciente.';
+          'La casa seleccionada no está asociada a esta persona en seguimiento.';
       }
     }
 
@@ -615,12 +662,12 @@ export default function Rutinas() {
       return { ...b, days: [...s] };
     });
   function applyBuilder() {
-    if (!builder.start || !builder.end) return alert('Elige inicio y fin');
-    if (!builder.days?.length) return alert('Selecciona al menos un día');
+    if (!builder.start || !builder.end) { showAlert('Elige un inicio y un fin para la franja.'); return; }
+    if (!builder.days?.length) { showAlert('Selecciona al menos un día.'); return; }
     if (!selectedDevices.size)
-      return alert('Selecciona dispositivos en el paso 2');
+      { showAlert('Selecciona dispositivos en el paso 2.'); return; }
     if (minutesBetween(builder.start, builder.end) < 30)
-      return alert('Duración mínima: 30 min');
+      { showAlert('La duración mínima de una franja es de 30 minutos.'); return; }
     const ids = target === 'ALL' ? [...selectedDevices] : [target];
     setScheduleBlocks((prev) => {
       const out = { ...prev };
@@ -670,10 +717,10 @@ export default function Rutinas() {
       return;
     }
     if (selectedDevices.size === 0)
-      return alert('Selecciona al menos un dispositivo');
+      { showAlert('Selecciona al menos un dispositivo para la rutina.'); return; }
     const occurrences = buildOccurrencesFromBlocks();
     if (!occurrences.length)
-      return alert('Añade al menos una franja en el paso 3');
+      { showAlert('Añade al menos una franja horaria en el paso 3.'); return; }
     const householdId = form.household_id;
     const payload = {
       name: (form.name || '').trim(),
@@ -685,7 +732,7 @@ export default function Rutinas() {
       await createRoutineMutation.mutateAsync(payload);
       setOpen(false);
     } catch (e) {
-      alert(e.message || 'Error al guardar rutina');
+      showAlert(e.message || 'Error al guardar la rutina.');
     }
   }
 
@@ -892,13 +939,13 @@ export default function Rutinas() {
     try {
       if (!editId) return;
       if (!editData.occurrences?.length)
-        return alert('Añade al menos una franja');
+        { showAlert('Añade al menos una franja horaria.'); return; }
       for (const o of editData.occurrences) {
         if (!o.start || !o.end)
-          return alert('Cada franja debe tener inicio y fin');
-        if (!o.days?.length) return alert('Cada franja debe tener días');
+          { showAlert('Cada franja debe tener una hora de inicio y fin.'); return; }
+        if (!o.days?.length) { showAlert('Cada franja debe tener al menos un día seleccionado.'); return; }
         if (!o.device_ids?.length)
-          return alert('Cada franja debe tener dispositivos');
+          { showAlert('Cada franja debe tener al menos un dispositivo asignado.'); return; }
       }
       const payload = {
         name: (editData.name || '').trim(),
@@ -915,7 +962,7 @@ export default function Rutinas() {
       setEditOpen(false);
       setEditId(null);
     } catch (e) {
-      alert(e.message || 'Error al editar rutina');
+      showAlert(e.message || 'Error al editar la rutina.');
     }
   }
 
@@ -1164,7 +1211,7 @@ export default function Rutinas() {
       setDeleteOpen(false);
       setDeleteId(null);
     } catch (e) {
-      alert(e.message || 'Error al borrar rutina');
+      showAlert(e.message || 'Error al borrar la rutina.');
     }
   }
 
@@ -1178,9 +1225,9 @@ export default function Rutinas() {
   const addPreset = () => {
     const { name, start, end, days } = presetForm;
     if (!name.trim() || !days.length || idxOf(start) < 0 || idxOf(end) < 0)
-      return alert('Completa nombre, días e inicio/fin');
+      { showAlert('Completa el nombre, los días y las horas de inicio y fin.'); return; }
     if (minutesBetween(start, end) < 30)
-      return alert('El fin debe ser ≥ +30 min');
+      { showAlert('El fin debe ser al menos 30 minutos después del inicio.'); return; }
     const id = crypto.randomUUID ? crypto.randomUUID() : String(Date.now());
     setPresets((p) => [...p, { id, name: name.trim(), start, end, days }]);
     setPresetForm({ name: '', start: '18:00', end: '19:00', days: [] });
@@ -1202,7 +1249,7 @@ export default function Rutinas() {
           <Toolbar>
             <h1>
               Rutinas
-              <InfoTooltip text="Las rutinas definen cuándo se espera que el paciente use un electrodoméstico específico. Si no se detecta consumo en esa franja horaria, el sistema crea una alerta." />
+              <InfoTooltip text="Las rutinas definen cuándo se espera que la persona en seguimiento use un electrodoméstico específico. Si no se detecta consumo en esa franja horaria, el sistema crea una alerta." />
             </h1>
             <div>
               <Btn variant="primary" onClick={() => setPresetOpen(true)}>
@@ -1219,12 +1266,12 @@ export default function Rutinas() {
             <SearchToolbar
               query={q}
               onQueryChange={setQ}
-              placeholder="Buscar por nombre, paciente, dispositivo, sala o casa"
+              placeholder="Buscar por nombre, persona en seguimiento, dispositivo, sala o casa"
               filters={[
                 {
                   type: 'select',
                   key: 'patientId',
-                  label: 'Paciente',
+                  label: 'Persona en seguimiento',
                   options: [
                     { value: '', label: 'Todos' },
                     ...patients.map((p) => ({
@@ -1248,7 +1295,7 @@ export default function Rutinas() {
               sortOptions={[
                 { value: 'recent_desc', label: 'Más recientes' },
                 { value: 'recent_asc', label: 'Más antiguas' },
-                { value: 'alpha', label: 'Paciente / Nombre' },
+                { value: 'alpha', label: 'Persona / Nombre' },
               ]}
               sort={sort}
               onSortChange={setSort}
@@ -1271,7 +1318,8 @@ export default function Rutinas() {
                   : r.user_id;
                 const userObj = patients.find((p) => idEq(p._id, routineUserId));
                 const isVacation = !!userObj?.vacation_mode;
-                const effectiveEnabled = r.enabled !== false && !isVacation;
+                const isOverridden = !!vacationOverrides[r._id];
+                const isCurrentlyActive = r.enabled !== false && (!isVacation || isOverridden);
 
                 const patient = getPatientName(r.user_id);
                 const occ = Array.isArray(r.occurrences) ? r.occurrences : [];
@@ -1279,14 +1327,17 @@ export default function Rutinas() {
                 const daysPretty = daysUnion(occ).map((d) => ES_DAYS[d] || d);
                 const devCount = uniqueDevicesCount(occ);
                 return (
-                  <RoutineCard key={r._id} style={{ opacity: effectiveEnabled ? 1 : 0.6 }}>
+                  <RoutineCard key={r._id}>
                     <CardTop>
                       <CardTitle>
                         {r.name || `Rutina ${String(r._id).slice(-6)}`}
-                        {!effectiveEnabled && (
-                          <span style={{ fontSize: '0.8rem', color: '#e04848', marginLeft: '0.5rem' }}>
-                            ({isVacation ? 'Modo Vacaciones' : 'Pausada'})
-                          </span>
+                        {r.enabled === false && (
+                          <StatusBadge $type="paused">Pausada</StatusBadge>
+                        )}
+                        {r.enabled !== false && isVacation && !isOverridden && (
+                          <StatusBadge $type="vacation">
+                            <Sun size={12} /> Modo Vacaciones
+                          </StatusBadge>
                         )}
                       </CardTitle>
                       <div
@@ -1300,40 +1351,40 @@ export default function Rutinas() {
                           onClick={async (e) => {
                             e.preventDefault();
                             try {
-                              const willEnable = r.enabled === false;
-
-                              if (willEnable && isVacation && userObj) {
-                                if (window.confirm(`${userObj.name} está en Modo Vacaciones.\n\nSi activas esta rutina, el Modo Vacaciones se desactivará y sus otras rutinas se pausarán.\n\n¿Deseas continuar?`)) {
-                                  // 1. Desactivar modo vacaciones
-                                  await updateUserMutation.mutateAsync({
-                                    id: userObj._id,
-                                    vacation_mode: false
-                                  });
-
-                                  // 2. Pausar todas las demás rutinas del paciente
-                                  const otherRoutines = routines.filter(x => idEq(x.user_id, userObj._id) && x._id !== r._id && x.enabled !== false);
-                                  for (const or of otherRoutines) {
-                                    await updateRoutineMutation.mutateAsync({ id: or._id, enabled: false });
+                              const willEnable = !isCurrentlyActive;
+                              if (isVacation) {
+                                if (willEnable) {
+                                  if (r.enabled === false) {
+                                    await updateRoutineMutation.mutateAsync({
+                                      id: r._id,
+                                      enabled: true
+                                    });
                                   }
-
-                                  // 3. Activar esta
-                                  await updateRoutineMutation.mutateAsync({ id: r._id, enabled: true });
+                                  toggleVacationOverride(r._id);
+                                } else {
+                                  if (isOverridden) {
+                                    toggleVacationOverride(r._id);
+                                  } else {
+                                    await updateRoutineMutation.mutateAsync({
+                                      id: r._id,
+                                      enabled: false
+                                    });
+                                  }
                                 }
                               } else {
-                                // Toggle normal
                                 await updateRoutineMutation.mutateAsync({
                                   id: r._id,
                                   enabled: willEnable
                                 });
                               }
                             } catch (err) {
-                              alert('Error al actualizar rutina: ' + err.message);
+                              showAlert('Error al actualizar la rutina: ' + err.message);
                             }
                           }}
-                          title={r.enabled !== false ? "Pausar rutina" : "Activar rutina"}
+                          title={isCurrentlyActive ? "Pausar rutina" : "Activar rutina"}
                           style={{ marginRight: '.5rem' }}
                         >
-                          <SwitchControl active={r.enabled !== false} />
+                          <SwitchControl active={isCurrentlyActive} />
                         </ToggleWrapper>
 
                         <Btn variant="primary" onClick={() => openEditModal(r)}>
@@ -1348,7 +1399,7 @@ export default function Rutinas() {
                       </div>
                     </CardTop>
                     <Meta>
-                      Paciente: <strong>{patient}</strong>
+                      Persona en seguimiento: <strong>{patient}</strong>
                       {' · '}
                       Ocurrencias: <strong>{occ.length}</strong>
                       {' · '}
@@ -1420,8 +1471,8 @@ export default function Rutinas() {
 
                   <FormGroup>
                     <label>
-                      Paciente
-                      <InfoTooltip text="Selecciona a qué paciente asignado pertenece esta rutina." />
+                      Persona en seguimiento
+                      <InfoTooltip text="Selecciona a qué persona en seguimiento pertenece esta rutina." />
                     </label>
                     <select
                       value={form.user_id}
@@ -1455,7 +1506,7 @@ export default function Rutinas() {
                     <label>Casa</label>
                     {!form.user_id ? (
                       <select disabled>
-                        <option>— Selecciona un paciente —</option>
+                        <option>— Selecciona una persona en seguimiento —</option>
                       </select>
                     ) : availableHouseholds.length === 0 ? (
                       <>
@@ -1485,7 +1536,7 @@ export default function Rutinas() {
                           disabled
                         />
                         <Small>
-                          La casa queda fijada a la única casa del paciente.
+                          La casa queda fijada a la única casa de la persona en seguimiento.
                         </Small>
                       </>
                     ) : (
@@ -1509,7 +1560,7 @@ export default function Rutinas() {
                           ))}
                         </select>
                         <Small>
-                          Este paciente está asociado a varias casas. Elige en
+                          Esta persona en seguimiento está asociada a varias casas. Elige en
                           cuál crear la rutina.
                         </Small>
                         {touched.household_id && errors.household_id && (
@@ -1609,7 +1660,7 @@ export default function Rutinas() {
                   <ScrollCard style={{ marginTop: '.75rem' }}>
                     <strong>
                       Dispositivos
-                      <InfoTooltip text="Enchufes inteligentes que el paciente debe activar durante esta rutina." />
+                      <InfoTooltip text="Enchufes inteligentes que la persona en seguimiento debe activar durante esta rutina." />
                     </strong>
                     <div style={{ marginTop: '.5rem' }}>
                       {!visibleDevices.length && (
@@ -1918,7 +1969,7 @@ export default function Rutinas() {
                       <strong>Nombre:</strong> {form.name || '(Sin nombre)'}
                     </p>
                     <p>
-                      <strong>Paciente:</strong> {getPatientName(form.user_id)}
+                      <strong>Persona en seguimiento:</strong> {getPatientName(form.user_id)}
                     </p>
                     <p>
                       <strong>Casa:</strong>{' '}

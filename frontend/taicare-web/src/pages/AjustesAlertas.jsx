@@ -8,6 +8,7 @@ import { AuthContext } from '../contexts/AuthContext.jsx';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { useUpdateUser } from '../hooks/useUsers';
 import InfoTooltip from '../components/InfoTooltip.jsx';
+import { useAlert } from '../contexts/AlertContext.jsx';
 import {
   SettingsAPI,
   NotifPrefsAPI,
@@ -148,6 +149,7 @@ export default function AjustesAlertas() {
   const { logout, user, updateUserProfile } = useContext(AuthContext);
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { showAlert } = useAlert();
   const [menuOpen, setMenuOpen] = useState(!isMobile);
   useEffect(() => {
     setMenuOpen(!isMobile);
@@ -177,9 +179,9 @@ export default function AjustesAlertas() {
       const id = user?._id || user?.sub;
       await updateUserMutation.mutateAsync({ id, alert_preferences: prefs, alert_preferences_configured: true });
       if (updateUserProfile) updateUserProfile({ alert_preferences: prefs, alert_preferences_configured: true });
-      alert('Preferencias guardadas correctamente.');
+      showAlert('Preferencias guardadas correctamente.', 'success');
     } catch (e) {
-      alert('Error al guardar: ' + e.message);
+      showAlert('Error al guardar: ' + e.message);
     } finally {
       setPrefsSaving(false);
     }
@@ -300,7 +302,7 @@ export default function AjustesAlertas() {
       alerts_enabled: enabled,
       quiet_hours: { start: windowStart, end: windowEnd },
     });
-    alert('Ajustes guardados');
+    showAlert('Ajustes guardados', 'success');
   }
 
   async function savePrefs() {
@@ -308,7 +310,7 @@ export default function AjustesAlertas() {
       channels: { email: channelEmail, push: channelPush },
       min_severity: minSeverity,
     });
-    alert('Preferencias guardadas');
+    showAlert('Preferencias guardadas', 'success');
   }
 
   function parseSel() {
@@ -330,10 +332,10 @@ export default function AjustesAlertas() {
   async function insertTestData() {
     try {
       const parsed = parseSel();
-      if (!parsed) return alert('Selecciona una franja de hoy');
+      if (!parsed) { showAlert('Selecciona una franja de hoy'); return; }
 
       const { device_id, user_id, start, end } = parsed;
-      if (!device_id || !user_id) return alert('Faltan device_id o user_id');
+      if (!device_id || !user_id) { showAlert('Faltan device_id o user_id'); return; }
 
       const now = new Date();
       now.setSeconds(0, 0);
@@ -374,11 +376,12 @@ export default function AjustesAlertas() {
 
       await JobsAPI.runRoutineCheck();
 
-      alert(
-        `Lectura insertada (${testWhere === 'inside' ? 'dentro' : 'fuera'}) y checker ejecutado. Revisa /alerts.`
+      showAlert(
+        `Lectura insertada (${testWhere === 'inside' ? 'dentro' : 'fuera'}) y checker ejecutado. Revisa /alerts.`,
+        'success'
       );
     } catch (e) {
-      alert(`Error: ${e.message}`);
+      showAlert(`Error: ${e.message}`);
     }
   }
 

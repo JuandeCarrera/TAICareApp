@@ -305,14 +305,14 @@ export default function Home() {
       x && typeof x === 'object' ? (x._id ?? x.id ?? '') : (x ?? '');
     const getUserName = (userId) => {
       const u = usersById[String(userId || '')];
-      return u?.name || '(Paciente)';
+      return u?.name || '(Persona en seguimiento)';
     };
 
     for (const r of routines) {
       const routineUserId = safeId(r.user_id);
       const patientName = routineUserId
         ? getUserName(routineUserId)
-        : '(Paciente)';
+        : '(Persona en seguimiento)';
 
       const routineName = r.name || '(Rutina)';
       const rid = safeId(r._id);
@@ -473,7 +473,7 @@ export default function Home() {
         const patientName =
           ownerId && usersById[ownerId]?.name
             ? usersById[ownerId].name
-            : '(Paciente)';
+            : '(Persona en seguimiento)';
         return {
           ...a,
           _when: t ? t.getTime() : 0,
@@ -549,7 +549,7 @@ export default function Home() {
                 <CardHeader>
                   <h3>
                     Próximas rutinas
-                    <InfoTooltip text="Muestra los hábitos de uso esperados para las próximas 48 horas de tus pacientes (ej. encender la cafetera por la mañana)." />
+                    <InfoTooltip text="Muestra los hábitos de uso esperados para las próximas 48 horas de las personas en seguimiento (ej. encender la cafetera por la mañana)." />
                   </h3>
                   <AddBtn
                     variant="primary"

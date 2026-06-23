@@ -23,6 +23,7 @@ import { useHouseholds } from '../hooks/useHouseholds';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { Home, DoorOpen, Pencil, Trash2 } from 'lucide-react';
 import InfoTooltip from '../components/InfoTooltip.jsx';
+import { useAlert } from '../contexts/AlertContext.jsx';
 
 const AppContainer = styled.div`
   display: flex;
@@ -131,6 +132,8 @@ export default function Dispositivos() {
     setMenuOpen(!isMobile);
   }, [isMobile]);
 
+  const { showAlert, showConfirm } = useAlert();
+
   const { data: households = [], isLoading: loadingHouseholds } = useHouseholds();
   const { data: devices = [], isLoading: loadingDevices } = useDevices();
 
@@ -190,11 +193,13 @@ export default function Dispositivos() {
     setShowModal(true);
   };
   const handleDelete = async (id) => {
-    if (!confirm('¿Borrar este dispositivo?')) return;
+    const ok = await showConfirm('¿Borrar este dispositivo?');
+    if (!ok) return;
     try {
       await deleteDeviceMutation.mutateAsync(id);
+      showAlert('Dispositivo eliminado correctamente.', 'success');
     } catch (e) {
-      alert(e.message || 'Error al borrar dispositivo');
+      showAlert(e.message || 'Error al borrar dispositivo');
     }
   };
 
@@ -215,14 +220,16 @@ export default function Dispositivos() {
     try {
       if (editId) {
         await updateDeviceMutation.mutateAsync({ id: editId, ...payload });
+        showAlert('Dispositivo actualizado correctamente.', 'success');
       } else {
         await createDeviceMutation.mutateAsync(payload);
+        showAlert('Dispositivo creado correctamente.', 'success');
       }
       setShowModal(false);
       setForm({ household_id: '', room: '', appliance: '' });
       setEditId(null);
     } catch (err) {
-      alert(err.message || 'Error al guardar dispositivo');
+      showAlert(err.message || 'Error al guardar dispositivo');
     }
   };
 
@@ -310,7 +317,7 @@ export default function Dispositivos() {
         <Main>
           <h1>
             Dispositivos
-            <InfoTooltip text="Enchufes inteligentes instalados en los hogares. Miden el consumo eléctrico de electrodomésticos clave para deducir la actividad del paciente." />
+            <InfoTooltip text="Enchufes inteligentes instalados en los hogares. Miden el consumo eléctrico de electrodomésticos clave para deducir la actividad de la persona en seguimiento." />
           </h1>
 
           {/* ---- Banner de guía ---- */}

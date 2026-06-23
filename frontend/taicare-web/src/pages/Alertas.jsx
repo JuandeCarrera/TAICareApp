@@ -14,6 +14,7 @@ import {
 import { useUsers } from '../hooks/useUsers';
 import { useIsMobile } from '../hooks/useIsMobile';
 import InfoTooltip from '../components/InfoTooltip.jsx';
+import { useAlert } from '../contexts/AlertContext.jsx';
 import {
   AlertTriangle, XCircle, DoorOpen, Flame, Wind,
   AlertOctagon, PersonStanding, Bell, User, Trash2, Check,
@@ -142,6 +143,8 @@ export default function Alertas() {
   useEffect(() => {
     setMenuOpen(!isMobile);
   }, [isMobile]);
+  
+  const { showConfirm } = useAlert();
 
   // --- Hooks ---
   const {
@@ -324,7 +327,8 @@ export default function Alertas() {
   }
 
   async function deleteAlert(id) {
-    if (!confirm('¿Borrar esta alerta?')) return;
+    const ok = await showConfirm('¿Borrar esta alerta?');
+    if (!ok) return;
     deleteMutation.mutate(id);
   }
 
@@ -340,7 +344,7 @@ export default function Alertas() {
           <TopBar>
             <h1>
               Alertas
-              <InfoTooltip text="Historial de notificaciones críticas. Haz clic en 'Marcar como vista' cuando hayas verificado el estado de salud del paciente." />
+              <InfoTooltip text="Historial de notificaciones críticas. Haz clic en 'Marcar como vista' cuando hayas verificado el estado de salud de la persona en seguimiento." />
             </h1>
             <Btn variant="primary" onClick={() => refetch()}>
               Recargar
@@ -364,7 +368,7 @@ export default function Alertas() {
               },
               {
                 key: 'patient',
-                label: 'Paciente',
+                label: 'Persona en seguimiento',
                 type: 'select',
                 options: [{ value: '', label: 'Todos' }, ...patientOptions],
               },

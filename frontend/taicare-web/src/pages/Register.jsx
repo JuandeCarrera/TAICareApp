@@ -224,7 +224,7 @@ export default function Register() {
             <Activity size={22} color="#fff" strokeWidth={2.5} />
           </LogoCircle>
           <div style={{ textAlign: 'center' }}>
-            <AppName>TAICare</AppName>
+            <AppName>TAICare Visualizer</AppName>
             <AppSub>Crear una nueva cuenta</AppSub>
           </div>
         </Brand>

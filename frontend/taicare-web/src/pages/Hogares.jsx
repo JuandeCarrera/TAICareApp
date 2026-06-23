@@ -18,6 +18,7 @@ import {
 import { useUsers } from '../hooks/useUsers';
 import { useIsMobile } from '../hooks/useIsMobile';
 import InfoTooltip from '../components/InfoTooltip.jsx';
+import { useAlert } from '../contexts/AlertContext.jsx';
 
 /* ---------- Estilos base ---------- */
 const AppContainer = styled.div`
@@ -148,6 +149,8 @@ export default function Hogares() {
   useEffect(() => {
     setMenuOpen(!isMobile);
   }, [isMobile]);
+
+  const { showAlert, showConfirm } = useAlert();
 
   // Queries
   const { data: households = [], isLoading: loadingHouseholds } =
@@ -298,24 +301,28 @@ export default function Hogares() {
   }
 
   async function deleteHouse(id) {
-    if (!confirm('¿Borrar esta casa?')) return;
+    const ok = await showConfirm('¿Borrar esta casa?');
+    if (!ok) return;
     try {
       await deleteMutation.mutateAsync(id);
+      showAlert('Casa eliminada correctamente.', 'success');
     } catch {
-      alert('Error al borrar');
+      showAlert('Error al borrar la casa.');
     }
   }
 
   async function deleteRoom(hId, room) {
-    if (!confirm('¿Borrar habitación?')) return;
+    const ok = await showConfirm('¿Borrar habitación?');
+    if (!ok) return;
     const h = households.find((x) => x._id === hId);
     const currentRooms = Array.isArray(h?.rooms) ? h.rooms : [];
     const newRooms = currentRooms.filter((r) => r !== room);
 
     try {
       await updateMutation.mutateAsync({ id: hId, rooms: newRooms });
+      showAlert('Habitación eliminada correctamente.', 'success');
     } catch {
-      alert('Error al borrar habitación');
+      showAlert('Error al borrar la habitación.');
     }
   }
 
@@ -325,20 +332,22 @@ export default function Hogares() {
         await createMutation.mutateAsync({
           name: form.name,
           address: form.address,
-          rooms: [],
-          owner: form.owner,
+          owner: form.owner || undefined,
         });
+        showAlert('Casa creada correctamente.', 'success');
       } else if (mode === 'editHouse') {
         await updateMutation.mutateAsync({
           id: form.targetHouseId,
           name: form.name,
           address: form.address,
         });
+        showAlert('Casa actualizada correctamente.', 'success');
       } else if (mode === 'room') {
         await addRoomMutation.mutateAsync({
           id: form.targetHouseId,
           room: form.roomName,
         });
+        showAlert('Habitación añadida correctamente.', 'success');
       } else if (mode === 'editRoom') {
         const h = households.find((x) => x._id === form.targetHouseId);
         const currentRooms = Array.isArray(h?.rooms) ? h.rooms : [];
@@ -349,13 +358,13 @@ export default function Hogares() {
           id: form.targetHouseId,
           rooms: updated,
         });
+        showAlert('Habitación actualizada correctamente.', 'success');
       }
 
       setShowModal(false);
     } catch (e) {
-      // Axios error handling often puts message in e.response.data
       const msg = e.response?.data?.error || e.message || 'Error al guardar';
-      alert(msg);
+      showAlert(msg);
     }
   }
 
@@ -374,7 +383,7 @@ export default function Hogares() {
         <Main>
           <h1>
             Hogares
-            <InfoTooltip text="Hogares asignados. Cada hogar representa la vivienda física de un paciente y contiene sus habitaciones y sensores configurados." />
+            <InfoTooltip text="Hogares asignados. Cada hogar representa la vivienda física de una persona en seguimiento y contiene sus habitaciones y sensores configurados." />
           </h1>
 
           <div style={{ marginBottom: '1rem' }}>
@@ -395,7 +404,7 @@ export default function Hogares() {
               selects={[
                 {
                   key: 'owner',
-                  label: 'Paciente',
+                  label: 'Persona en seguimiento',
                   placeholder: 'Todos',
                   options: ownerOptions,
                 },
@@ -519,14 +528,14 @@ export default function Hogares() {
           <>
             {mode === 'house' && (
               <FormGroup>
-                <label>Paciente (propietario)</label>
+                <label>Persona en seguimiento (propietaria)</label>
                 <select
                   value={form.owner || ''}
                   onChange={(e) =>
                     setForm((f) => ({ ...f, owner: e.target.value }))
                   }
                 >
-                  <option value="">— Selecciona un paciente —</option>
+                  <option value="">— Selecciona una persona en seguimiento —</option>
                   {(patients || []).map((p) => (
                     <option key={p._id} value={p._id}>
                       {p.name}
@@ -540,7 +549,7 @@ export default function Hogares() {
                     marginTop: '.35rem',
                   }}
                 >
-                  Este paciente quedará como propietario del hogar.
+                  Esta persona en seguimiento quedará como propietaria del hogar.
                 </small>
               </FormGroup>
             )}

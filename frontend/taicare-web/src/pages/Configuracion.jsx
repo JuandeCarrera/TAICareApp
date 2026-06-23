@@ -193,6 +193,8 @@ export default function Configuracion() {
   const [menuOpen, setMenuOpen] = useState(!isMobile);
   useEffect(() => { setMenuOpen(!isMobile); }, [isMobile]);
 
+  const { showAlert } = useAlert();
+
   // ---- Profile form ----
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
@@ -231,9 +233,9 @@ export default function Configuracion() {
       const id = user?._id || user?.sub;
       await updateUserMutation.mutateAsync({ id, alert_preferences: prefs, alert_preferences_configured: true });
       if (updateUserProfile) updateUserProfile({ alert_preferences: prefs, alert_preferences_configured: true });
-      alert('Preferencias de alertas guardadas.');
+      showAlert('Preferencias de alertas guardadas.', 'success');
     } catch (e) {
-      alert('Error al guardar: ' + e.message);
+      showAlert('Error al guardar: ' + e.message);
     } finally {
       setPrefsSaving(false);
     }
@@ -410,7 +412,7 @@ export default function Configuracion() {
             >
               <h2 style={{ marginTop: 0, fontSize: '1rem', marginBottom: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <Bell size={17} /> Preferencias de alertas
-                <InfoTooltip text="Si desactivas un tipo de alerta, el motor dejará de generarla completamente para tus pacientes." />
+                <InfoTooltip text="Si desactivas un tipo de alerta, el motor dejará de generarla completamente para las personas en seguimiento." />
               </h2>
               <span style={{ display: 'flex', alignItems: 'center', opacity: 0.5 }}>
                 {showAlertPrefs ? <ChevronUp size={18} /> : <ChevronDown size={18} />}

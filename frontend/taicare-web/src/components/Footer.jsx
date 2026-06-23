@@ -17,5 +17,5 @@ const Bar = styled.footer`
 `;
 
 export default function Footer() {
-  return <Bar>© {new Date().getFullYear()} TAICareApp</Bar>;
+  return <Bar>© {new Date().getFullYear()} TAICare Visualizer</Bar>;
 }

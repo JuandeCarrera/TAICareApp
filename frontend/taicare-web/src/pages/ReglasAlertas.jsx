@@ -7,6 +7,7 @@ import Footer from '../components/Footer.jsx';
 import { AuthContext } from '../contexts/AuthContext.jsx';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { RulesAPI } from '../services/alertsApi.js';
+import { useAlert } from '../contexts/AlertContext.jsx';
 
 const App = styled.div`
   display: flex;
@@ -67,6 +68,7 @@ export default function ReglasAlertas() {
   const { logout } = useContext(AuthContext);
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { showAlert, showConfirm } = useAlert();
   const [menuOpen, setMenuOpen] = useState(!isMobile);
   useEffect(() => {
     setMenuOpen(!isMobile);
@@ -89,7 +91,7 @@ export default function ReglasAlertas() {
   }
 
   async function save() {
-    if (!form.name.trim()) return alert('Nombre requerido');
+    if (!form.name.trim()) { showAlert('El nombre de la regla es obligatorio.'); return; }
     await RulesAPI.create(form);
     setForm({
       name: '',
@@ -109,7 +111,8 @@ export default function ReglasAlertas() {
   }
 
   async function remove(id) {
-    if (!confirm('¿Eliminar la regla?')) return;
+    const ok = await showConfirm('¿Eliminar esta regla de alerta? Esta acción no se puede deshacer.');
+    if (!ok) return;
     await RulesAPI.remove(id);
     setRules((rs) => rs.filter((x) => x._id !== id));
   }

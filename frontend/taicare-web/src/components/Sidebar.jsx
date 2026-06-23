@@ -159,14 +159,14 @@ const IconWrap = styled.span`
 
 /* ── Nav items config ───────────────────────────────────────────────────── */
 const NAV_ITEMS = [
-  { to: '/',              label: 'Inicio',        Icon: LayoutDashboard },
-  { to: '/pacientes',     label: 'Pacientes',     Icon: Users           },
-  { to: '/devices',       label: 'Dispositivos',  Icon: Plug            },
-  { to: '/routines',      label: 'Rutinas',       Icon: Clock           },
-  { to: '/data',          label: 'Estadísticas',  Icon: BarChart2       },
-  { to: '/alertas',       label: 'Alertas',       Icon: Bell            },
-  { to: '/households',    label: 'Hogares',       Icon: Home            },
-  { to: '/configuration', label: 'Configuración', Icon: Settings        },
+  { to: '/',              label: 'Inicio',                  Icon: LayoutDashboard },
+  { to: '/pacientes',     label: 'Personas en seguimiento', Icon: Users           },
+  { to: '/households',    label: 'Hogares',                 Icon: Home            },
+  { to: '/alertas',       label: 'Alertas',                 Icon: Bell            },
+  { to: '/routines',      label: 'Rutinas',                 Icon: Clock           },
+  { to: '/data',          label: 'Estadísticas',            Icon: BarChart2       },
+  { to: '/devices',       label: 'Dispositivos',            Icon: Plug            },
+  { to: '/configuration', label: 'Configuración',           Icon: Settings        },
 ];
 
 /* ── Componente ─────────────────────────────────────────────────────────── */
@@ -188,7 +188,10 @@ export default function Sidebar({ open, onClose }) {
             <LogoIcon>
               <Activity size={17} color="#fff" strokeWidth={2.5} />
             </LogoIcon>
-            <LogoText>TAICare</LogoText>
+            <LogoText style={{ display: 'flex', flexDirection: 'column', gap: '2px', lineHeight: 1 }}>
+              <span style={{ fontSize: '1.05rem', fontWeight: 700 }}>TAICare</span>
+              <span style={{ fontSize: '0.72rem', opacity: 0.6, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Visualizer</span>
+            </LogoText>
           </LogoWrap>
 
           {/* Navegación */}
