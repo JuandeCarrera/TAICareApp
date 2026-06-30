@@ -11,11 +11,11 @@ const api = axios.create({
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Aquí podríamos manejar errores globales, como redirección al login en 401
-    // si no estamos ya en login/registro.
     if (error.response?.status === 401) {
-      // Opcional: Notificar o redirigir
-      console.warn('No autorizado / Sesión expirada');
+      // Sesión expirada — redirigir al login si no estamos ya ahí
+      if (!window.location.pathname.startsWith('/login')) {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }

@@ -1,5 +1,5 @@
 import React, { useContext, useState, useEffect, useMemo } from 'react';
-import styled from 'styled-components';
+import styled, { useTheme } from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../contexts/AuthContext.jsx';
 import Header from '../components/Header.jsx';
@@ -23,7 +23,7 @@ import { useRoutines } from '../hooks/useRoutines';
 import { useAlerts } from '../hooks/useAlerts';
 import { useIsMobile } from '../hooks/useIsMobile';
 import api from '../api/axios';
-import { Home as HomeIcon } from 'lucide-react';
+import { Home as HomeIcon, Bell, Sun } from 'lucide-react';
 import InfoTooltip from '../components/InfoTooltip.jsx';
 import { useAlert } from '../contexts/AlertContext.jsx';
 
@@ -214,6 +214,176 @@ const SwitchControl = styled.div`
   }
 `;
 
+/* ---------- Overview Panel ---------- */
+const OverviewWrap = styled.div`
+  padding: 2rem;
+  max-width: 600px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+  overflow-y: auto;
+`;
+const OverviewHeadline = styled.p`
+  font-size: 1rem;
+  color: ${({ theme }) => theme.colors.text};
+  margin: 0;
+  line-height: 1.65;
+  opacity: 0.85;
+  strong { font-weight: 700; }
+`;
+const GroupLabel = styled.div`
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: ${({ theme }) => theme.colors.text};
+  opacity: 0.7;
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid ${({ theme }) => theme.colors.text}18;
+`;
+const OvRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.7rem;
+  border-radius: 9px;
+  cursor: pointer;
+  transition: background 0.1s;
+  &:hover { background: ${({ theme }) => theme.colors.hoverBg}; }
+`;
+const OvInfo = styled.div`
+  flex: 1;
+  min-width: 0;
+`;
+const OvName = styled.div`
+  font-weight: 600;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: ${({ theme }) => theme.colors.text};
+`;
+const OvMeta = styled.div`
+  font-size: 0.76rem;
+  color: ${({ theme }) => theme.colors.text};
+  opacity: 0.45;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 1px;
+`;
+const OvTag = styled.span`
+  font-size: 0.71rem;
+  font-weight: 600;
+  padding: 0.16rem 0.45rem;
+  border-radius: 5px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  background: ${({ $type }) =>
+    $type === 'alert' ? 'rgba(239,68,68,0.1)' : 'rgba(245,158,11,0.1)'};
+  color: ${({ $type }) =>
+    $type === 'alert' ? '#ef4444' : '#d97706'};
+`;
+const OvAvatar = styled.div`
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: ${({ $vacation, theme }) => $vacation ? '#f59e0b' : theme.colors.primary};
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.88rem;
+  flex-shrink: 0;
+  opacity: ${({ $vacation }) => $vacation ? 0.75 : 1};
+`;
+const OvMoreBtn = styled.button`
+  background: none;
+  border: none;
+  color: ${({ theme }) => theme.colors.primary};
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-left: 0.7rem;
+  margin-top: 0.3rem;
+  padding: 0.2rem;
+`;
+
+function GlobalOverview({ users, unread, households, onSelect }) {
+  const all = (Array.isArray(users) ? users : [])
+    .map(u => ({ ...u, _unread: unread[u._id] || 0 }));
+
+  // 3 grupos mutuamente excluyentes, en orden de prioridad
+  const pending  = all.filter(u => u._unread > 0 && !u.vacation_mode)
+    .sort((a, b) => b._unread - a._unread);
+  const resolved = all.filter(u => u._unread === 0 && !u.vacation_mode)
+    .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  const vacation = all.filter(u => u.vacation_mode)
+    .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+  const [expanded, setExpanded] = useState({ pending: false, resolved: false, vacation: false });
+  const toggle = (key) => setExpanded(e => ({ ...e, [key]: !e[key] }));
+
+  const hName = (u) => {
+    const hid = u.household_id?._id || u.household_id;
+    return households.find(h => h._id === hid)?.name || null;
+  };
+
+  const renderRow = (u, showAlertTag) => (
+    <OvRow key={u._id} onClick={() => onSelect(u._id)}>
+      <OvAvatar $vacation={u.vacation_mode}>
+        {(u.name || '?')[0].toUpperCase()}
+      </OvAvatar>
+      <OvInfo>
+        <OvName>{u.name}</OvName>
+        <OvMeta>{[u.email, hName(u)].filter(Boolean).join(' · ')}</OvMeta>
+      </OvInfo>
+      {showAlertTag && u._unread > 0 && (
+        <OvTag $type="alert">{u._unread} {u._unread === 1 ? 'alerta pendiente' : 'alertas pendientes'}</OvTag>
+      )}
+    </OvRow>
+  );
+
+  const renderSection = ({ key, label, items, showAlertTag }) => {
+    if (!items.length) return null;
+    const visible = expanded[key] ? items : items.slice(0, 1);
+    const hidden  = items.length - 1;
+    return (
+      <div key={key}>
+        <GroupLabel>{label} ({items.length})</GroupLabel>
+        {visible.map(u => renderRow(u, showAlertTag))}
+        {hidden > 0 && (
+          <OvMoreBtn onClick={() => toggle(key)}>
+            {expanded[key]
+              ? 'Ver menos ▲'
+              : `Ver ${hidden} ${hidden === 1 ? 'más' : 'más'} ▼`}
+          </OvMoreBtn>
+        )}
+      </div>
+    );
+  };
+
+  if (!all.length) {
+    return (
+      <OverviewWrap>
+        <OverviewHeadline>
+          Todavía no hay nadie. Usa el botón + Nuevo para añadir la primera persona en seguimiento.
+        </OverviewHeadline>
+      </OverviewWrap>
+    );
+  }
+
+  return (
+    <OverviewWrap>
+      {renderSection({ key: 'pending',  label: 'Pendiente de revisar', items: pending,  showAlertTag: true  })}
+      {renderSection({ key: 'resolved', label: 'Sin novedades',        items: resolved, showAlertTag: false })}
+      {renderSection({ key: 'vacation', label: 'Vacaciones',           items: vacation, showAlertTag: false })}
+    </OverviewWrap>
+  );
+}
+
 export default function UsersPage() {
   const { user, logout } = useContext(AuthContext);
   const navigate = useNavigate();
@@ -223,6 +393,8 @@ export default function UsersPage() {
   useEffect(() => { setMenuOpen(!isMobile); }, [isMobile]);
 
   const caregiverId = user?.role === 'cuidador' ? user._id : null;
+  const theme = useTheme();
+  const chartTheme = theme?.isDark ? 'dark' : 'light';
 
   // React Query Hooks
   const { data: users = [] } = useUsers(
@@ -278,7 +450,7 @@ export default function UsersPage() {
       const counts = {};
       for (const p of patients) {
         try {
-          const { data } = await api.get(`/alerts?user_id=${p._id}&unread=1`);
+          const { data } = await api.get(`/alerts?user_id=${p._id}&resolved=false`);
           const arr = Array.isArray(data) ? data : [];
           const valid = arr.filter(
             (a) =>
@@ -587,14 +759,26 @@ export default function UsersPage() {
                 </div>
               )}
               {!selectedPatient ? (
-                <div
-                  style={{
-                    opacity: 0.5,
-                    marginTop: '4rem',
-                    textAlign: 'center',
-                  }}
-                >
-                  <h2>Selecciona una persona en seguimiento</h2>
+                <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                  <div style={{ padding: '1.5rem 2rem 0.5rem' }}>
+                    <iframe
+                      key={`chart-patients-${chartTheme}`}
+                      title="Resumen estado de pacientes"
+                      src={`https://charts.mongodb.com/charts-project-0-mrlcghx/embed/charts?id=3146ff95-af6d-4327-ba7f-b1334bf2b1b9&maxDataAge=14400&theme=${chartTheme}&autoRefresh=true`}
+                      style={{
+                        width: '100%',
+                        height: '200px',
+                        border: 'none',
+                        borderRadius: '10px',
+                      }}
+                    />
+                  </div>
+                  <GlobalOverview
+                    users={users}
+                    unread={unread}
+                    households={households}
+                    onSelect={(id) => setSelectedId(id)}
+                  />
                 </div>
               ) : (
                 <>

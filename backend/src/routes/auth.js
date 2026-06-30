@@ -48,7 +48,7 @@ router.post('/login', async (req, res) => {
     const token = jwt.sign(
       { sub: user._id, role: user.role },
       process.env.JWT_SECRET,
-      { expiresIn: '8h' }
+      { expiresIn: '24h' }
     );
 
     const isProd = process.env.NODE_ENV === 'production';
@@ -57,7 +57,7 @@ router.post('/login', async (req, res) => {
         httpOnly: true,
         sameSite: isProd ? 'none' : 'lax',
         secure: isProd,
-        maxAge: 8 * 3600 * 1000,
+        maxAge: 24 * 3600 * 1000,
       })
       .json({
         user: {
