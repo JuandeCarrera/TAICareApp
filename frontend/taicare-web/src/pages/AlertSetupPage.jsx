@@ -214,7 +214,7 @@ export default function AlertSetupPage() {
             });
             updateUserProfile({ alert_preferences: prefs, alert_preferences_configured: true });
             showAlert('Preferencias de alertas configuradas correctamente.', 'success');
-            navigate('/');
+            navigate('/home');
         } catch (err) {
             showAlert('Error al guardar las preferencias: ' + (err.message || 'Error desconocido'));
         } finally {
@@ -226,7 +226,7 @@ export default function AlertSetupPage() {
         // Just navigate away; alert_preferences_configured stays false
         // The setup screen will reappear next login
         sessionStorage.setItem('skipSetup', 'true');
-        navigate('/');
+        navigate('/home');
     }
 
     return (

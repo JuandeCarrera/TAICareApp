@@ -12,8 +12,11 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Sesión expirada — redirigir al login si no estamos ya ahí
-      if (!window.location.pathname.startsWith('/login')) {
+      const path = window.location.pathname;
+      const isPublic = path === '/' || path.startsWith('/login') || path.startsWith('/register');
+      const isAuthCheck = error.config?.url?.includes('/auth/me');
+      // Solo redirigir si estamos en una ruta privada y no es la comprobación de sesión inicial
+      if (!isPublic && !isAuthCheck) {
         window.location.href = '/login';
       }
     }

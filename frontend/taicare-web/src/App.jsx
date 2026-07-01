@@ -6,6 +6,7 @@ import UsersPage from './pages/UsersPage.jsx';
 import Dispositivos from './pages/Dispositivos.jsx';
 import Login from './pages/Login.jsx';
 import Register from './pages/Register.jsx';
+import Landing from './pages/Landing.jsx';
 import Datos from './pages/Datos.jsx';
 import Hogares from './pages/Hogares.jsx';
 import Configuracion from './pages/Configuracion.jsx';
@@ -43,12 +44,13 @@ export default function App() {
   return (
     <Routes>
       {/* públicas */}
+      <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
 
       {/* privadas */}
       <Route
-        path="/"
+        path="/home"
         element={
           <Private>
             <Home />

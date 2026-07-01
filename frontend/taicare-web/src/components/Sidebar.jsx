@@ -159,7 +159,7 @@ const IconWrap = styled.span`
 
 /* ── Nav items config ───────────────────────────────────────────────────── */
 const NAV_ITEMS = [
-  { to: '/',              label: 'Inicio',                  Icon: LayoutDashboard },
+  { to: '/home',         label: 'Inicio',                  Icon: LayoutDashboard },
   { to: '/pacientes',     label: 'Personas en seguimiento', Icon: Users           },
   { to: '/households',    label: 'Hogares',                 Icon: Home            },
   { to: '/alertas',       label: 'Alertas',                 Icon: Bell            },
@@ -199,8 +199,8 @@ export default function Sidebar({ open, onClose }) {
           <List>
             {NAV_ITEMS.map(({ to, label, Icon }) => {
               const isActive =
-                to === '/'
-                  ? location.pathname === '/'
+                to === '/home'
+                  ? location.pathname === '/home'
                   : location.pathname.startsWith(to);
               return (
                 <li key={to}>
