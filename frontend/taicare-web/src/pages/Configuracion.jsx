@@ -9,7 +9,7 @@ import Sidebar from '../components/Sidebar.jsx';
 import Footer from '../components/Footer.jsx';
 import InfoTooltip from '../components/InfoTooltip.jsx';
 import { Calendar, Moon, BarChart2, AlertTriangle, Plug, Bell, ChevronUp, ChevronDown, Save } from 'lucide-react';
-
+import { useAlert } from '../contexts/AlertContext.jsx';
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 // ---- Alert type definitions ----
@@ -198,8 +198,8 @@ export default function Configuracion() {
   // ---- Profile form ----
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
-    name: user.name,
-    email: user.email,
+    name: user?.name || '',
+    email: user?.email || '',
     oldPassword: '',
     newPassword: '',
     confirmNew: '',
@@ -258,8 +258,8 @@ export default function Configuracion() {
   const handleCancel = () => {
     setEditing(false);
     setForm({
-      name: user.name,
-      email: user.email,
+      name: user?.name || '',
+      email: user?.email || '',
       oldPassword: '',
       newPassword: '',
       confirmNew: '',
@@ -343,10 +343,10 @@ export default function Configuracion() {
             {!editing ? (
               <>
                 <p>
-                  <strong>Nombre:</strong> {user.name}
+                  <strong>Nombre:</strong> {user?.name}
                 </p>
                 <p>
-                  <strong>Email:</strong> {user.email}
+                  <strong>Email:</strong> {user?.email}
                 </p>
                 <Actions>
                   <Button variant="primary" onClick={handleEdit}>
