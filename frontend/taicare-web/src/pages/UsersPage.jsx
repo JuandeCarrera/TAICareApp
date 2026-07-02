@@ -869,6 +869,13 @@ export default function UsersPage() {
                 <>
                   <DetailHeader>
                     <div style={{ width: '100%' }}>
+                      {!isMobile && (
+                        <div style={{ marginBottom: '1rem' }}>
+                          <Btn onClick={() => setSelectedId(null)}>
+                            ← Volver al resumen global
+                          </Btn>
+                        </div>
+                      )}
                       <div
                         style={{
                           display: 'flex',
