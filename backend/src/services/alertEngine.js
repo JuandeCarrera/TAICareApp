@@ -6,6 +6,7 @@ import Device from '../models/Device.js';
 import Routine from '../models/Routine.js';
 import { getRoutinesStatusForDate } from './routineChecker.js';
 import { DEFAULT_ALERT_PREFERENCES } from '../constants/index.js';
+import { sendAlertEmail } from './emailService.js';
 
 const z2 = (n) => String(n).padStart(2, '0');
 const dayKey = (d) =>
@@ -137,7 +138,9 @@ export async function ensureAlert({
       day_key: dk,
     });
     if (found) return found;
-    return Alert.create(base);
+    const alert = await Alert.create(base);
+    sendAlertEmail(alert).catch(err => console.error('[AlertEngine] Error sending alert email:', err.message));
+    return alert;
   }
 
   const existing = await Alert.findOne({
@@ -149,7 +152,9 @@ export async function ensureAlert({
   });
   if (existing) return existing;
 
-  return Alert.create(base);
+  const alert = await Alert.create(base);
+  sendAlertEmail(alert).catch(err => console.error('[AlertEngine] Error sending alert email:', err.message));
+  return alert;
 }
 
 /**

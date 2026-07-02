@@ -12,7 +12,7 @@ import Hogares from './pages/Hogares.jsx';
 import Configuracion from './pages/Configuracion.jsx';
 import Rutinas from './pages/Rutinas.jsx';
 import Alertas from './pages/Alertas.jsx';
-import AjustesAlertas from './pages/AjustesAlertas.jsx';
+
 import ReglasAlertas from './pages/ReglasAlertas.jsx';
 import AlertSetupPage from './pages/AlertSetupPage.jsx';
 
@@ -115,14 +115,7 @@ export default function App() {
           </Private>
         }
       />
-      <Route
-        path="/alertas/ajustes"
-        element={
-          <Private>
-            <AjustesAlertas />
-          </Private>
-        }
-      />
+
       <Route
         path="/alertas/reglas"
         element={

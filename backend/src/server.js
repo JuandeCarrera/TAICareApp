@@ -1,6 +1,6 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import cookieParser from 'cookie-parser';
 import { authRequired } from './middleware/auth.js';
@@ -18,8 +18,6 @@ import alertRulesRouter from './routes/alertRules.js';
 import notificationPrefsRouter from './routes/notificationPrefs.js';
 import systemSettingsRouter from './routes/systemSettings.js';
 import jobsRouter from './routes/jobs.js';
-
-dotenv.config();
 const app = express();
 
 // CORS + JSON + Cookies
