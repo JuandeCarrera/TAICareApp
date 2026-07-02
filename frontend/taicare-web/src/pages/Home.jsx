@@ -208,7 +208,7 @@ export default function Home() {
   const [menuOpen, setMenuOpen] = useState(!isMobile);
   const theme = useTheme();
   const chartTheme = theme.isDark ? 'dark' : 'light';
-  const caregiverId = user?._id || user?.sub || null;
+  const caregiverId = user?._id || user?.sub;
   useEffect(() => { setMenuOpen(!isMobile); }, [isMobile]);
 
   /* datos para rutinas */

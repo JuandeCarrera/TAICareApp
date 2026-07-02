@@ -28,6 +28,90 @@ import InfoTooltip from '../components/InfoTooltip.jsx';
 import { useAlert } from '../contexts/AlertContext.jsx';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const CHARTS_BASE = 'https://charts.mongodb.com/charts-project-0-mrlcghx';
+
+// Genera la URL del chart con filtro de cuidador (Embedding Filter)
+const chartUrl = (id, theme = 'light', caregiverId = null, filterField = 'caregiver_id') => {
+  const base = `${CHARTS_BASE}/embed/charts?id=${id}&maxDataAge=3600&theme=${theme}&autoRefresh=true`;
+  if (!caregiverId) return base;
+  const filter = encodeURIComponent(JSON.stringify({ [filterField]: { $oid: String(caregiverId) } }));
+  return `${base}&filter=${filter}`;
+};
+
+const CHART_CONFIGS = {
+  // Coleccion: devices CON lookup owner→users (panel Fields → "+")
+  vacacionesPaciente: { id: '3146ff95-af6d-4327-ba7f-b1334bf2b1b9', filterField: 'caregiver_id' },
+};
+
+const ChartCard = styled.div`
+  background: ${({ theme }) => theme.colors.cardBg};
+  border: 1px solid ${({ theme }) => theme.colors.border};
+  border-radius: 12px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+`;
+const ChartCardHeader = styled.div`
+  margin-bottom: 0.5rem;
+`;
+const ChartCardTitle = styled.span`
+  font-size: 0.9rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+`;
+const ChartCardDesc = styled.span`
+  display: block;
+  font-size: 0.72rem;
+  opacity: 0.6;
+  margin-top: 1px;
+`;
+const ChartGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(${({ $cols }) => $cols || 2}, 1fr);
+  gap: 1rem;
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+`;
+const IframeWrap = styled.div`
+  flex: 1;
+  min-height: ${({ $tall }) => ($tall ? '280px' : '150px')};
+  iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    border-radius: 8px;
+  }
+`;
+
+
+/* ─── Componente chart embebido ──────────────────────────────────────────── */
+function EmbeddedChart({ id, filterField = 'caregiver_id', title, tooltipText, desc, tall, refreshKey, chartTheme, caregiverId }) {
+  return (
+    <ChartCard>
+      {title && (
+        <ChartCardHeader>
+          <ChartCardTitle>
+            {title}
+            {tooltipText && <InfoTooltip text={tooltipText} />}
+          </ChartCardTitle>
+          {desc && <ChartCardDesc>{desc}</ChartCardDesc>}
+        </ChartCardHeader>
+      )}
+      <IframeWrap $tall={tall}>
+        <iframe
+          key={`${id}-${refreshKey}-${caregiverId}`}
+          title={title}
+          src={chartUrl(id, chartTheme, caregiverId, filterField)}
+          allowFullScreen
+        />
+      </IframeWrap>
+    </ChartCard>
+  );
+}
 
 /* ---------- Estilos ---------- */
 const AppContainer = styled.div`
@@ -316,7 +400,7 @@ function GlobalOverview({ users, unread, households, onSelect }) {
     .map(u => ({ ...u, _unread: unread[u._id] || 0 }));
 
   // 3 grupos mutuamente excluyentes, en orden de prioridad
-  const pending  = all.filter(u => u._unread > 0 && !u.vacation_mode)
+  const pending = all.filter(u => u._unread > 0 && !u.vacation_mode)
     .sort((a, b) => b._unread - a._unread);
   const resolved = all.filter(u => u._unread === 0 && !u.vacation_mode)
     .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
@@ -349,7 +433,7 @@ function GlobalOverview({ users, unread, households, onSelect }) {
   const renderSection = ({ key, label, items, showAlertTag }) => {
     if (!items.length) return null;
     const visible = expanded[key] ? items : items.slice(0, 1);
-    const hidden  = items.length - 1;
+    const hidden = items.length - 1;
     return (
       <div key={key}>
         <GroupLabel>{label} ({items.length})</GroupLabel>
@@ -377,9 +461,9 @@ function GlobalOverview({ users, unread, households, onSelect }) {
 
   return (
     <OverviewWrap>
-      {renderSection({ key: 'pending',  label: 'Pendiente de revisar', items: pending,  showAlertTag: true  })}
-      {renderSection({ key: 'resolved', label: 'Sin novedades',        items: resolved, showAlertTag: false })}
-      {renderSection({ key: 'vacation', label: 'Vacaciones',           items: vacation, showAlertTag: false })}
+      {renderSection({ key: 'pending', label: 'Pendiente de revisar', items: pending, showAlertTag: true })}
+      {renderSection({ key: 'resolved', label: 'Sin novedades', items: resolved, showAlertTag: false })}
+      {renderSection({ key: 'vacation', label: 'Vacaciones', items: vacation, showAlertTag: false })}
     </OverviewWrap>
   );
 }
@@ -392,9 +476,10 @@ export default function UsersPage() {
   const [menuOpen, setMenuOpen] = useState(!isMobile);
   useEffect(() => { setMenuOpen(!isMobile); }, [isMobile]);
 
-  const caregiverId = user?.role === 'cuidador' ? user._id : null;
+  const caregiverId = user?._id || user?.sub;
   const theme = useTheme();
   const chartTheme = theme?.isDark ? 'dark' : 'light';
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // React Query Hooks
   const { data: users = [] } = useUsers(
@@ -416,6 +501,9 @@ export default function UsersPage() {
   const [selectedId, setSelectedId] = useState(null);
   const [q, setQ] = useState('');
 
+  // Unread counts logic (simplified, without hooks for N+1 perf)
+  const [unread, setUnread] = useState({});
+
   // Estados derivados
   const patients = useMemo(() => {
     let list = Array.isArray(users) ? users : [];
@@ -427,8 +515,16 @@ export default function UsersPage() {
           p.email?.toLowerCase().includes(lower)
       );
     }
-    return list;
-  }, [users, q]);
+    // Ordenar por número de alertas sin resolver (descendente) y luego por orden alfabético (ascendente)
+    return [...list].sort((a, b) => {
+      const unreadA = unread[a._id] || 0;
+      const unreadB = unread[b._id] || 0;
+      if (unreadA !== unreadB) {
+        return unreadB - unreadA;
+      }
+      return (a.name || '').localeCompare(b.name || '');
+    });
+  }, [users, q, unread]);
 
   const selectedPatient = useMemo(
     () => patients.find((p) => p._id === selectedId) || null,
@@ -438,17 +534,15 @@ export default function UsersPage() {
   const { data: patientRoutines = [] } = useRoutines({ userId: selectedId || null });
   const { data: patientAlerts = [] } = useAlerts({ userId: selectedId || null });
 
-  // Unread counts logic (simplified, without hooks for N+1 perf)
-  const [unread, setUnread] = useState({});
+
 
   useEffect(() => {
-    // Legacy support for unread counts in list - keeping it simple with ONE effect
-    if (!patients.length) return;
+    if (!users.length) return;
 
     // Use api.get instead of fetch
     const loadUnreads = async () => {
       const counts = {};
-      for (const p of patients) {
+      for (const p of users) {
         try {
           const { data } = await api.get(`/alerts?user_id=${p._id}&resolved=false`);
           const arr = Array.isArray(data) ? data : [];
@@ -462,11 +556,11 @@ export default function UsersPage() {
           counts[p._id] = 0;
         }
       }
-      setUnread((prev) => ({ ...prev, ...counts }));
+      setUnread(counts);
     };
 
     loadUnreads();
-  }, [patients]); // Runs when patients list changes
+  }, [users]); // Runs when raw users list changes
 
   const selectedHouses = useMemo(() => {
     if (!selectedPatient) return [];
@@ -684,6 +778,7 @@ export default function UsersPage() {
   }
 
 
+
   return (
     <AppContainer>
       <Header
@@ -760,19 +855,9 @@ export default function UsersPage() {
               )}
               {!selectedPatient ? (
                 <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column' }}>
-                  <div style={{ padding: '1.5rem 2rem 0.5rem' }}>
-                    <iframe
-                      key={`chart-patients-${chartTheme}`}
-                      title="Resumen estado de pacientes"
-                      src={`https://charts.mongodb.com/charts-project-0-mrlcghx/embed/charts?id=3146ff95-af6d-4327-ba7f-b1334bf2b1b9&maxDataAge=14400&theme=${chartTheme}&autoRefresh=true`}
-                      style={{
-                        width: '100%',
-                        height: '200px',
-                        border: 'none',
-                        borderRadius: '10px',
-                      }}
-                    />
-                  </div>
+                  <ChartGrid $cols={1} style={{ marginBottom: '1.25rem' }}>
+                    <EmbeddedChart {...CHART_CONFIGS.vacacionesPaciente} tall refreshKey={refreshKey} chartTheme={chartTheme} caregiverId={caregiverId} />
+                  </ChartGrid>
                   <GlobalOverview
                     users={users}
                     unread={unread}
@@ -910,7 +995,7 @@ export default function UsersPage() {
                               }}
                               onClick={() => openHouseModal(h)}
                             >
-                              <HomeIcon size={13} style={{marginRight:'4px',verticalAlign:'middle'}}/> {h.name}
+                              <HomeIcon size={13} style={{ marginRight: '4px', verticalAlign: 'middle' }} /> {h.name}
                             </span>
                           ))}
                         </div>
