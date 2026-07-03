@@ -402,14 +402,26 @@ const slots48 = Array.from(
   (_, i) =>
     `${String(Math.floor(i / 2)).padStart(2, '0')}:${i % 2 === 0 ? '00' : '30'}`
 );
-const PRESETS_KEY = 'routine_presets_v1';
+const PRESETS_KEY = 'routine_presets_v2';
 const STEP_TITLES = ['Selección', 'Dispositivos', 'Horarios', 'Resumen'];
+
+const DEFAULT_PRESETS = [
+  { id: 'default_breakfast', name: 'Desayuno', start: '08:00', end: '10:00', days: DAY_NAMES },
+  { id: 'default_lunch', name: 'Almuerzo/Comida', start: '13:00', end: '15:30', days: DAY_NAMES },
+  { id: 'default_dinner', name: 'Cena', start: '20:30', end: '22:30', days: DAY_NAMES },
+  { id: 'default_tv', name: 'Ocio nocturno', start: '21:00', end: '23:30', days: DAY_NAMES },
+];
 
 const loadPresets = () => {
   try {
-    return JSON.parse(localStorage.getItem(PRESETS_KEY) || '[]');
+    const raw = localStorage.getItem(PRESETS_KEY);
+    if (!raw) {
+      localStorage.setItem(PRESETS_KEY, JSON.stringify(DEFAULT_PRESETS));
+      return DEFAULT_PRESETS;
+    }
+    return JSON.parse(raw);
   } catch {
-    return [];
+    return DEFAULT_PRESETS;
   }
 };
 const savePresets = (list) =>
@@ -1718,6 +1730,43 @@ export default function Rutinas() {
                       Definir franja horaria
                       <InfoTooltip text="Periodo del día durante el cual se debe detectar el uso del electrodoméstico." />
                     </div>
+
+                    {presets.length > 0 && (
+                      <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <label style={{ fontSize: '.85rem', fontWeight: '500', color: '#666' }}>Cargar plantilla:</label>
+                        <select
+                          style={{
+                            padding: '.35rem',
+                            borderRadius: 6,
+                            border: '1px solid #ccc',
+                            fontSize: '.85rem',
+                            background: '#fff',
+                            cursor: 'pointer',
+                          }}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (!val) return;
+                            const p = presets.find(x => x.id === val);
+                            if (p) {
+                              setBuilder({
+                                start: p.start,
+                                end: p.end,
+                                days: [...p.days],
+                              });
+                            }
+                            e.target.value = '';
+                          }}
+                        >
+                          <option value="">-- Seleccionar plantilla (Preset) --</option>
+                          {presets.map(p => (
+                            <option key={p.id} value={p.id}>
+                              {p.name} ({p.start} - {p.end})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
                     <div
                       style={{
                         display: 'flex',
