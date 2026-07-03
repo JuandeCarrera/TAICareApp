@@ -10,6 +10,7 @@ import Footer from '../components/Footer.jsx';
 import InfoTooltip from '../components/InfoTooltip.jsx';
 import { Calendar, Moon, BarChart2, AlertTriangle, Plug, Bell, ChevronUp, ChevronDown, Save } from 'lucide-react';
 import { useAlert } from '../contexts/AlertContext.jsx';
+import { NotifPrefsAPI } from '../services/alertsApi.js';
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 // ---- Alert type definitions ----
@@ -217,6 +218,49 @@ export default function Configuracion() {
   const [prefsSaving, setPrefsSaving] = useState(false);
   const [showAlertPrefs, setShowAlertPrefs] = useState(false);
 
+  // ---- Email notification channel preferences ----
+  const [notifPrefs, setNotifPrefs] = useState({
+    email: true,
+    push: false,
+    min_severity: 'medium',
+  });
+  const [loadingNotifPrefs, setLoadingNotifPrefs] = useState(true);
+
+  useEffect(() => {
+    async function loadNotifPrefs() {
+      try {
+        const data = await NotifPrefsAPI.getMine();
+        if (data) {
+          setNotifPrefs({
+            email: data.channels?.email ?? true,
+            push: data.channels?.push ?? false,
+            min_severity: data.min_severity ?? 'medium',
+          });
+        }
+      } catch (e) {
+        console.error('Error loading notification prefs:', e);
+      } finally {
+        setLoadingNotifPrefs(false);
+      }
+    }
+    loadNotifPrefs();
+  }, []);
+
+  async function saveNotifPrefs() {
+    try {
+      await NotifPrefsAPI.upsertMine({
+        channels: {
+          email: notifPrefs.email,
+          push: notifPrefs.push,
+        },
+        min_severity: notifPrefs.min_severity,
+      });
+      showAlert('Canal de correo configurado correctamente.', 'success');
+    } catch (e) {
+      showAlert('Error al guardar canales de notificación: ' + e.message);
+    }
+  }
+
   function getPref(code, field) {
     const t = ALERT_CATEGORIES.flatMap(c => c.types).find(x => x.code === code);
     return prefs[code]?.[field] ?? (field === 'enabled' ? true : t?.defaultSeverity ?? 'medium');
@@ -398,6 +442,64 @@ export default function Configuracion() {
                   <DangerBtn onClick={handleCancel}>Cancelar</DangerBtn>
                   <Button variant="primary" onClick={handleSave}>
                     Guardar
+                  </Button>
+                </Actions>
+              </>
+            )}
+          </Section>
+
+          {/* ---- Canales de notificación (Email) ---- */}
+          <Section style={{ width: '100%', maxWidth: 600 }}>
+            <h2 style={{ marginTop: 0, fontSize: '1rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Bell size={17} /> Canales de notificación por email
+              <InfoTooltip text="Configura si deseas recibir notificaciones en tu bandeja de entrada de correo electrónico y a partir de qué severidad." />
+            </h2>
+            <p style={{ opacity: 0.65, fontSize: '0.85rem', margin: '0.5rem 0' }}>
+              Define si quieres recibir correos de alerta y el umbral de prioridad.
+            </p>
+            {loadingNotifPrefs ? (
+              <p style={{ fontSize: '0.85rem', opacity: 0.5 }}>Cargando preferencias...</p>
+            ) : (
+              <>
+                <PrefRow style={{ borderBottom: '1px solid #eee', paddingBottom: '0.75rem', marginBottom: '0.75rem' }}>
+                  <span style={{ fontSize: '0.9rem' }}>
+                    Recibir alertas por correo electrónico
+                  </span>
+                  <SwitchTrack
+                    $active={notifPrefs.email}
+                    onClick={() => setNotifPrefs(prev => ({ ...prev, email: !prev.email }))}
+                    title={notifPrefs.email ? 'Desactivar email' : 'Activar email'}
+                  />
+                </PrefRow>
+                
+                <PrefRow style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '0.4rem' }}>
+                  <label style={{ fontSize: '0.85rem', fontWeight: '600' }}>Severidad mínima para notificaciones:</label>
+                  <select
+                    style={{
+                      padding: '0.4rem',
+                      paddingRight: '1.75rem',
+                      borderRadius: 6,
+                      border: '1px solid #ccc',
+                      background: '#fff',
+                      color: '#000',
+                      width: '100%',
+                      maxWidth: '320px',
+                      cursor: notifPrefs.email ? 'pointer' : 'not-allowed',
+                      opacity: notifPrefs.email ? 1 : 0.5,
+                    }}
+                    value={notifPrefs.min_severity}
+                    disabled={!notifPrefs.email}
+                    onChange={(e) => setNotifPrefs(prev => ({ ...prev, min_severity: e.target.value }))}
+                  >
+                    <option value="low">Baja (Recibir todas las alertas)</option>
+                    <option value="medium">Media (Ignorar alertas de severidad baja)</option>
+                    <option value="high">Alta (Solo alertas críticas y altas)</option>
+                  </select>
+                </PrefRow>
+
+                <Actions style={{ marginTop: '1.25rem' }}>
+                  <Button variant="primary" onClick={saveNotifPrefs} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <Save size={15} /> Guardar canal de correo
                   </Button>
                 </Actions>
               </>
