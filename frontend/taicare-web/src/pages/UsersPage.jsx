@@ -1120,15 +1120,26 @@ export default function UsersPage() {
 
                   <SectionTitle>Dispositivos en su(s) hogar(es)</SectionTitle>
                   <CardGrid>
-                    {selectedDevices.map((d) => (
-                      <Card key={d._id}>
-                        <strong>{d.plugmodel}</strong>
-                        <div style={{ fontSize: '.9rem' }}>{d.appliance}</div>
-                        <div style={{ fontSize: '.8rem', opacity: 0.7 }}>
-                          {d.room}
-                        </div>
-                      </Card>
-                    ))}
+                    {selectedDevices.map((d) => {
+                      const count = patientRoutines.filter((r) => {
+                        const isLegacy = String(r.device_id?._id || r.device_id || '') === String(d._id);
+                        const isOccurrence = Array.isArray(r.occurrences) && r.occurrences.some(
+                          (o) => Array.isArray(o.device_ids) && o.device_ids.some(
+                            (id) => String(id?._id || id || '') === String(d._id)
+                          )
+                        );
+                        return isLegacy || isOccurrence;
+                      }).length;
+                      return (
+                        <Card key={d._id}>
+                          <strong>{d.appliance}</strong>
+                          <div style={{ fontSize: '.9rem', marginTop: '.25rem' }}>{d.room}</div>
+                          <div style={{ fontSize: '.8rem', opacity: 0.7, marginTop: '.25rem' }}>
+                            {count} {count === 1 ? 'rutina' : 'rutinas'}
+                          </div>
+                        </Card>
+                      );
+                    })}
                     {!selectedDevices.length && (
                       <div style={{ opacity: 0.7 }}>
                         No hay dispositivos asignados a su hogar.
