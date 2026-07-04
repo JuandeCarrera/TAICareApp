@@ -1420,7 +1420,7 @@ export default function Rutinas() {
                     <Meta>
                       Persona en seguimiento: <strong>{patient}</strong>
                       {' · '}
-                      Ocurrencias: <strong>{occ.length}</strong>
+                      Franjas horarias: <strong>{occ.length}</strong>
                       {' · '}
                       Dispositivos totales: <strong>{devCount}</strong>
                     </Meta>
