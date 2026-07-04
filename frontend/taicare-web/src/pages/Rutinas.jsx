@@ -213,27 +213,33 @@ const Muted = styled.div`
 const Wizard = styled.div`
   max-width: 960px;
   width: 100%;
-  margin: 0 auto;
+  height: 100%;
   box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 2rem; /* Matches default dialog padding */
 `;
 const ModalBody = styled.div`
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
   width: 100%;
-  max-height: min(88vh, 900px);
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
 `;
 const ModalHeader = styled.div`
-  position: sticky;
-  top: 0;
-  z-index: 1;
+  flex-shrink: 0;
   background: ${({ theme }) => theme.colors.cardBg};
-  padding-bottom: 0.25rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid ${({ theme }) => theme.colors.border};
+  margin-bottom: 0.5rem;
 `;
 const ModalContent = styled.div`
   flex: 1;
-  overflow: auto;
-  padding-right: 0.25rem;
+  overflow-y: auto;
+  padding-right: 0.5rem;
   min-height: 0;
   min-width: 0;
 `;
@@ -241,15 +247,16 @@ const StepFooter = styled.div`
   position: sticky;
   bottom: 0;
   z-index: 2;
+  flex-shrink: 0;
   background: ${({ theme }) => theme.colors.cardBg};
   border-top: 1px solid ${({ theme }) => theme.colors.border};
   padding-top: 0.75rem;
-
+  padding-bottom: 0.5rem; /* added small bottom padding so it doesn't touch the modal edge */
+  margin-top: 0.75rem;
   display: flex;
   justify-content: flex-end;
   align-items: center;
   gap: 0.5rem;
-  margin-top: 0.75rem;
 `;
 const StepSub = styled.div`
   opacity: 0.9;
