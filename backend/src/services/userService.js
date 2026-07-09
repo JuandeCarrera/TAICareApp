@@ -17,9 +17,11 @@ export const createUser = async (userData) => {
 
   // Sincronizar con Hogar si se asignó
   if (user.household_id) {
-    await Household.findByIdAndUpdate(user.household_id, {
-      $addToSet: { users: user._id },
-    });
+    const updateObj = { $addToSet: { users: user._id } };
+    if (user.role === 'paciente') {
+      updateObj.$set = { owner: user._id };
+    }
+    await Household.findByIdAndUpdate(user.household_id, updateObj);
   }
 
   return user;
@@ -52,9 +54,11 @@ export const updateUser = async (id, updateData, filter = {}) => {
       }
       // Poner en el nuevo
       if (newHid) {
-        await Household.findByIdAndUpdate(newHid, {
-          $addToSet: { users: id },
-        });
+        const updateObj = { $addToSet: { users: id } };
+        if (updatedUser.role === 'paciente') {
+          updateObj.$set = { owner: id };
+        }
+        await Household.findByIdAndUpdate(newHid, updateObj);
       }
     }
   }

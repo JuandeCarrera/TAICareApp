@@ -15,6 +15,7 @@ import Alertas from './pages/Alertas.jsx';
 
 import ReglasAlertas from './pages/ReglasAlertas.jsx';
 import AlertSetupPage from './pages/AlertSetupPage.jsx';
+import AjustesAlertas from './pages/AjustesAlertas.jsx';
 
 import { AuthContext } from './contexts/AuthContext.jsx';
 

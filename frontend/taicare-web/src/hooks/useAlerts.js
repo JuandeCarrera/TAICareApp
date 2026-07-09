@@ -21,7 +21,12 @@ export function useMarkAlertAsRead() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id) => {
-      const { data } = await api.put(`/alerts/${id}`, { read: true });
+      const { data } = await api.put(`/alerts/${id}`, {
+        read: true,
+        seen: true,
+        resolved: true,
+        status: 'resolved',
+      });
       return data;
     },
     onSuccess: () => {

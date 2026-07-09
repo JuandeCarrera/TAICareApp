@@ -11,6 +11,7 @@ import {
   Home,
   Settings,
   Activity,
+  Sliders,
 } from 'lucide-react';
 import { useIsMobile } from '../hooks/useIsMobile';
 
